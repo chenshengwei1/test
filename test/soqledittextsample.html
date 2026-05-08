@@ -1,0 +1,1274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Salesforce SOQL/SOSL 智能编辑器</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/theme/dracula.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/hint/show-hint.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/hint/show-hint.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/sql/sql.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #1a2a6c, #2c3e50);
+            color: #fff;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        header {
+            text-align: center;
+            padding: 20px 0;
+            margin-bottom: 30px;
+        }
+        
+        header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            background: linear-gradient(90deg, #00c9ff, #92fe9d);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            display: inline-block;
+        }
+        
+        header p {
+            color: #bdc3c7;
+            font-size: 1.1rem;
+        }
+        
+        .editor-container {
+            background: #2c3e50;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+            position: relative;
+        }
+        
+        .toolbar {
+            display: flex;
+            background: #1a2a6c;
+            padding: 15px;
+            border-bottom: 1px solid #34495e;
+            flex-wrap: wrap;
+        }
+        
+        .toolbar button {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            margin-right: 10px;
+            margin-bottom: 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+        }
+        
+        .toolbar button i {
+            margin-right: 5px;
+        }
+        
+        .toolbar button:hover {
+            background: #2980b9;
+            transform: translateY(-2px);
+        }
+        
+        .toolbar .run-btn {
+            background: #27ae60;
+        }
+        
+        .toolbar .run-btn:hover {
+            background: #2ecc71;
+        }
+        
+        .toolbar .switch-btn {
+            background: #9b59b6;
+        }
+        
+        .toolbar .switch-btn:hover {
+            background: #8e44ad;
+        }
+        
+        .toolbar .refresh-btn {
+            background: #f39c12;
+        }
+        
+        .toolbar .refresh-btn:hover {
+            background: #e67e22;
+        }
+        
+        .editor-wrapper {
+            position: relative;
+            height: 400px;
+        }
+        
+        .CodeMirror {
+            height: 100%;
+            font-size: 16px;
+            line-height: 1.5;
+            padding: 15px;
+        }
+        
+        .results-container {
+            margin-top: 30px;
+            background: #2c3e50;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+        
+        .results-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #34495e;
+        }
+        
+        .results-header h2 {
+            font-size: 1.5rem;
+            color: #3498db;
+        }
+        
+        .result-content {
+            background: #1c2833;
+            border-radius: 5px;
+            padding: 15px;
+            min-height: 100px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: monospace;
+            white-space: pre-wrap;
+        }
+        
+        .context-info {
+            background: #2c3e50;
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+        
+        .context-info h2 {
+            margin-bottom: 15px;
+            color: #3498db;
+        }
+        
+        .context-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 15px;
+        }
+        
+        .context-card {
+            background: #34495e;
+            border-radius: 8px;
+            padding: 15px;
+            transition: transform 0.3s ease;
+        }
+        
+        .context-card:hover {
+            transform: translateY(-5px);
+            background: #3d566e;
+        }
+        
+        .context-card h3 {
+            color: #2ecc71;
+            margin-bottom: 10px;
+            font-size: 1.1rem;
+        }
+        
+        .context-card ul {
+            padding-left: 20px;
+        }
+        
+        .context-card li {
+            margin-bottom: 5px;
+            color: #bdc3c7;
+        }
+        
+        .status-bar {
+            background: #1a2a6c;
+            padding: 10px 15px;
+            display: flex;
+            justify-content: space-between;
+            color: #bdc3c7;
+            font-size: 0.9rem;
+        }
+        
+        .examples {
+            margin-top: 30px;
+            background: #2c3e50;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+        
+        .examples h2 {
+            margin-bottom: 15px;
+            color: #3498db;
+        }
+        
+        .example-query {
+            background: #34495e;
+            border-radius: 5px;
+            padding: 15px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+        
+        .example-query:hover {
+            background: #3d566e;
+        }
+        
+        .example-query code {
+            color: #2ecc71;
+            font-family: monospace;
+        }
+        
+        .footer {
+            text-align: center;
+            margin-top: 40px;
+            padding: 20px;
+            color: #bdc3c7;
+            font-size: 0.9rem;
+        }
+        
+        .custom-hint {
+            border: 1px solid silver;
+            border-radius: 4px;
+            background: white;
+            color: black;
+            padding: 3px 6px;
+            box-shadow: 2px 3px 5px rgba(0,0,0,.2);
+            white-space: nowrap;
+            cursor: pointer;
+            font-size: 14px;
+            max-width: 400px;
+        }
+        
+        .CodeMirror-hints {
+            z-index: 10000;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .hint-item {
+            padding: 5px 10px;
+            display: flex;
+            align-items: center;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .hint-item i {
+            margin-right: 8px;
+            width: 18px;
+            text-align: center;
+        }
+        
+        .hint-item .keyword { color: #00f; }
+        .hint-item .object { color: #085; }
+        .hint-item .field { color: #a50; }
+        .hint-item .picklist { color: #800080; }
+        .hint-item .loading { color: #888; }
+        .hint-item .function { color: #d35400; }
+        .hint-item .operator { color: #8e44ad; }
+        .hint-item .constant { color: #16a085; }
+        
+        .metadata-status {
+            display: flex;
+            align-items: center;
+            margin-top: 10px;
+            padding: 8px 15px;
+            background: #1c2833;
+            border-radius: 4px;
+            font-size: 0.9rem;
+        }
+        
+        .metadata-status i {
+            margin-right: 8px;
+        }
+        
+        .metadata-status .success {
+            color: #2ecc71;
+        }
+        
+        .metadata-status .warning {
+            color: #f39c12;
+        }
+        
+        .context-indicator {
+            background: #1a2a6c;
+            padding: 8px 15px;
+            border-radius: 4px;
+            margin-top: 10px;
+            font-size: 0.9rem;
+        }
+        
+        .context-indicator span {
+            font-weight: bold;
+            color: #3498db;
+        }
+        
+        .auto-complete-info {
+            background: #223a8c;
+            padding: 10px 15px;
+            border-radius: 4px;
+            margin-top: 10px;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+        }
+        
+        .auto-complete-info i {
+            margin-right: 10px;
+            color: #3498db;
+            font-size: 1.2rem;
+        }
+        
+        .auto-complete-info span {
+            color: #2ecc71;
+            font-weight: bold;
+        }
+        
+        @media (max-width: 768px) {
+            .editor-wrapper {
+                height: 300px;
+            }
+            
+            .context-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .toolbar button {
+                font-size: 0.85rem;
+                padding: 6px 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1><i class="fas fa-cloud"></i> Salesforce SOQL/SOSL 智能编辑器</h1>
+            <p>支持实时自动提示 - 输入时自动显示相关建议</p>
+        </header>
+        
+        <div class="editor-container">
+            <div class="toolbar">
+                <button id="formatBtn"><i class="fas fa-align-left"></i> 格式化</button>
+                <button id="runBtn" class="run-btn"><i class="fas fa-play"></i> 执行查询</button>
+                <button id="switchBtn" class="switch-btn"><i class="fas fa-exchange-alt"></i> 切换至SOSL</button>
+                <button id="clearBtn"><i class="fas fa-trash"></i> 清除</button>
+                <button id="refreshBtn" class="refresh-btn"><i class="fas fa-sync"></i> 刷新元数据</button>
+            </div>
+            
+            <div class="editor-wrapper">
+                <textarea id="soqlEditor">SELECT Id, Name, Account.Name, Status, Priority
+FROM Case
+WHERE IsClosed = FALSE AND CreatedDate = LAST_N_DAYS:7
+ORDER BY CreatedDate DESC
+LIMIT 100</textarea>
+            </div>
+            
+            <div class="status-bar">
+                <div class="mode-indicator">当前模式: <span id="modeText">SOQL</span></div>
+                <div class="line-info">行: 5 | 列: 15 | 长度: 132 字符</div>
+            </div>
+            
+            <div class="context-indicator">
+                当前上下文: <span id="contextText">字段选择</span>
+            </div>
+            
+            <div class="auto-complete-info">
+                <i class="fas fa-bolt"></i>
+                <div>实时提示已启用！尝试输入：<span>"Acct"</span> 或 <span>"Opp"</span></div>
+            </div>
+            
+            <div class="metadata-status">
+                <i class="fas fa-info-circle"></i>
+                <span id="metadataStatus">元数据状态: 加载中...</span>
+            </div>
+        </div>
+        
+        <div class="results-container">
+            <div class="results-header">
+                <h2><i class="fas fa-table"></i> 查询结果</h2>
+                <div class="result-count">找到 <span id="resultCount">0</span> 条记录</div>
+            </div>
+            <div class="result-content" id="resultContent">
+                // 执行查询后结果将显示在这里
+            </div>
+        </div>
+        
+        <div class="context-info">
+            <h2><i class="fas fa-lightbulb"></i> 实时自动提示功能</h2>
+            <div class="context-grid">
+                <div class="context-card">
+                    <h3><i class="fas fa-keyboard"></i> 智能对象匹配</h3>
+                    <ul>
+                        <li>输入 <code>Acct</code> → 提示 Account, AccountHistory</li>
+                        <li>输入 <code>Opp</code> → 提示 Opportunity, OpportunityLineItem</li>
+                        <li>输入 <code>Cont</code> → 提示 Contact, ContactHistory</li>
+                    </ul>
+                </div>
+                <div class="context-card">
+                    <h3><i class="fas fa-database"></i> 智能字段匹配</h3>
+                    <ul>
+                        <li>输入 <code>Nam</code> → 提示 Name, FirstName, LastName</li>
+                        <li>输入 <code>Dat</code> → 提示 CreatedDate, LastModifiedDate</li>
+                        <li>输入 <code>Stat</code> → 提示 Status, StageName</li>
+                    </ul>
+                </div>
+                <div class="context-card">
+                    <h3><i class="fas fa-filter"></i> 智能值匹配</h3>
+                    <ul>
+                        <li>输入 <code>New</code> → 提示 'New' (状态)</li>
+                        <li>输入 <code>High</code> → 提示 'High' (优先级)</li>
+                        <li>输入 <code>Close</code> → 提示 'Closed Won', 'Closed Lost'</li>
+                    </ul>
+                </div>
+                <div class="context-card">
+                    <h3><i class="fas fa-cogs"></i> 高级功能</h3>
+                    <ul>
+                        <li>模糊匹配：支持部分词匹配</li>
+                        <li>智能排序：最相关结果排在最前</li>
+                        <li>上下文感知：根据位置提供最相关建议</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        
+        <div class="examples">
+            <h2><i class="fas fa-code"></i> 自动提示示例</h2>
+            <div class="example-query" onclick="loadExample(0)">
+                <code>SELECT Acct| (输入部分对象名)</code> - 自动提示Account相关对象
+            </div>
+            <div class="example-query" onclick="loadExample(1)">
+                <code>FROM Opp| (输入部分对象名)</code> - 自动提示Opportunity相关对象
+            </div>
+            <div class="example-query" onclick="loadExample(2)">
+                <code>WHERE Status = 'New' AND Prio| (输入部分字段名)</code> - 自动提示Priority字段
+            </div>
+            <div class="example-query" onclick="loadExample(3)">
+                <code>ORDER BY CreatedDat| (输入部分字段名)</code> - 自动提示CreatedDate字段
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>Salesforce SOQL/SOSL 智能编辑器 v1.0 | 实时自动提示系统</p>
+            <p>提示：输入时自动显示建议，使用 ↑ ↓ 键选择，Enter 键插入</p>
+        </div>
+    </div>
+
+    <script>
+        // 元数据存储
+        let metadata = {
+            keywords: [],
+            objects: [],
+            fields: {},
+            picklists: {},
+            functions: [],
+            operators: [],
+            loaded: false
+        };
+
+        // 初始化编辑器
+        let editor;
+        let lastAutoCompleteTime = 0;
+        const AUTO_COMPLETE_DELAY = 300; // 300ms防抖延迟
+        
+        $(document).ready(function() {
+            initEditor();
+            setupEventHandlers();
+            setupStyles();
+            
+            // 初始化元数据
+            refreshMetadata();
+        });
+        
+        function initEditor() {
+            editor = CodeMirror.fromTextArea(document.getElementById('soqlEditor'), {
+                mode: 'text/x-sql',
+                theme: 'dracula',
+                lineNumbers: true,
+                lineWrapping: true,
+                indentUnit: 4,
+                tabSize: 4,
+                extraKeys: {
+                    "Ctrl-/": function(cm) { showCodeHints(cm); },
+                    "Ctrl-F": function() { formatSOQL(); },
+                    "Tab": function(cm) { 
+                        if (!cm.somethingSelected()) {
+                            cm.replaceSelection("    "); // 4 spaces for tab
+                            return true;
+                        }
+                    }
+                }
+            });
+            
+            // 设置编辑器初始值
+            editor.setValue(`SELECT Id, Name, Account.Name, Status, Priority
+FROM Case
+WHERE IsClosed = FALSE AND CreatedDate = LAST_N_DAYS:7
+ORDER BY CreatedDate DESC
+LIMIT 100`);
+            
+            // 监听光标变化
+            editor.on("cursorActivity", function(cm) {
+                updateContextIndicator();
+            });
+            
+            // 监听输入变化（用于实时自动提示）
+            editor.on("change", function(cm, change) {
+                // 忽略程序化的变化
+                if (change.origin === "setValue") return;
+                
+                // 获取当前光标位置
+                const cursor = editor.getCursor();
+                const token = editor.getTokenAt(cursor);
+                
+                // 检查是否需要触发自动提示
+                if (shouldTriggerAutoComplete(change, token)) {
+                    const now = Date.now();
+                    
+                    // 简单的防抖处理
+                    if (now - lastAutoCompleteTime > AUTO_COMPLETE_DELAY) {
+                        lastAutoCompleteTime = now;
+                        
+                        // 延迟执行以避免干扰当前输入
+                        setTimeout(() => {
+                            if (metadata.loaded) {
+                                showCodeHints(editor);
+                            }
+                        }, 100);
+                    }
+                }
+            });
+        }
+        
+        // 判断是否应触发自动提示
+        function shouldTriggerAutoComplete(change, token) {
+            // 如果用户输入了文本
+            if (change.text && change.text.length > 0) {
+                const inputChar = change.text.join('');
+                
+                // 触发条件：输入字母、数字或下划线
+                if (/[a-zA-Z0-9_]/.test(inputChar)) {
+                    return true;
+                }
+                
+                // 触发条件：输入点号（用于关系字段）
+                if (inputChar === '.') {
+                    return true;
+                }
+            }
+            
+            // 如果用户删除了字符，但仍有部分输入
+            if (change.removed && change.removed.length > 0 && token.string.length >= 2) {
+                return true;
+            }
+            
+            return false;
+        }
+        
+        // 更新上下文指示器
+        function updateContextIndicator() {
+            const cursor = editor.getCursor();
+            const lineText = editor.getLine(cursor.line);
+            const context = determineContext(lineText, cursor.ch);
+            let contextText = "未知上下文";
+            
+            switch(context) {
+                case 'select':
+                    contextText = "字段选择 (SELECT)";
+                    break;
+                case 'from':
+                    contextText = "对象选择 (FROM)";
+                    break;
+                case 'where':
+                    contextText = "过滤条件 (WHERE)";
+                    break;
+                case 'where-field':
+                    contextText = "条件字段 (WHERE)";
+                    break;
+                case 'where-operator':
+                    contextText = "条件运算符 (WHERE)";
+                    break;
+                case 'where-value':
+                    contextText = "条件值 (WHERE)";
+                    break;
+                case 'order-by':
+                    contextText = "排序字段 (ORDER BY)";
+                    break;
+                case 'order-dir':
+                    contextText = "排序方向 (ASC/DESC)";
+                    break;
+                case 'limit':
+                    contextText = "结果限制 (LIMIT)";
+                    break;
+                default:
+                    contextText = "命令输入";
+            }
+            
+            $('#contextText').text(contextText);
+        }
+        
+        // 异步刷新元数据
+        function refreshMetadata() {
+            updateMetadataStatus('元数据正在加载中...', 'warning');
+            
+            // 模拟异步API调用获取元数据
+            setTimeout(() => {
+                // 模拟从Salesforce获取元数据
+                metadata = {
+                    keywords: [
+                        'SELECT', 'FROM', 'WHERE', 'ORDER BY', 'LIMIT', 
+                        'AND', 'OR', 'NOT', 'IN', 'LIKE', 'NULLS', 
+                        'ASC', 'DESC', 'GROUP BY', 'HAVING', 'OFFSET',
+                        'WITH', 'SECURITY_ENFORCED', 'USING', 'SCOPE'
+                    ],
+                    objects: [
+                        'Account', 'AccountHistory', 'AccountPartner', 'AccountShare',
+                        'Contact', 'ContactHistory', 'ContactShare',
+                        'Opportunity', 'OpportunityContactRole', 'OpportunityHistory', 'OpportunityLineItem', 'OpportunityPartner', 'OpportunityShare',
+                        'Case', 'CaseComment', 'CaseHistory', 'CaseShare',
+                        'Lead', 'LeadHistory', 'LeadShare'
+                    ],
+                    fields: {
+                        'Account': ['Id', 'Name', 'Type', 'Industry', 'BillingCity', 'BillingCountry', 'AccountNumber'],
+                        'Contact': ['Id', 'FirstName', 'LastName', 'Email', 'Phone', 'AccountId', 'MailingCity'],
+                        'Opportunity': ['Id', 'Name', 'StageName', 'Amount', 'CloseDate', 'AccountId', 'Probability'],
+                        'Case': ['Id', 'Subject', 'Status', 'Priority', 'Origin', 'AccountId', 'IsClosed'],
+                        'Lead': ['Id', 'FirstName', 'LastName', 'Company', 'Status', 'Email', 'Rating']
+                    },
+                    picklists: {
+                        'Case': {
+                            'Status': ['New', 'In Progress', 'Escalated', 'Closed'],
+                            'Priority': ['High', 'Medium', 'Low'],
+                            'Origin': ['Phone', 'Email', 'Web', 'API']
+                        },
+                        'Opportunity': {
+                            'StageName': ['Prospecting', 'Qualification', 'Needs Analysis', 'Closed Won', 'Closed Lost']
+                        },
+                        'Lead': {
+                            'Status': ['Open - Not Contacted', 'Working - Contacted', 'Closed - Converted', 'Closed - Not Converted']
+                        }
+                    },
+                    functions: [
+                        'COUNT()', 'COUNT_DISTINCT()', 'SUM()', 'AVG()', 'MIN()', 'MAX()',
+                        'CALENDAR_MONTH()', 'CALENDAR_QUARTER()', 'CALENDAR_YEAR()', 'DAY_IN_MONTH()',
+                        'DAY_IN_WEEK()', 'DAY_IN_YEAR()', 'HOUR_IN_DAY()', 'WEEK_IN_MONTH()',
+                        'FISCAL_MONTH()', 'FISCAL_QUARTER()', 'FISCAL_YEAR()', 'FORMAT()',
+                        'TODAY', 'YESTERDAY', 'TOMORROW', 'LAST_WEEK', 'THIS_WEEK', 'NEXT_WEEK',
+                        'LAST_MONTH', 'THIS_MONTH', 'NEXT_MONTH', 'LAST_90_DAYS', 'NEXT_90_DAYS'
+                    ],
+                    operators: ['=', '!=', '<', '>', '<=', '>=', 'LIKE', 'IN', 'NOT IN', 'INCLUDES', 'EXCLUDES'],
+                    loaded: true
+                };
+                
+                updateMetadataStatus('元数据加载完成!', 'success');
+            }, 1500); // 模拟1.5秒延迟
+        }
+        
+        // 更新元数据状态显示
+        function updateMetadataStatus(message, status) {
+            const $status = $('#metadataStatus');
+            $status.text(`元数据状态: ${message}`);
+            $status.removeClass('success warning');
+            $status.addClass(status);
+        }
+        
+        // 智能提示功能实现（支持实时自动提示）
+        function showCodeHints(cm) {
+            if (!metadata.loaded) {
+                return;
+            }
+            
+            const cursor = cm.getCursor();
+            const token = cm.getTokenAt(cursor);
+            const line = cm.getLine(cursor.line);
+            const lineText = cm.getLine(cursor.line);
+            const currentWord = token.string;
+            
+            // 确定上下文
+            let context = determineContext(lineText, cursor.ch);
+            
+            // 获取提示列表
+            let hints = [];
+            
+            switch(context) {
+                case 'select': // SELECT子句中的字段
+                    hints = getFieldHints(lineText);
+                    break;
+                case 'from': // FROM子句中的对象
+                    hints = getObjectHints();
+                    break;
+                case 'where-field': // WHERE子句中的字段
+                    hints = getFieldHints(lineText);
+                    break;
+                case 'where-operator': // WHERE子句中的运算符
+                    hints = getOperatorHints();
+                    break;
+                case 'where-value': // WHERE子句中的值
+                    hints = getValueHints(lineText);
+                    break;
+                case 'order-by': // ORDER BY子句中的字段
+                    hints = getFieldHints(lineText);
+                    break;
+                case 'order-dir': // ORDER BY子句中的排序方向
+                    hints = getOrderDirectionHints();
+                    break;
+                case 'limit': // LIMIT子句中的数字
+                    hints = getNumberHints();
+                    break;
+                default: // 默认关键字提示
+                    hints = getKeywordHints();
+            }
+            
+            // 如果当前有输入，过滤提示项
+            if (currentWord.trim() !== '' && context !== 'where-value') {
+                hints = hints.filter(item => 
+                    item.text.toLowerCase().includes(currentWord.toLowerCase())
+                );
+                
+                // 按相关性排序 - 开头匹配的优先
+                hints.sort((a, b) => {
+                    const aStartsWith = a.text.toLowerCase().startsWith(currentWord.toLowerCase());
+                    const bStartsWith = b.text.toLowerCase().startsWith(currentWord.toLowerCase());
+                    
+                    if (aStartsWith && !bStartsWith) return -1;
+                    if (!aStartsWith && bStartsWith) return 1;
+                    return a.text.length - b.text.length;
+                });
+            }
+            
+            // 显示提示
+            if (hints.length > 0) {
+                CodeMirror.showHint(cm, function() {
+                    return {
+                        list: hints,
+                        from: CodeMirror.Pos(cursor.line, token.start),
+                        to: CodeMirror.Pos(cursor.line, token.end)
+                    };
+                }, {
+                    completeSingle: false,
+                    alignWithWord: true,
+                    closeCharacters: /[\s()\[\]{};:>,]/,
+                    customHintContainer: function(element) {
+                        element.className = 'custom-hint';
+                    }
+                });
+            }
+        }
+        
+        // 确定当前上下文（更精确的版本）
+        function determineContext(lineText, cursorPos) {
+            const textBeforeCursor = lineText.substring(0, cursorPos);
+            const textBeforeUpper = textBeforeCursor.toUpperCase();
+            
+            // 检查SELECT子句
+            if (textBeforeUpper.includes('SELECT') && 
+                !textBeforeUpper.includes('FROM')) {
+                return 'select';
+            }
+            
+            // 检查FROM子句
+            if (textBeforeUpper.includes('FROM') && 
+                !textBeforeUpper.includes('WHERE') &&
+                !textBeforeUpper.includes('ORDER BY') &&
+                !textBeforeUpper.includes('LIMIT')) {
+                return 'from';
+            }
+            
+            // 检查WHERE子句
+            if (textBeforeUpper.includes('WHERE')) {
+                // 检查是否在字段位置
+                const whereIndex = textBeforeUpper.lastIndexOf('WHERE');
+                const afterWhere = textBeforeCursor.substring(whereIndex + 5).trim();
+                
+                if (afterWhere === '') {
+                    return 'where-field';
+                }
+                
+                // 检查是否在运算符位置
+                const lastChar = afterWhere.charAt(afterWhere.length - 1);
+                if (afterWhere.match(/[A-Za-z0-9_]+$/) && 
+                    !afterWhere.includes('=') && 
+                    !afterWhere.includes('!') && 
+                    !afterWhere.includes('<') && 
+                    !afterWhere.includes('>') && 
+                    !afterWhere.toUpperCase().includes('LIKE')) {
+                    return 'where-operator';
+                }
+                
+                // 检查是否在值位置
+                if (afterWhere.includes('=') || 
+                    afterWhere.includes('!=') || 
+                    afterWord.includes('<') || 
+                    afterWord.includes('>') || 
+                    afterWord.toUpperCase().includes('LIKE')) {
+                    return 'where-value';
+                }
+                
+                return 'where-field';
+            }
+            
+            // 检查ORDER BY子句
+            if (textBeforeUpper.includes('ORDER BY')) {
+                const orderByIndex = textBeforeUpper.lastIndexOf('ORDER BY');
+                const afterOrderBy = textBeforeCursor.substring(orderByIndex + 8).trim();
+                
+                if (afterOrderBy === '') {
+                    return 'order-by';
+                }
+                
+                // 检查是否在排序方向位置
+                if (afterOrderBy.match(/[A-Za-z0-9_]+$/) && 
+                    !afterOrderBy.toUpperCase().includes('ASC') && 
+                    !afterOrderBy.toUpperCase().includes('DESC')) {
+                    return 'order-dir';
+                }
+                
+                return 'order-by';
+            }
+            
+            // 检查LIMIT子句
+            if (textBeforeUpper.includes('LIMIT') && 
+                !textBeforeUpper.includes('OFFSET')) {
+                return 'limit';
+            }
+            
+            return 'keyword';
+        }
+        
+        // 获取关键字提示
+        function getKeywordHints() {
+            return metadata.keywords.map(keyword => ({
+                text: keyword,
+                displayText: `<div class="hint-item"><i class="fas fa-keyword keyword"></i> ${keyword}</div>`,
+                className: 'keyword-hint'
+            }));
+        }
+        
+        // 获取对象提示（支持模糊匹配）
+        function getObjectHints() {
+            return metadata.objects.map(object => ({
+                text: object,
+                displayText: `<div class="hint-item"><i class="fas fa-cube object"></i> ${object}</div>`,
+                className: 'object-hint',
+                score: 0 // 用于相关性排序
+            }));
+        }
+        
+        // 获取字段提示（支持模糊匹配）
+        function getFieldHints(lineText) {
+            let fields = [];
+            
+            // 尝试从FROM子句中提取对象名
+            const fromIndex = lineText.toUpperCase().indexOf('FROM');
+            if (fromIndex !== -1) {
+                const afterFrom = lineText.substring(fromIndex + 4).trim();
+                const objectMatch = afterFrom.match(/^[A-Za-z0-9_]+/);
+                if (objectMatch) {
+                    const objectName = objectMatch[0];
+                    if (metadata.fields[objectName]) {
+                        fields = metadata.fields[objectName].map(field => ({
+                            text: field,
+                            displayText: `<div class="hint-item"><i class="fas fa-tag field"></i> ${field}</div>`,
+                            className: 'field-hint'
+                        }));
+                    }
+                }
+            }
+            
+            // 如果没有找到特定对象的字段，返回通用字段
+            if (fields.length === 0) {
+                for (const obj in metadata.fields) {
+                    fields = fields.concat(metadata.fields[obj].map(field => ({
+                        text: field,
+                        displayText: `<div class="hint-item"><i class="fas fa-tag field"></i> ${field}</div>`,
+                        className: 'field-hint'
+                    })));
+                }
+                
+                // 去重
+                const uniqueFields = {};
+                fields = fields.filter(field => {
+                    if (!uniqueFields[field.text]) {
+                        uniqueFields[field.text] = true;
+                        return true;
+                    }
+                    return false;
+                });
+            }
+            
+            return fields;
+        }
+        
+        // 获取运算符提示
+        function getOperatorHints() {
+            return metadata.operators.map(operator => ({
+                text: operator,
+                displayText: `<div class="hint-item"><i class="fas fa-equals operator"></i> ${operator}</div>`,
+                className: 'operator-hint'
+            }));
+        }
+        
+        // 获取值提示
+        function getValueHints(lineText) {
+            let values = [];
+            
+            // 尝试提取字段名
+            const whereIndex = lineText.toUpperCase().indexOf('WHERE');
+            if (whereIndex !== -1) {
+                const afterWhere = lineText.substring(whereIndex + 5).trim();
+                const fieldMatch = afterWhere.match(/[A-Za-z0-9_]+/);
+                if (fieldMatch) {
+                    const fieldName = fieldMatch[0];
+                    
+                    // 尝试提取对象名
+                    const fromIndex = lineText.toUpperCase().indexOf('FROM');
+                    if (fromIndex !== -1) {
+                        const afterFrom = lineText.substring(fromIndex + 4).trim();
+                        const objectMatch = afterFrom.match(/^[A-Za-z0-9_]+/);
+                        if (objectMatch) {
+                            const objectName = objectMatch[0];
+                            
+                            // 添加picklist值
+                            if (metadata.picklists[objectName] && 
+                                metadata.picklists[objectName][fieldName]) {
+                                values = metadata.picklists[objectName][fieldName].map(value => ({
+                                    text: `'${value}'`,
+                                    displayText: `<div class="hint-item"><i class="fas fa-list picklist"></i> '${value}'</div>`,
+                                    className: 'picklist-hint'
+                                }));
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // 添加函数提示
+            const functionHints = metadata.functions.map(func => ({
+                text: func,
+                displayText: `<div class="hint-item"><i class="fas fa-function function"></i> ${func}</div>`,
+                className: 'function-hint'
+            }));
+            
+            values = values.concat(functionHints);
+            
+            // 添加常量提示
+            const constants = ['TRUE', 'FALSE', 'NULL', 'TODAY', 'YESTERDAY', 'TOMORROW'];
+            const constantHints = constants.map(constant => ({
+                text: constant,
+                displayText: `<div class="hint-item"><i class="fas fa-cube constant"></i> ${constant}</div>`,
+                className: 'constant-hint'
+            }));
+            
+            values = values.concat(constantHints);
+            
+            return values;
+        }
+        
+        // 获取排序方向提示
+        function getOrderDirectionHints() {
+            return [
+                { text: 'ASC', displayText: '<div class="hint-item"><i class="fas fa-sort-up"></i> ASC (升序)</div>' },
+                { text: 'DESC', displayText: '<div class="hint-item"><i class="fas fa-sort-down"></i> DESC (降序)</div>' },
+                { text: 'NULLS FIRST', displayText: '<div class="hint-item"><i class="fas fa-sort"></i> NULLS FIRST</div>' },
+                { text: 'NULLS LAST', displayText: '<div class="hint-item"><i class="fas fa-sort"></i> NULLS LAST</div>' }
+            ];
+        }
+        
+        // 获取数字提示
+        function getNumberHints() {
+            return [10, 20, 50, 100, 200, 500, 1000].map(num => ({
+                text: num.toString(),
+                displayText: `<div class="hint-item"><i class="fas fa-hashtag"></i> ${num}</div>`
+            }));
+        }
+        
+        // 格式化SOQL函数
+        function formatSOQL() {
+            const originalValue = editor.getValue();
+            let formatted = originalValue
+                .replace(/\b(SELECT|FROM|WHERE|ORDER BY|LIMIT|AND|OR|NOT|IN|LIKE|NULLS)\b/gi, '\n$1')
+                .replace(/,/g, ', ')
+                .replace(/\s+/g, ' ')
+                .replace(/\(\s+/g, '(')
+                .replace(/\s+\)/g, ')');
+            
+            // 添加缩进
+            const lines = formatted.split('\n');
+            let indentLevel = 0;
+            
+            for (let i = 0; i < lines.length; i++) {
+                lines[i] = '    '.repeat(indentLevel) + lines[i].trim();
+                
+                if (lines[i].toUpperCase().includes('SELECT')) {
+                    indentLevel = 1;
+                } else if (lines[i].toUpperCase().includes('FROM')) {
+                    indentLevel = 0;
+                } else if (lines[i].toUpperCase().includes('WHERE')) {
+                    indentLevel = 1;
+                } else if (lines[i].toUpperCase().includes('ORDER BY')) {
+                    indentLevel = 0;
+                }
+            }
+            
+            formatted = lines.join('\n').trim();
+            editor.setValue(formatted);
+            
+            // 显示成功消息
+            showTempMessage('查询已格式化!', 'success');
+        }
+        
+        // 显示临时消息函数
+        function showTempMessage(message, type) {
+            const $message = $(`<div class="temp-message ${type}">${message}</div>`);
+            $('body').append($message);
+            
+            setTimeout(() => {
+                $message.fadeOut(500, () => $message.remove());
+            }, 2000);
+        }
+        
+        // 切换SOQL/SOSL模式
+        function switchMode() {
+            const currentMode = $('#modeText').text();
+            const newMode = currentMode === 'SOQL' ? 'SOSL' : 'SOQL';
+            
+            $('#modeText').text(newMode);
+            $('#switchBtn i').toggleClass('fa-exchange-alt fa-sync');
+            
+            // 更新提示文本
+            showTempMessage(`已切换到 ${newMode} 模式`, 'info');
+            
+            // 加载示例查询
+            if (newMode === 'SOSL') {
+                editor.setValue(`FIND {Acme} IN ALL FIELDS RETURNING Account(Name), Contact(FirstName,LastName)`);
+            } else {
+                editor.setValue(`SELECT Id, Name, Account.Name, Status, Priority
+FROM Case
+WHERE IsClosed = FALSE AND CreatedDate = LAST_N_DAYS:7
+ORDER BY CreatedDate DESC
+LIMIT 100`);
+            }
+        }
+        
+        // 执行查询函数
+        function runQuery() {
+            const query = editor.getValue();
+            if (!query.trim()) {
+                showTempMessage('请输入查询语句', 'error');
+                return;
+            }
+            
+            // 模拟API调用
+            $('#resultContent').html(`<div class="loading">执行查询中...</div>`);
+            
+            setTimeout(() => {
+                // 生成模拟结果
+                const resultCount = Math.floor(Math.random() * 20) + 5;
+                $('#resultCount').text(resultCount);
+                
+                let resultHtml = `查询: <span class="query">${query}</span>\n\n`;
+                resultHtml += `找到 ${resultCount} 条记录\n\n`;
+                resultHtml += '字段值示例:\n';
+                
+                const fields = query.match(/(?<=SELECT\s)[\w\.,\s]+(?=\sFROM)/i);
+                if (fields) {
+                    const fieldList = fields[0].split(',').map(f => f.trim());
+                    resultHtml += fieldList.join(' | ') + '\n';
+                    resultHtml += '-'.repeat(fieldList.length * 12) + '\n';
+                    
+                    for (let i = 0; i < Math.min(5, resultCount); i++) {
+                        const row = fieldList.map(f => {
+                            if (f.includes('.')) return `Related.${f.split('.')[1]}_${i+1}`;
+                            return `${f}_${i+1}`;
+                        }).join(' | ');
+                        resultHtml += row + '\n';
+                    }
+                    
+                    if (resultCount > 5) {
+                        resultHtml += `... 还有 ${resultCount - 5} 条记录未显示`;
+                    }
+                }
+                
+                $('#resultContent').html(resultHtml);
+                showTempMessage('查询执行成功!', 'success');
+            }, 1000);
+        }
+        
+        // 清除编辑器内容
+        function clearEditor() {
+            editor.setValue('');
+            $('#resultContent').html('// 执行查询后结果将显示在这里');
+            $('#resultCount').text('0');
+            showTempMessage('编辑器已清除', 'info');
+        }
+        
+        // 加载示例查询
+        function loadExample(index) {
+            const examples = [
+                `SELECT Acct|`,
+                `FROM Opp|`,
+                `WHERE Status = 'New' AND Prio|`,
+                `ORDER BY CreatedDat|`
+            ];
+            
+            const cursorPos = examples[index].indexOf('|');
+            const cleanExample = examples[index].replace('|', '');
+            
+            editor.setValue(cleanExample);
+            
+            // 设置光标位置
+            const line = editor.lineCount() - 1;
+            editor.setCursor({line: line, ch: cursorPos});
+            
+            // 触发自动提示
+            setTimeout(() => {
+                showCodeHints(editor);
+            }, 100);
+            
+            showTempMessage('示例查询已加载', 'success');
+        }
+        
+        // 设置事件处理程序
+        function setupEventHandlers() {
+            $('#formatBtn').click(formatSOQL);
+            $('#runBtn').click(runQuery);
+            $('#switchBtn').click(switchMode);
+            $('#clearBtn').click(clearEditor);
+            $('#refreshBtn').click(function() {
+                refreshMetadata();
+                showTempMessage('元数据刷新请求已发送', 'info');
+            });
+        }
+        
+        // 添加样式到头部
+        function setupStyles() {
+            $('head').append(`
+                <style>
+                    .temp-message {
+                        position: fixed;
+                        top: 20px;
+                        right: 20px;
+                        padding: 15px 25px;
+                        border-radius: 5px;
+                        color: white;
+                        font-weight: 500;
+                        z-index: 1000;
+                        box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+                        animation: slideIn 0.3s, fadeOut 0.5s 1.7s;
+                    }
+                    
+                    .success {
+                        background: linear-gradient(90deg, #27ae60, #2ecc71);
+                    }
+                    
+                    .error {
+                        background: linear-gradient(90deg, #c0392b, #e74c3c);
+                    }
+                    
+                    .info {
+                        background: linear-gradient(90deg, #2980b9, #3498db);
+                    }
+                    
+                    @keyframes slideIn {
+                        from { right: -300px; opacity: 0; }
+                        to { right: 20px; opacity: 1; }
+                    }
+                    
+                    @keyframes fadeOut {
+                        from { opacity: 1; }
+                        to { opacity: 0; }
+                    }
+                    
+                    .result-content .query {
+                        color: #3498db;
+                    }
+                    
+                    .loading {
+                        text-align: center;
+                        padding: 30px;
+                        color: #3498db;
+                    }
+                    
+                    .CodeMirror-hint {
+                        max-width: none !important;
+                        white-space: normal !important;
+                    }
+                    
+                    .metadata-status .success {
+                        color: #2ecc71;
+                    }
+                    
+                    .metadata-status .warning {
+                        color: #f39c12;
+                    }
+                    
+                    .context-indicator {
+                        background: #1a2a6c;
+                        padding: 8px 15px;
+                        border-radius: 4px;
+                        margin-top: 10px;
+                        font-size: 0.9rem;
+                        transition: background 0.3s ease;
+                    }
+                    
+                    .context-indicator:hover {
+                        background: #223a8c;
+                    }
+                    
+                    .auto-complete-info {
+                        background: #223a8c;
+                        padding: 10px 15px;
+                        border-radius: 4px;
+                        margin-top: 10px;
+                        font-size: 0.9rem;
+                        display: flex;
+                        align-items: center;
+                        animation: pulse 2s infinite;
+                    }
+                    
+                    .auto-complete-info span {
+                        color: #2ecc71;
+                        font-weight: bold;
+                        margin: 0 3px;
+                    }
+                    
+                    @keyframes pulse {
+                        0% { box-shadow: 0 0 0 0 rgba(52, 152, 219, 0.4); }
+                        70% { box-shadow: 0 0 0 10px rgba(52, 152, 219, 0); }
+                        100% { box-shadow: 0 0 0 0 rgba(52, 152, 219, 0); }
+                    }
+                </style>
+            `);
+        }
+    </script>
+</body>
+</html>

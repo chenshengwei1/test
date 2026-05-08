@@ -1,0 +1,682 @@
+<html>
+
+<head>
+	<script>
+		window.isFile = window.location.protocol == 'file:';
+		window.addEventListener('load', () => {
+			if ('serviceWorker' in navigator) {
+				navigator.serviceWorker.register('/sw.js').then(() => {
+					console.log('注册成功');
+				}).catch((error) => {
+					console.log('注册失败');
+				});
+			}
+		});
+	</script>
+	<link href="happy.png" rel="shortcut icon" type="image/x-icon">
+	<link href="test.css" rel="stylesheet">
+	<link href="iconfont.css" rel="stylesheet">
+	<script type="text/javascript" src="jquery.min.js"></script>
+	<script type="text/javascript" src="qrcode.js"></script>
+	<script src="https://cdn.jsdelivr.net/npm/vue@2.7.14/dist/vue.js" async="async"></script>
+
+
+	<script type="text/javascript" src="reedsolomon.js"></script>
+	<script type="text/javascript" src="decodeData.js"></script>
+	<script type="text/javascript" src="version.js"></script>
+	<script type="text/javascript" src="binarizer.js"></script>
+	<script type="text/javascript" src="locator.js"></script>
+	<script type="text/javascript" src="extractor.js"></script>
+
+	<script type="text/javascript" src="jsQR.js"></script>
+	<script type="text/javascript" src="schema.js"></script>
+	<script type="text/javascript" src="hkth-objectdata.js"></script>
+	<script type="text/javascript" src="deqrcode.js"></script>
+	<script src="https://cdn.staticfile.org/angular.js/1.4.6/angular.min.js" async="async"></script>
+	<script src="elementExtendedDetail.js"></script>
+	<script src="html2canvas.js"></script>
+	<script src="core.js"></script>
+	<script src="autoComplete.js"></script>
+	<script src="sfobjectsearch.js"></script>
+
+	<!-- <script src="https://www.chartjs.org/dist/master/chart.js"></script> 
+	<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyB41DRUbKWJHPxaFjMAwdrzWzbVKartNGg&callback=initMap&v=weekly"></script>-->
+
+
+
+	<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+	<meta http-equiv="Access-Control-Allow-Origin" content="*" />
+	<title>自我学习hao</title>
+	<script type="text/javascript">
+		function readAsDataURL() {
+			if (typeof FileReader == 'undifined')          //鍒ゆ柇娴忚鍣ㄦ槸鍚︽敮鎸乫ilereader
+			{
+				result.innerHTML = "<p>鎶辨瓑锛屼綘鐨勬祻瑙堝櫒涓嶆敮鎸?FileReader</p>";
+				return false;
+			}
+			var file = document.getElementById("imagefile").files[0];
+			if (!/image\/\w+/.test(file.type))           //鍒ゆ柇鑾峰彇鐨勬槸鍚︿负鍥剧墖鏂囦欢
+			{
+				alert("请确保文件为图像文件");
+				return false;
+			}
+			var reader = new FileReader();
+			reader.readAsDataURL(file);
+			reader.onload = function (e) {
+				console.log(this.result);
+				var result = document.getElementById("result");
+				result.innerHTML = '<img src="' + this.result + '" alt=""/>'
+			}
+
+		}
+
+		class TestPartHanlder {
+			getBody() {
+				return '';
+			}
+			create() {
+				$('#part-' + (this.id || TestPartHanlder.name)).html(this.getBody());
+				typeof this.addLisenter === 'function' && this.addLisenter();
+			}
+
+			get dom(){
+				return $('#'+this.id)[0];
+			}
+		}
+	</script>
+</head>
+
+<body>
+	<div id="capture">
+		<div class="header" style="transform: translateY(0px);display:none;">
+			<div class="l-content">
+				<a href="https://www.baozimh.com/comic/yirenzhixia-dongmantang" class="btns back csw-accessed"></a>
+				<span class="cut"></span>
+				<a href="https://www.baozimh.com/" class="btns home"></a>
+				<div class="text">
+					<span class="title">304 你不是我的默默抠！</span>
+				</div>
+				<a href="https://www.baozimh.com/comic/yirenzhixia-dongmantang" class="btns goto csw-accessed"
+					style="width: 40px;">
+					目录
+				</a>
+			</div>
+
+		</div>
+		<div class="csw-head">
+			<div id="navfirst">
+				<ul id="menu" ng-app="">
+					<li id="h"><a select="true" title="二维码" ctrl="qrcode">二维码</a></li>
+					<li id="b"><a title="身份证" ctrl="idcart">身份证</a></li>
+					<li id="s"><a title="国家列表" ctrl="country">国家列表</a></li>
+					<li id="p"><a title="html2doc" ctrl="html2doc">html2doc</a></li>
+					<li id="w"><a title="字体" ctrl="font">字体</a></li>
+					<li id="r1"><a title="sort" ctrl="sort">sort</a></li>
+					<li id="r2"><a title="chart" ctrl="chart">chart</a></li>
+					<li id="r3"><a title="words" ctrl="words">words</a></li>
+					<li id="r5"><a title="location" ctrl="location">location</a></li>
+					<li id="r7"><a title="schema2" ctrl="schema2">schema2</a></li>
+					<li id="r8"><a title="car" ctrl="car">car</a></li>
+
+				</ul>
+				<ul id="submenuul" style="display:none">
+					<li id="sh"><a select="true" title="二维码" ctrl="qrcode">未实现13</a></li>
+					<li id="sb"><a title="身份证" ctrl="idcart">未实现14</a></li>
+					<li id="ss"><a title="国家列表" ctrl="country">未实现15</a></li>
+					<li id="sp"><a title="html2doc" ctrl="html2doc">未实现16</a></li>
+					<li id="sx"><a title="Chrome插件" ctrl="chrome-plugin">未实现17</a></li>
+					<li id="sw"><a title="字体" ctrl="font">未实现18</a></li>
+					<li id="sr1"><a title="参考手册" ctrl="tabitem2">未实现20</a></li>
+					<li id="sr2"><a title="参考手册" ctrl="tabitem3">未实现23</a></li>
+					<li id="sr3"><a title="参考手册" ctrl="tabitem4">未实现24</a></li>
+					<li id="sr4"><a title="参考手册" ctrl="tabitem5">未实现25</a></li>
+					<li id="sr5"><a title="参考手册" ctrl="tabitem6">未实现26</a></li>
+					<li id="sr6"><a title="参考手册" ctrl="tabitem7">未实现27</a></li>
+					<li id="sr7"><a title="参考手册" ctrl="tabitem8">未现28</a></li>
+					<li id="sr8"><a title="参考手册" ctrl="tabitem9">未实现29</a></li>
+					<li id="sr9"><a title="参考手册" ctrl="tabitem10">未实现30</a></li>
+					<li id="sr10"><a title="参考手册" ctrl="tabitem11">未实现31</a></li>
+					<li id="sr11"><a title="参考手册" ctrl="tabitem12">未实现32</a></li>
+				</ul>
+			</div>
+		</div>
+		<div class="csw-tab-body">
+			<div class="idcart" active="false">
+				<section>
+					<h2>根据地址生成身份证</h2>
+					<div>
+						<p>
+							<span>国家</span>
+							<input id="countrytext" type="select" value="中国" style="width:30%" required="required" />
+						</p>
+						<p>
+							<span>省</span>
+							<csw-select id="provtext" type="select" value="广东" items="addRessData" style="width:30%"
+								required="required" />
+						</p>
+						<p>
+							<span>城市</span>
+							<csw-select id="citytext" type="select" value="广州" style="width:30%" items="getCities"
+								required="required" />
+						</p>
+						<p>
+							<span>县</span>
+							<csw-select id="districttext" type="select" value="广州" style="width:30%" items="getDistrict"
+								required="required" />
+						</p>
+						<p>
+							<span>生日</span>
+							<input type="date" type="color" value="2014-06-01" style="width:30%" required="required" />
+						</p>
+						<p>
+							<span>性别</span>
+							<csw-select type="select" items="getSex" value="男" name="correctLevel" style="width:30%"
+								id="correctLeveltext">
+							</csw-select>
+						</p>
+						<p>
+							<span>typeNumber</span>
+							<input id="typeNumbertext" type="number" value="4" min="0" max="5" style="width:30%"
+								required="required" />
+						</p>
+					</div>
+					<input id="idCartRefresh" type="button" value="生成" /><br />
+				</section>
+				<div id="img-content"></div>
+				<div id="text-content"></div>
+			</div>
+
+
+
+			<div class="country" active="false">
+				<input class="cfc-select-input" id="countrytext" type="select" value="中国" style="width:30%"
+					required="required" items="countryList" />
+
+
+			</div>
+			<div class="html2doc" active="false">
+				<div>
+					<p>Enter/paste your document here:</p>
+					<textarea id="content" cols="60" rows="10" style="width:30%">
+                    <p>We all live in a yellow submarine, yellow submarine, yellow submarine, yellow submarine</p>
+                    <p>Images can also be exported if you source them as base64 DATA URI.</p>
+                    <div>
+                      <img src="cat.jpg">
+                    </div>
+                  </textarea>
+					<div class="page-orientation">
+						<span>Page orientation:</span>
+						<label><input type="radio" name="orientation" value="portrait" checked>Portrait</label>
+						<label><input type="radio" name="orientation" value="landscape">Landscape</label>
+					</div>
+					<div class="page-orientation">
+						<span>Document Name:</span>
+						<input id="document-name" type="input" value="portrait" style="width:30%" required="required" />
+					</div>
+					<button id="convert">Convert</button>
+					<div id="download-area"></div>
+				</div>
+			</div>
+
+
+
+			<div class="font" active="false" style="margin-left:1rem">
+				<section>
+					<h2>查看所有fa类图片</h2>
+					<ul class="control fa">
+						<li class="fa-caret-down" onclick="expandUp('fa')"></li>
+						<li class="fa-caret-up" onclick="expandDown('fa')"></li>
+					</ul>
+					<ul class="example fa">
+						<li class="fa-home"></li>
+					</ul>
+				</section>
+				<section>
+					<h2>查看所有ICON类图片</h2>
+					<ul class="control icon">
+						<li class="icon-unfold" onclick="expandUp('icon')"></li>
+						<li class="icon-fold" onclick="expandDown('icon')"></li>
+					</ul>
+					<ul class="example icon">
+						<li class="icon-huiyuan"></li>
+					</ul>
+				</section>
+				<section>
+					<h2>查看所有comic类图片</h2>
+					<ul class="control motaiconfont">
+						<li class="icon-xiayibu" onclick="expandUp('motaiconfont')"></li>
+						<li class="icon-shangyibu" onclick="expandDown('motaiconfont')"></li>
+					</ul>
+					<ul class="example motaiconfont">
+						<li class="icon-home"></li>
+					</ul>
+				</section>
+				<section>
+					<h2>查看所有Element Extended类图片</h2>
+					<h3>参考</h3><a
+						href="https://www.iconfont.cn/collections/detail?spm=a313x.7781069.1998910419.d9df05512&cid=599">click
+						me</a>
+					<ul class="control officerich svgicon">
+						<li class="svg-arrow-down" onclick="expandSvgUp('officerich')"></li>
+						<li class="svg-arrow-up" onclick="expandSvgDown('officerich')"></li>
+					</ul>
+					<ul class="example officerich svgicon">
+						<li class="svg-home"></li>
+					</ul>
+				</section>
+				<section>
+					<h2>Example</h2>
+					<div class="code-example">
+						<ul class="icon">
+							<span>Example Code</span>
+							<li class="icon-close"></li>
+						</ul>
+						<pre class="notranslate" style="padding: 16px;
+        overflow: auto;
+        font-size: 85%;
+        line-height: 1.45;
+        background-color: #f6f8fa;
+        border-radius: 6px;"><code style="font-size: 100%;">
+                    </code>
+                    </pre>
+					</div>
+				</section>
+
+
+				<script type="text/javascript">
+
+					let keyWord = '';
+					let faIcons = 'fa-home;fa-globe;fa-search;fa-thumbs-o-up;fa-save;fa-envelope;fa-facebook-square;fa-discord;fa-twitter-square;fa-caret-down;fa-caret-up;fa-adjust;fa-copy;fa-rotate;fa-close;fa-user;fa-check;fa-js;fa-python;fa-php;fa-bootstrap;fa-java;fa-logo;fa-logow3;fa-certified;fa-menu;fa-code;fa-html5;fa-css3;fa-instagram;fa-graduation-cap;fa-trash;fa-linkedin-square;fa-smiley-1;fa-smiley-2;fa-smiley-3;fa-smiley-4;fa-smiley-5;fa-smiley-6;fa-smiley-7;fa-smiley-8;fa-smiley-9;fa-smiley-10';
+
+					let icons = 'icon-huiyuan;icon-cycx;icon-qiehuan;icon-chevron-left;icon-chevron-down;icon-chevron-top;icon-chevron-right;icon-caret-right;icon-caret-left;icon-caret-down;icon-caret-top;icon-plus;icon-minus;icon-close;icon-success-line;icon-info;icon-info-fill;icon-plaint;icon-plaint-fill;icon-left;icon-right;icon-top;icon-down;icon-wangfan;icon-huancheng;icon-dingcan;icon-erweima;icon-zhanche;icon-search;icon-phone;icon-shixin02;icon-shixin01;icon-place;icon-code;icon-tel;icon-more;icon-gotop;icon-date;icon-dancheng;icon-huochepiao;icon-shijian;icon-yueche;icon-gongxiangqiche;icon-tianqi;icon-qishou;icon-jianpiaokou;icon-chepiao;icon-train;icon-ticket;icon-yanpiao;icon-weather;icon-jianpiao;icon-shidu;icon-fengxiang;icon-jingbao;icon-kefu;icon-time;icon-selltime;icon-user;icon-scan;icon-safe;icon-quick;icon-pwd;icon-clear;icon-fuwu;icon-dingdanchaxun;icon-wenda;icon-shanglv;icon-yupiao;icon-xiangdao;icon-subway;icon-bus;icon-walk;icon-round;icon-car;icon-mail;icon-reminder;icon-trip;icon-spot;icon-plan;icon-zhankai;icon-shouqi;icon-fold;icon-unfold;icon-print;icon-baoxian;icon-to;icon-success;icon-notice;icon-doubt;icon-error;icon-working;icon-lipin;icon-tongzhi;icon-youxiang;icon-mima;icon-shouji;icon-ok;icon-zhifubao;icon-weixin;icon-add-fill;icon-del;icon-edit;icon-arw-down;icon-arw-top;icon-voice;icon-voice-disabled;icon-cart-fill;icon-bianji;icon-tips';
+
+					let motaicons = 'icon-huiyuanqia;icon-dingyue;icon-lishi;icon-shoucang;icon-ziliao;icon-home;icon-search1;icon-xiangxia;icon-touxiang;icon-jinggao;icon-loading;icon-xiayibu;icon-shangyibu';
+
+					let officerichIcons = window.elementExtendedDetail.data.icons.map((e) => {
+						return e.name.replaceAll(' ', '-');
+					}).join(';');
+
+					let exampleIcons = {
+						fa: {
+							icons: faIcons,
+							home: 'fa-home',
+							up: 'fa-caret-up',
+							down: 'fa-caret-down'
+						},
+						icon: {
+							icons: icons,
+							home: 'icon-huiyuan',
+							up: 'icon-fold',
+							down: 'icon-unfold'
+						},
+						motaiconfont: {
+							icons: motaicons,
+							home: 'icon-home',
+							up: 'icon-shangyibu',
+							down: 'icon-xiayibu'
+						},
+						officerich: {
+							icons: officerichIcons,
+							home: 'svg-home',
+							up: 'svg-arrow-up',
+							down: 'svg-arrow-down'
+						}
+					};
+					function iconFilter(key) {
+						return !key || key.indexOf(keyWord) != -1;
+					}
+					function expandDown(type) {
+						let icons = exampleIcons[type].icons;
+						let down = exampleIcons[type].down;
+						let up = exampleIcons[type].up;
+						let iconFonts = icons.split(';').filter(iconFilter).sort();
+						let newContent = iconFonts.map(e => `<li class="${e}">${e}</li>`).join(' ')
+						$(`ul.${type}.example`).html(newContent);
+
+						$('ul.control .' + down).show();
+						$('ul.control .' + up).hide();
+					};
+					function expandUp(type) {
+						let icons = exampleIcons[type].home;
+						let down = exampleIcons[type].down;
+						let up = exampleIcons[type].up;
+						let iconFonts = icons.split(';');
+						let newContent = iconFonts.map(e => `<li class="${e}">${e}</li>`).join(' ')
+						$(`ul.${type}.example`).html(newContent);
+
+						$('ul.control .' + down).hide();
+						$('ul.control .' + up).show();
+					};
+					function expandSvgDown(type) {
+						let icons = exampleIcons[type].icons;
+						let down = exampleIcons[type].down;
+						let up = exampleIcons[type].up;
+						let iconFonts = icons.split(';').filter(iconFilter).sort();
+						let newContent = iconFonts.map(e => `<li class="${e}">
+                        <svg class="svgiconitem" aria-hidden="true">
+                          <use href="#${e}"></use>
+                        </svg>${e}
+                    </li>`).join(' ')
+						$(`ul.${type}.example`).html(newContent);
+
+						$('ul.control .' + down).show();
+						$('ul.control .' + up).hide();
+					};
+					function expandSvgUp(type) {
+						let icons = exampleIcons[type].home;
+						let down = exampleIcons[type].down;
+						let up = exampleIcons[type].up;
+						let iconFonts = icons.split(';');
+						let newContent = iconFonts.map(e => `<li class="${e}">
+                        <svg class="svgiconitem" aria-hidden="true">
+                          <use href="#${e}"></use>
+                        </svg>${e}
+                    </li>`).join(' ')
+						$(`ul.${type}.example`).html(newContent);
+
+						$('ul.control .' + down).hide();
+						$('ul.control .' + up).show();
+					};
+					expandDown('fa');
+					expandDown('icon');
+					expandDown('motaiconfont');
+					expandSvgDown('officerich');
+
+					$('.example li').live('click', (event) => {
+						let ele = event.currentTarget;
+						let type = $(ele).attr('class');
+						let ptype = $(ele).closest('ul.example').attr('class');
+						let isSVG = $(ele).closest('ul.example').is('.svgicon');
+						ptype = ptype.replace('example', '').trim();
+						let text =
+							`<ul class="${ptype}">
+    <li class="${type}">
+${isSVG ? `   		<svg class="icon" aria-hidden="true">
+            <use href="#${type}"></use>
+        </svg>`: ''}
+    </li>
+</ul>`;
+						$('.code-example code').text(text);
+						$('.code-example').addClass('show-code');
+						console.log(text);
+					});
+					$('.code-example .icon-close').on('click', () => {
+						$('.code-example').removeClass('show-code');
+					});
+
+					$('.svgicon li').each((i, e) => {
+						if (!$(e).html()) {
+							let id = $(e).attr('class');
+							$(e).html(`<svg class="icon" aria-hidden="true">
+                          <use href="#${id}"></use>
+                        </svg>`)
+						}
+
+					})
+
+					function iconSearch() {
+						keyWord = $('#icons-seach input').val();
+						applySearch(keyWord);
+					}
+					function iconClearSearch() {
+						$('#icons-seach input').val('');
+						iconSearch();
+					}
+					function applySearch(keyWord) {
+						expandDown('fa');
+						expandDown('icon');
+						expandDown('motaiconfont');
+						expandSvgDown('officerich');
+					}
+
+					$('#menu').on('click', () => {
+						$('#icons-seach').css({ 'display': $('div.tabitem5').attr('active') == 'true' ? 'block' : 'none' });
+
+					})
+
+
+				</script>
+			</div>
+			
+			
+
+			<div class="chart" active="false">
+				<button class="rechart" onclick="reloadChart()">Refresh</button>
+				<canvas id="myChart"></canvas>
+				<script>
+					const labels = [
+						'January',
+						'February',
+						'March',
+						'April',
+						'May',
+						'June',
+					];
+					const labelX = [
+						'0',
+						'1',
+						'2',
+						'3',
+						'4',
+						'5',
+						'6',
+						'7',
+					];
+					const vertical = [0, 1, 2, 3, 4, 5, 6, 7, 8];
+
+
+
+					const getPoints = function () {
+						let allNumbers = radomUtil.generateRadomNumber(1000, 2);
+						//labelY.push(...allNumbers);
+						let point = [];
+						let m = {};
+						for (let it of allNumbers) {
+							m[it] = (m[it] || 0) + 1;
+						}
+						for (let key in m) {
+							point.push({ x: key, y: m[key] });
+						}
+						return point;
+					}
+
+					//console.log('dataset=',point);
+					let horizontal = [];
+					let myData = { x: horizontal, y: vertical };
+
+					const data = {
+						//labels: myData.x,
+						datasets: [
+							{
+								label: 'My First dataset',
+								backgroundColor: 'rgb(255, 99, 132)',
+								borderColor: 'rgb(255, 99, 132)',
+								data: getPoints(),
+							},
+							{
+								label: 'My XY',
+								backgroundColor: 'rgb(255, 199, 132)',
+								borderColor: 'rgb(255, 199, 132)',
+								data: getPoints(),
+							},
+							{
+								label: 'My XY',
+								backgroundColor: 'rgb(255, 199, 132)',
+								borderColor: 'rgb(155, 199, 132)',
+								data: getPoints(),
+							}]
+					};
+
+					const config = {
+						type: 'line',
+						data: data,
+						options: {}
+					};
+				</script>
+				<script>
+					if (typeof Chart == 'undefined') {
+						class Chart { }
+					}
+
+					var reloadChart = function () {
+						config.data.datasets[0].data = getPoints();
+
+						const myChart = typeof Chart !== 'undefined' && new Chart(
+							document.getElementById('myChart'),
+							config
+						);
+					}
+					reloadChart();
+				</script>
+			</div>
+
+			<div class="words" active="false">
+				<style>
+					.words {
+						width: 100%;
+						heigth: 100%;
+					}
+
+					.words-container {
+						width: 100%;
+						min-height: 90%;
+						cursor: text;
+					}
+
+					[contenteditable] {
+						border: 1px solid black;
+					}
+
+					.word-view {
+						font-size: 24px;
+						line-height: 32px;
+					}
+				</style>
+
+				<div class="word-edit" style="display:none">
+					<button class="words-btn" onclick="wordSave()">Save</button>
+					<div class="words-container" contenteditable=true></div>
+				</div>
+				<div class="word-view">
+					<button class="words-btn" onclick="wordEdit()">Edit</button>
+					<div class="words-container"></div>
+				</div>
+				<script>
+					var wordSave = function () {
+						$('.word-edit').hide();
+						$('.word-view').show();
+						let val = $('.word-edit .words-container').html();
+						localStorage.setItem('words', val);
+						$('.word-view .words-container').html(val);
+					}
+					var wordEdit = function () {
+						$('.word-edit').show();
+						$('.word-view').hide();
+					}
+					var val = localStorage.getItem('words');
+					$('.word-view .words-container').html(val);
+					$('.word-edit .words-container').html(val);
+				</script>
+			</div>
+
+
+			<div class="schema2" active="false">
+				<!-- <hlx url="hlx.hlx"></hlx> -->
+			</div>
+
+		</div>
+		<div class="bottom-bar motaiconfont" style="transform: translateY(0px);display:none;">
+			<div class="bottom-bar-tool">
+				<div class="l-content">
+					<a id="prev-chapter" href="javascript:void" class="csw-accessed">
+						<i class="iconfont icon-shangyibu"></i>
+						<span>上一话</span>
+					</a>
+					<a href="javascript:void" class="csw-accessed">
+						<i class="iconfont icontushu"></i>
+						<span>目录</span>
+					</a>
+					<div onclick="toggleViewMode()" class="view-mode scroll" style="display: none;">
+						<i class="iconfont iconshangxia"></i>
+						<span id="change_to_swipe_mode" data-url="javascript:void" style="display:block;">
+							左右翻页
+						</span>
+						<span id="change_to_scroll_mode" data-url="javascript:void" style="display:none;">
+							上下滚动
+						</span>
+					</div>
+					<a href="javascript:void">
+						<i class="iconfont icon-shoucang"></i>
+						<span>收藏</span>
+					</a>
+					<a id="next-chapter" href="javascript:void" class="csw-accessed">
+						<i class="iconfont icon-xiayibu"></i>
+						<span>下一话</span>
+					</a>
+					<div id="icons-seach" href="javascript:void" class="csw-accessed" style="display:none;">
+						<input type="text"></input>
+						<a href="javascript:void" class="icon">
+							<i class="iconfont icon-search" onclick="iconSearch()"></i>
+							<i class="iconfont icon-clear" onclick="iconClearSearch()"></i>
+						</a>
+
+					</div>
+				</div>
+			</div>
+
+		</div>
+
+		<div class="times">
+			<div class="monthlist">
+				<span class="month" items="months"></span>
+			</div>
+			<div class="weeklist">
+				<span class="week" items="weeks"></span>
+			</div>
+			<div class="seasonlist">
+				<span class="season" items="seasons"></span>
+			</div>
+			<div class="date">
+				<span class="date"></span>
+				<span class="time"></span>
+			</div>
+			<div class="newordlist">
+				<span class="newword" items="newwords"></span>
+			</div>
+
+		</div>
+		<div _ngcontent-xfg-c325="" aria-label="选项" hide="" role="listbox" tabindex="-1"
+			class="ace-select-body cfc-select-body ng-star-inserted" id="cfc-select-0-listbox"></div>
+		<script type="text/javascript" src="address.js"></script>
+		<script type="text/javascript" src="combobox.js"></script>
+		<script type="text/javascript" src="menu.js"></script>
+		<script src="FileSaver.js"></script>
+		<script src="html-docx.js"></script>
+		<script src="tinymce.min.js"></script>
+		<script src="https://at.alicdn.com/t/font_3424886_dl0xk7waq2f.js" async="async"></script>
+		<script src="test-qrcode.js"></script>
+		<script src="test-systemfile.js"></script>
+		<script src="test-chrome-plugin.js"></script>
+		<script src="test-clock.js"></script>
+		<script src="test-schema.js"></script>
+		<script src="test-map.js"></script>
+		<script src="test-svg.js"></script>
+
+
+		<script type="text/javascript">
+			let components = [SchemaHanlder, QRCodeHandler, TestFileSystemHandler, ChromePluginHandler, ClockHandler, MapHanlder, SVGHandler];
+			for (let comp of components) {
+				let newpart = new comp();
+
+				$('#menu').append(`<li id="r11"><a title="${newpart.title || newpart.id}" ctrl="${newpart.id}">${newpart.name || newpart.id}</a></li>`);
+				$('.csw-tab-body').append(`<div class="${newpart.id}" id="part-${newpart.id}" active="false"/>`);
+				try {
+					newpart.create();
+				} catch (e) { console.error(e) }
+			}
+			$('#menu').append(`<li id="submenu"><a ctrl="submenu" style="font-size: x-large;letter-spacing: -4px;">≡≡</a></li>`);
+
+		</script>
+</body>
+
+</html>
