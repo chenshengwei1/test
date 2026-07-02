@@ -133,6 +133,24 @@ class GitHubFileAPI {
     }
 
     /**
+     * XOR 解密
+     * @private
+     */
+    _xorDecrypt(encoded, key) {
+        try {
+            const text = atob(encoded);
+            let result = '';
+            for (let i = 0; i < text.length; i++) {
+                result += String.fromCharCode(text.charCodeAt(i) ^ key.charCodeAt(i % key.length));
+            }
+            return result;
+        } catch (e) {
+            console.warn('⚠️ XOR 解密失败:', e);
+            return encoded; // 解密失败时返回原始值
+        }
+    }
+
+    /**
      * 确保已初始化
      * @private
      */
