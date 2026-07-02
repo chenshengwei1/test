@@ -643,17 +643,19 @@ class GitHubFileAPI {
     /**
      * 列出目录下的所有文件
      */
-    async list(subfolder = '') {
+    async list(subfolder = '', withHeader = true) {
         await this._ensureInitialized();
         try {
             const url = this._buildApiUrl(subfolder);
             const response = await fetch(url, {
-                headers: this._getHeaders()
+                headers: withHeader ? this._getHeaders() : {}
             });
 
             if (!response.ok) {
                 if (response.status === 404) {
                     return { success: true, files: [] };
+                }else if(response.status === 401 && withHeader == true){
+                    return await this.list(subfolder, false);
                 }
                 throw new Error(`HTTP ${response.status}: ${response.statusText}`);
             }
