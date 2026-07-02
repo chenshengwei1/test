@@ -1142,7 +1142,7 @@
             
             try {
                 showLoading(true);
-                const response = await assetService.batchSetTags(assetIds, tags);
+                const result = await assetService.batchSetTags(assetIds, tags);
                 // const response = await fetch('/api/assets/batch-tags', {
                 //     method: 'POST',
                 //     headers: {
@@ -1154,7 +1154,7 @@
                 //     })
                 // });
                 
-                const result = await response.json();
+                // const result = await response.json();
                 
                 if (result.code === 200) {
                     alert(`成功为 ${assetIds.length} 个资产设置标签`);
@@ -1185,9 +1185,9 @@
         */
         async function fetchAllTags() {
             try {
-                const response = await assetService.getTags();
+                const result = await assetService.getTags();
                 //const response = await fetch(`${API_BASE}/assets/tags`);
-                const result = await response.json();
+                // const result = await response.json();
                 if (result.code === 200) {
                     return result.data.map(tag => tag.name || tag);
                 }
@@ -1332,7 +1332,7 @@
             
             try {
                 showLoading(true);
-                const response = await assetService.saveCanvas({
+                const result = await assetService.saveCanvas({
                         title: name,
                         description: description,
                         visibility: visibility,
@@ -1351,7 +1351,7 @@
                 //     })
                 // });
                 
-                const result = await response.json();
+                // const result = await response.json();
                 
                 if (result.code === 200) {
                     closeCanvasCreateDialog();
@@ -1681,7 +1681,7 @@
                 // 根据资产类型调用不同的 API
                 if (assetType === 'canvas') {
                     // 画布资产使用 save-canvas 接口
-                    response = await assetService.saveCanvas({
+                    result = await assetService.saveCanvas({
                         id: id,           // 传入画布ID用于更新
                             ...updatedData    // 合并修改的数据
                      })
@@ -1697,7 +1697,7 @@
                     // });
                 } else {
                     // 普通资产使用原来的 API
-                    response = await assetService.updateAsset(id, updatedData);
+                    result = await assetService.updateAsset(id, updatedData);
                     // response = await fetch(`${API_BASE}/assets/${id}`, {
                     //     method: 'PUT',
                     //     headers: {
@@ -1707,7 +1707,7 @@
                     // });
                 }
                 
-                result = await response.json();
+                //result = await response.json();
                 
                 if (result.code === 200) {
                     isEditing = false;
@@ -1822,13 +1822,13 @@
                 if (metadata.tags) formData.append('tags', metadata.tags);
                 if (metadata.description) formData.append('description', metadata.description);
 
-                const response = await assetService.uploadFile(formData);
+                const result = await assetService.uploadFile(formData);
                 // const response = await fetch(`${API_BASE}/assets`, {
                 //     method: 'POST',
                 //     body: formData
                 // });
                 
-                const result = await response.json();
+                //const result = await response.json();
                 if (result.code === 200) {
                     await fetchAssets();
                     return result.data;
@@ -1934,9 +1934,9 @@
             return new Promise((resolve, reject) => {
                 const checkStatus = async () => {
                     try {
-                        const response = await assetService.getGenerateTaskStatus(taskId);
+                        const result = await assetService.getGenerateTaskStatus(taskId);
                         // const response = await fetch(`${API_BASE}/generate/task/${taskId}`);
-                        const result = await response.json();
+                        // const result = await response.json();
                         
                         if (result.code === 200) {
                             const status = result.data.status;
@@ -1973,7 +1973,7 @@
 
         async function saveAIGenerated(imageUrl, prompt) {
             try {
-                const response = await assetService.saveAIResult({
+                const result = await assetService.saveAIResult({
                         title: `AI生成 - ${prompt.slice(0, 20)}`,
                         image_url: imageUrl,
                         tags: 'ai,generated',
@@ -1990,7 +1990,7 @@
                 //     })
                 // });
                 
-                const result = await response.json();
+                // const result = await response.json();
                 if (result.code === 200) {
                     await fetchAssets();
                     return result.data;
@@ -2018,7 +2018,7 @@
                 
                 if (assetType === 'canvas') {
                     // 画布资产使用 delete-canvas 接口
-                    response = await assetService.deleteCanvas(id);
+                    result = await assetService.deleteCanvas(id);
                     // response = await fetch('/api/assets/delete-canvas', {
                     //     method: 'POST',
                     //     headers: {
@@ -2028,13 +2028,13 @@
                     // });
                 } else {
                     // 普通资产使用原来的接口
-                    response = await assetService.deleteAsset(id);
+                    result = await assetService.deleteAsset(id);
                     // response = await fetch(`${API_BASE}/assets/${id}`, {
                     //     method: 'DELETE'
                     // });
                 }
                 
-                result = await response.json();
+                // result = await response.json();
                 
                 if (result.code === 200) {
                     closeDetail();
@@ -2097,7 +2097,7 @@
             try {
                 showLoading(true);
                 
-                const response = await assetService.deleteCanvas(canvasId);
+                const result = await assetService.deleteCanvas(canvasId);
                 // const response = await fetch('/api/assets/delete-canvas', {
                 //     method: 'POST',
                 //     headers: {
@@ -2108,7 +2108,7 @@
                 //     })
                 // });
                 
-                const result = await response.json();
+                // const result = await response.json();
                 
                 if (result.code === 200) {
                     // 如果详情面板打开且显示的是被删除的画布，则关闭详情面板
