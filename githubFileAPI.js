@@ -269,7 +269,7 @@ class GitHubFileAPI {
     async _loadConfigFromFile() {
         try {
             // 从根目录加载 config.json
-            const response = await fetch('./config.json');
+            const response = await fetch('../config.json');
             if (!response.ok) {
                 throw new Error(`HTTP ${response.status}: ${response.statusText}`);
             }
