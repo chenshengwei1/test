@@ -1750,7 +1750,7 @@
                 
                 const url = `${API_BASE}/assets?${queryString}`;
                 //const response = await fetch(url);
-                const result = await response.json();
+                //const result = await response.json();
                 
                 if (newResult.code === 200) {
                     assetsData = newResult.data.list;
@@ -1773,8 +1773,10 @@
                 //     method: 'POST',
                 //     headers: { 'Content-Type': 'application/json' }
                 // });
-                const response = await assetService.getCanvasList();
-                const result = await response.json();
+                // const result = await response.json();
+
+                const result = await assetService.getCanvasList();
+
                 
                 if (result.code === 200) {
                     canvasAssetsData = result.data;
@@ -1793,9 +1795,10 @@
 
         async function fetchAssetDetail(id) {
             try {
-                const response = await assetService.getAssetById(id);
-                //const response = await fetch(`${API_BASE}/assets/${id}`);
-                const result = await response.json();
+                // const response = await fetch(`${API_BASE}/assets/${id}`);
+                // const result = await response.json();
+
+                const result = await assetService.getAssetById(id);
                 
                 if (result.code === 200) {
                     return result.data;
@@ -1843,9 +1846,10 @@
             try {
                 if (!confirm('确定要删除这个资产吗？')) return false;
                 
-                //const response = await fetch(`${API_BASE}/assets/${id}`, { method: 'DELETE' });
                 const response = await assetService.deleteAsset(id);
-                const result = await response.json();
+
+                // const response = await fetch(`${API_BASE}/assets/${id}`, { method: 'DELETE' });
+                const result =  response;
                 if (result.code === 200) {
                     await fetchAssets();
                     return true;
@@ -1862,8 +1866,8 @@
         async function useAsset(id) {
             try {
                 const response = await assetService.useAsset(id);
-                // const response = await fetch(`${API_BASE}/assets/${id}/use`, { method: 'POST' });
-                const result = await response.json();
+                //const response = await fetch(`${API_BASE}/assets/${id}/use`, { method: 'POST' });
+                const result =  response;
                 if (result.code === 200) {
                     alert(`资产使用成功: ${result.message}`);
                     return true;
@@ -1879,9 +1883,10 @@
 
         async function fetchRecentActivities() {
             try {
-                const response = await assetService.getRecentActivity();
-                //const response = await fetch(`${API_BASE}/activity/recent`);
-                const result = await response.json();
+                const result = await assetService.getRecentActivity();
+
+                // const response = await fetch(`${API_BASE}/activity/recent`);
+                // const result = await response.json();
                 if (result.code === 200) return result.data;
             } catch (error) {
                 console.error('获取历史记录失败:', error);
@@ -1890,9 +1895,10 @@
 
         async function fetchTags() {
             try {
-                const response = await assetService.getTags();
-                //const response = await fetch(`${API_BASE}/assets/tags`);
-                const result = await response.json();
+                const result = await assetService.getTags();
+
+                // const response = await fetch(`${API_BASE}/assets/tags`);
+                // const result = await response.json();
                 if (result.code === 200) return result.data;
             } catch (error) {
                 console.error('获取标签失败:', error);
@@ -1902,14 +1908,14 @@
 
         async function generateCharacter(prompt, style = 'default') {
             try {
-                const response = await assetService.generateCharacter({ prompt, style });
-                const response1 = await fetch(`${API_BASE}/generate/character`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ prompt, style })
-                });
+                const result = await assetService.generateCharacter({ prompt, style });
+                // const response1 = await fetch(`${API_BASE}/generate/character`, {
+                //     method: 'POST',
+                //     headers: { 'Content-Type': 'application/json' },
+                //     body: JSON.stringify({ prompt, style })
+                // });
                 
-                const result = await response.json();
+                // const result = await response.json();
                 if (result.code === 200) {
                     return pollGenerationStatus(result.data.task_id);
                 } else {
