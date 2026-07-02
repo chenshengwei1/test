@@ -84,13 +84,13 @@ class AssetService {
         
         // 文件路径常量（对应后端的目录结构）
         this.PATHS = {
-            IMAGES_DIR: 'images',
-            THUMBNAILS_DIR: 'thumbnails',
-            DATA_DIR: 'data',
-            VIDEOS_DIR: 'videos',
-            ASSETS_JSON: 'data/assets.json',
-            CANVAS_JSON: 'data/canvas.json',
-            TASK_IDS_JSON: 'data/task_ids.json'
+            IMAGES_DIR: 'asset/images',
+            THUMBNAILS_DIR: 'asset/thumbnails',
+            DATA_DIR: 'asset/data',
+            VIDEOS_DIR: 'asset/videos',
+            ASSETS_JSON: 'asset/data/assets.json',
+            CANVAS_JSON: 'asset/data/canvas.json',
+            TASK_IDS_JSON: 'asset/data/task_ids.json'
         };
 
         // 初始化锁

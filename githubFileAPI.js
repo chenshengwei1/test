@@ -50,11 +50,11 @@ function createRepHub(config) {
     /**
      * 上传文件
      */
-    async function upload({ mimeType, content, path = '' }) {
+    async function upload({ mimeType, content, path = '' , name = null }) {
         // 生成随机文件名（保持和 repohub 行为一致）
         const timestamp = Date.now();
         const random = Math.random().toString(36).substring(2, 8);
-        const name = `${timestamp}-${random}.${mimeType}`;
+        const name = name || `${Date.now()}-${Math.random().toString(36).substring(2, 8)}.${mimeType}`|| `${timestamp}-${random}.${mimeType}`;
 
         const url = buildUrl(path, name);
         const body = {
