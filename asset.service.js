@@ -1,6 +1,6 @@
 // asset.service.js - 前端版本
 //import axios from 'axios';
-import GitHubFileAPI from 'githubFileAPI.js';
+import GitHubFileAPI from './githubFileAPI.js';
 
 // axios mock 实现（基于 fetch）
 const axios = typeof axios !== 'undefined'? window.axios : {
