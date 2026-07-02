@@ -237,6 +237,7 @@ class AssetService {
     // 图片上传辅助方法
     // ============================================
     async _uploadFile(file, subfolder = this.PATHS.IMAGES_DIR) {
+
         // 验证文件类型
         const allowedTypes = [
             'image/jpeg',

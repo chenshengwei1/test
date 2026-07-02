@@ -1822,7 +1822,7 @@
                 if (metadata.tags) formData.append('tags', metadata.tags);
                 if (metadata.description) formData.append('description', metadata.description);
 
-                const result = await assetService.uploadFile(formData);
+                const result = await assetService.createAsset(formData);
                 // const response = await fetch(`${API_BASE}/assets`, {
                 //     method: 'POST',
                 //     body: formData
