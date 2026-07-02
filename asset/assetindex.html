@@ -1806,10 +1806,11 @@
                 if (metadata.tags) formData.append('tags', metadata.tags);
                 if (metadata.description) formData.append('description', metadata.description);
 
-                const response = await fetch(`${API_BASE}/assets`, {
-                    method: 'POST',
-                    body: formData
-                });
+                const response = await assetService.uploadFile(formData);
+                // const response = await fetch(`${API_BASE}/assets`, {
+                //     method: 'POST',
+                //     body: formData
+                // });
                 
                 const result = await response.json();
                 if (result.code === 200) {
