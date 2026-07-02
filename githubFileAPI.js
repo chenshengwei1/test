@@ -54,7 +54,7 @@ function createRepHub(config) {
         // 生成随机文件名（保持和 repohub 行为一致）
         const timestamp = Date.now();
         const random = Math.random().toString(36).substring(2, 8);
-        const name = name || `${Date.now()}-${Math.random().toString(36).substring(2, 8)}.${mimeType}`|| `${timestamp}-${random}.${mimeType}`;
+        name = name || `${Date.now()}-${Math.random().toString(36).substring(2, 8)}.${mimeType}`|| `${timestamp}-${random}.${mimeType}`;
 
         const url = buildUrl(path, name);
         const body = {
