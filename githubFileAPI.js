@@ -11,7 +11,7 @@
 // ================================================================
 //  自己实现的 createRepHub（替代 repohub 库）
 // ================================================================
-
+const isPublicUrl = true;
 function createRepHub(config) {
     const { ghToken, ghRepo, ghOwner } = config;
 
@@ -29,6 +29,9 @@ function createRepHub(config) {
      * 获取请求头
      */
     function getHeaders(extra = {}) {
+        if (isPublicUrl){
+            return {}
+        }
         return {
             'Authorization': `Bearer ${ghToken}`,
             'Accept': 'application/vnd.github.v3+json',
