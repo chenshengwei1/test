@@ -1,0 +1,13 @@
+{
+    "github": {
+        "token": "ghp_xxxxxxxxxxxxxxxxxxxx",
+        "repo": "test",
+        "owner": "chenshengwei1",
+        "branch": "master"
+    },
+    "app": {
+        "name": "我的文件管理器",
+        "version": "1.0.0",
+        "description": "基于 GitHub API 的文件管理工具"
+    }
+}
