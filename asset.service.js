@@ -3,7 +3,7 @@
 import GitHubFileAPI from './githubFileAPI.js';
 
 // axios mock 实现（基于 fetch）
-const axios = typeof axios !== 'undefined'? window.axios : {
+const axios = typeof window.axios !== 'undefined'? window.axios : {
     async post(url, data, config = {}) {
         const response = await fetch(url, {
             method: 'POST',
