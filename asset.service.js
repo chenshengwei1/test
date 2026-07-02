@@ -1,6 +1,45 @@
 // asset.service.js - 前端版本
-import axios from 'axios';
+//import axios from 'axios';
 import GitHubFileAPI from 'githubFileAPI.js';
+
+// axios mock 实现（基于 fetch）
+const axios = typeof axios !== 'undefined'? window.axios : {
+    async post(url, data, config = {}) {
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                ...(config.headers || {})
+            },
+            body: JSON.stringify(data)
+        });
+        const responseData = await response.json();
+        return { data: responseData, status: response.status };
+    },
+
+    async get(url, config = {}) {
+        const response = await fetch(url, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+                ...(config.headers || {})
+            }
+        });
+        
+        // 如果 config.responseType === 'stream'，返回 blob
+        if (config && config.responseType === 'stream') {
+            const blob = await response.blob();
+            return { data: blob, status: response.status };
+        }
+        
+        const responseData = await response.json();
+        return { data: responseData, status: response.status };
+    },
+
+    isAxiosError(error) {
+        return error && error.name === 'HttpError';
+    }
+};
 
 // ============================================
 // 配置
