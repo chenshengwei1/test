@@ -2,36 +2,76 @@
 
 /**
  * GitHub 文件操作 API 类
- * 基于 repohub 库封装的完整文件读写能力
- * 
- * @example
- * const api = new GitHubFileAPI({
- *   token: 'your_github_token',
- *   repo: 'your_repo_name',
- *   owner: 'your_username'
- * });
- * 
- * // 上传文件
- * const result = await api.upload(file, 'folder');
- * 
- * // 读取文件
- * const content = await api.readText('file.txt', 'folder');
+ * 支持从根目录的 config.json 读取配置
  */
+
 import { createRepHub } from 'https://cdn.jsdelivr.net/npm/repohub@1.0.0/+esm';
 
 class GitHubFileAPI {
     /**
-     * @param {Object} config - 配置对象
-     * @param {string} config.token - GitHub Personal Access Token (需要有 repo 权限)
-     * @param {string} config.repo - 仓库名称 (例如: 'username.github.io')
-     * @param {string} config.owner - GitHub 用户名或组织名
-     * @param {string} [config.branch='master'] - 分支名称，默认 master
+     * @param {Object} config - 配置对象（可选）
+     * @param {string} config.token - GitHub Personal Access Token
+     * @param {string} config.repo - 仓库名称
+     * @param {string} config.owner - GitHub 用户名
+     * @param {string} [config.branch='master'] - 分支名称
+     * 
+     * 如果不传 config，会自动从根目录的 config.json 加载
      */
-    constructor(config) {
-        if (!config.token) throw new Error('❌ token 是必需的');
-        if (!config.repo) throw new Error('❌ repo 是必需的');
-        if (!config.owner) throw new Error('❌ owner 是必需的');
+    constructor(config = null) {
+        // 如果传入了配置，直接使用
+        if (config && config.token && config.repo && config.owner) {
+            this._init(config);
+            return;
+        }
 
+        // 否则，从 config.json 加载（需要异步初始化）
+        // 注意：构造函数不能是异步的，所以需要调用方使用 init() 方法
+        this._pendingInit = true;
+        this._configPromise = null;
+    }
+
+    /**
+     * 初始化方法（异步）
+     * @param {Object} config - 可选配置，不传则从 config.json 读取
+     * @returns {Promise<GitHubFileAPI>} 返回自身实例，方便链式调用
+     */
+    async init(config = null) {
+        if (this._initialized) {
+            return this;
+        }
+
+        try {
+            let finalConfig = config;
+
+            // 如果没有传入配置，从 config.json 加载
+            if (!finalConfig) {
+                finalConfig = await this._loadConfigFromFile();
+            }
+
+            // 验证配置
+            if (!finalConfig.token) throw new Error('❌ config.json 中缺少 github.token');
+            if (!finalConfig.repo) throw new Error('❌ config.json 中缺少 github.repo');
+            if (!finalConfig.owner) throw new Error('❌ config.json 中缺少 github.owner');
+
+            this._init(finalConfig);
+            this._initialized = true;
+            this._pendingInit = false;
+
+            console.log('✅ GitHubFileAPI 初始化成功');
+            console.log(`   📦 仓库: ${this.config.owner}/${this.config.repo}`);
+            console.log(`   🌿 分支: ${this.config.branch}`);
+            return this;
+        } catch (error) {
+            console.error('❌ 初始化失败:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * 内部初始化方法
+     * @private
+     */
+    _init(config) {
         this.config = {
             branch: 'master',
             ...config
@@ -44,23 +84,58 @@ class GitHubFileAPI {
             ghOwner: this.config.owner
         });
 
-        // 缓存文件信息（用于优化性能）
+        // 缓存
         this._cache = new Map();
+        this._initialized = true;
+    }
+
+    /**
+     * 从 config.json 加载配置
+     * @private
+     */
+    async _loadConfigFromFile() {
+        try {
+            // 从根目录加载 config.json
+            const response = await fetch('/config.json');
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            const data = await response.json();
+
+            if (!data.github) {
+                throw new Error('config.json 中缺少 github 配置项');
+            }
+
+            return data.github;
+        } catch (error) {
+            console.error('❌ 加载 config.json 失败:', error);
+            throw new Error('无法加载 config.json，请确保文件存在于根目录: ' + error.message);
+        }
+    }
+
+    /**
+     * 确保已初始化
+     * @private
+     */
+    async _ensureInitialized() {
+        if (this._initialized) {
+            return;
+        }
+        if (this._pendingInit) {
+            await this.init();
+            return;
+        }
+        throw new Error('GitHubFileAPI 未初始化，请调用 init() 方法');
     }
 
     // ================================================================
     //  私有工具方法
     // ================================================================
 
-    /**
-     * 将 File 对象转为 Base64 字符串
-     * @private
-     */
     _fileToBase64(file) {
         return new Promise((resolve, reject) => {
             const reader = new FileReader();
             reader.onload = () => {
-                // 格式: "data:mime;base64,xxxxx" -> 提取逗号后的 Base64
                 const base64 = reader.result.split(',')[1];
                 resolve(base64);
             };
@@ -69,20 +144,12 @@ class GitHubFileAPI {
         });
     }
 
-    /**
-     * 构建 GitHub API 请求 URL
-     * @private
-     */
     _buildApiUrl(path) {
         const cleanPath = path ? path.replace(/^\/+/, '') : '';
         const pathPart = cleanPath ? `/${cleanPath}` : '';
         return `https://api.github.com/repos/${this.config.owner}/${this.config.repo}/contents${pathPart}`;
     }
 
-    /**
-     * 构建请求头
-     * @private
-     */
     _getHeaders(extraHeaders = {}) {
         return {
             'Authorization': `Bearer ${this.config.token}`,
@@ -91,10 +158,6 @@ class GitHubFileAPI {
         };
     }
 
-    /**
-     * 处理 API 响应
-     * @private
-     */
     async _handleResponse(response) {
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({}));
@@ -103,10 +166,6 @@ class GitHubFileAPI {
         return response.json();
     }
 
-    /**
-     * 清除缓存
-     * @private
-     */
     _clearCache(path) {
         if (path) {
             this._cache.delete(path);
@@ -121,12 +180,9 @@ class GitHubFileAPI {
 
     /**
      * 上传文件（新增）
-     * @param {File} file - 要上传的文件对象 (来自 input[type=file])
-     * @param {string} [subfolder=''] - 目标子文件夹，空字符串表示根目录
-     * @param {string} [customFileName] - 自定义文件名，不传则使用原文件名
-     * @returns {Promise<{success: boolean, data?: Object, downloadUrl?: string, error?: string}>}
      */
     async upload(file, subfolder = '', customFileName = null) {
+        await this._ensureInitialized();
         try {
             if (!file) throw new Error('请提供要上传的文件');
 
@@ -138,12 +194,10 @@ class GitHubFileAPI {
                 mimeType: fileExtension,
                 content: base64Content,
                 path: subfolder || undefined,
-                name: fileName  // 注意：repohub 可能忽略此参数，会生成随机名
+                name: fileName
             });
 
-            // 清除缓存
             this._clearCache(subfolder);
-
             console.log('✅ 上传成功:', result);
             return {
                 success: true,
@@ -157,26 +211,17 @@ class GitHubFileAPI {
     }
 
     /**
-     * 上传文本内容（直接写入）
-     * @param {string} fileName - 文件名
-     * @param {string} content - 要写入的文本内容
-     * @param {string} [subfolder=''] - 目标子文件夹
-     * @param {string} [commitMessage] - 提交信息
-     * @returns {Promise<{success: boolean, data?: Object, error?: string}>}
+     * 上传文本内容
      */
     async uploadText(fileName, content, subfolder = '', commitMessage = '') {
+        await this._ensureInitialized();
         try {
             if (!fileName) throw new Error('请提供文件名');
             if (content === undefined || content === null) throw new Error('请提供要写入的内容');
 
-            // 将文本转为 Base64
             const base64Content = btoa(unescape(encodeURIComponent(content)));
-            const fileExtension = fileName.split('.').pop();
-
-            // 构建完整的文件路径
             const fullPath = subfolder ? `${subfolder}/${fileName}` : fileName;
 
-            // 使用 GitHub API 直接写入（支持指定文件名）
             const url = this._buildApiUrl(fullPath);
             const body = {
                 message: commitMessage || `Upload ${fileName}`,
@@ -184,7 +229,6 @@ class GitHubFileAPI {
                 branch: this.config.branch
             };
 
-            // 检查文件是否已存在，如果存在需要提供 sha
             const existing = await this.getInfo(fileName, subfolder);
             if (existing.success) {
                 body.sha = existing.data.sha;
@@ -213,11 +257,6 @@ class GitHubFileAPI {
 
     /**
      * 上传 JSON 数据
-     * @param {string} fileName - 文件名 (建议 .json)
-     * @param {Object|Array} jsonData - 要写入的 JSON 数据
-     * @param {string} [subfolder=''] - 目标子文件夹
-     * @param {string} [commitMessage] - 提交信息
-     * @returns {Promise<{success: boolean, data?: Object, error?: string}>}
      */
     async uploadJSON(fileName, jsonData, subfolder = '', commitMessage = '') {
         try {
@@ -230,17 +269,14 @@ class GitHubFileAPI {
     }
 
     /**
-     * 获取文件信息（不包含内容）
-     * @param {string} fileName - 文件名
-     * @param {string} [subfolder=''] - 子文件夹
-     * @returns {Promise<{success: boolean, data?: Object, downloadUrl?: string, sha?: string, error?: string}>}
+     * 获取文件信息
      */
     async getInfo(fileName, subfolder = '') {
+        await this._ensureInitialized();
         try {
             const cacheKey = `${subfolder}/${fileName}`;
             if (this._cache.has(cacheKey)) {
                 const cached = this._cache.get(cacheKey);
-                // 缓存有效期为 5 秒
                 if (Date.now() - cached.timestamp < 5000) {
                     console.log('📦 使用缓存:', cacheKey);
                     return cached.data;
@@ -262,13 +298,10 @@ class GitHubFileAPI {
                 size: result.size
             };
 
-            // 存入缓存
             this._cache.set(cacheKey, { data: response, timestamp: Date.now() });
-
             console.log('✅ 获取文件信息成功:', result);
             return response;
         } catch (error) {
-            // 404 错误返回成功 false 但不抛出异常
             if (error.message?.includes('404')) {
                 return { success: false, error: '文件不存在' };
             }
@@ -278,17 +311,13 @@ class GitHubFileAPI {
     }
 
     /**
-     * 读取文件内容（返回文本）
-     * @param {string} fileName - 文件名
-     * @param {string} [subfolder=''] - 子文件夹
-     * @returns {Promise<{success: boolean, content?: string, data?: Object, error?: string}>}
+     * 读取文件内容（文本）
      */
     async readText(fileName, subfolder = '') {
+        await this._ensureInitialized();
         try {
             const info = await this.getInfo(fileName, subfolder);
-            if (!info.success) {
-                return info;
-            }
+            if (!info.success) return info;
 
             const response = await fetch(info.downloadUrl);
             if (!response.ok) {
@@ -309,16 +338,11 @@ class GitHubFileAPI {
     }
 
     /**
-     * 读取文件内容（返回 JSON 对象）
-     * @param {string} fileName - 文件名
-     * @param {string} [subfolder=''] - 子文件夹
-     * @returns {Promise<{success: boolean, data?: Object|Array, error?: string}>}
+     * 读取文件内容（JSON）
      */
     async readJSON(fileName, subfolder = '') {
         const result = await this.readText(fileName, subfolder);
-        if (!result.success) {
-            return result;
-        }
+        if (!result.success) return result;
         try {
             const json = JSON.parse(result.content);
             return { success: true, data: json };
@@ -329,14 +353,10 @@ class GitHubFileAPI {
 
     /**
      * 删除文件
-     * @param {string} fileName - 文件名
-     * @param {string} [subfolder=''] - 子文件夹
-     * @param {string} [commitMessage] - 提交信息
-     * @returns {Promise<{success: boolean, message?: string, error?: string}>}
      */
     async delete(fileName, subfolder = '', commitMessage = '') {
+        await this._ensureInitialized();
         try {
-            // 先获取文件信息（需要 sha）
             const info = await this.getInfo(fileName, subfolder);
             if (!info.success) {
                 return { success: false, error: '文件不存在: ' + fileName };
@@ -348,9 +368,7 @@ class GitHubFileAPI {
                 sha: info.sha
             });
 
-            // 清除缓存
             this._clearCache(`${subfolder}/${fileName}`);
-
             console.log('✅ 删除成功:', result);
             return { success: true, message: `文件 ${fileName} 已删除` };
         } catch (error) {
@@ -360,28 +378,20 @@ class GitHubFileAPI {
     }
 
     /**
-     * 修改文件（覆盖写入）
-     * @param {string} fileName - 要修改的文件名
-     * @param {File|string} content - 新内容（File 对象或文本字符串）
-     * @param {string} [subfolder=''] - 子文件夹
-     * @param {string} [commitMessage] - 提交信息
-     * @returns {Promise<{success: boolean, data?: Object, error?: string}>}
+     * 修改文件
      */
     async update(fileName, content, subfolder = '', commitMessage = '') {
+        await this._ensureInitialized();
         try {
-            // 如果 content 是 File 对象，转为 Base64
             let base64Content;
             if (content instanceof File) {
                 base64Content = await this._fileToBase64(content);
             } else {
-                // 文本内容转 Base64
                 base64Content = btoa(unescape(encodeURIComponent(content)));
             }
 
-            // 获取旧文件信息（需要 sha）
             const info = await this.getInfo(fileName, subfolder);
             if (!info.success) {
-                // 文件不存在，执行新增
                 if (content instanceof File) {
                     return this.upload(content, subfolder, fileName);
                 } else {
@@ -389,7 +399,6 @@ class GitHubFileAPI {
                 }
             }
 
-            // 构建完整路径
             const fullPath = subfolder ? `${subfolder}/${fileName}` : fileName;
             const url = this._buildApiUrl(fullPath);
 
@@ -423,10 +432,9 @@ class GitHubFileAPI {
 
     /**
      * 列出目录下的所有文件
-     * @param {string} [subfolder=''] - 子文件夹，空字符串表示根目录
-     * @returns {Promise<{success: boolean, files?: Array, error?: string}>}
      */
     async list(subfolder = '') {
+        await this._ensureInitialized();
         try {
             const url = this._buildApiUrl(subfolder);
             const response = await fetch(url, {
@@ -435,7 +443,7 @@ class GitHubFileAPI {
 
             if (!response.ok) {
                 if (response.status === 404) {
-                    return { success: true, files: [] }; // 目录不存在视为空
+                    return { success: true, files: [] };
                 }
                 throw new Error(`HTTP ${response.status}: ${response.statusText}`);
             }
@@ -447,7 +455,7 @@ class GitHubFileAPI {
                 sha: item.sha,
                 size: item.size,
                 downloadUrl: item.download_url,
-                type: item.type, // 'file' 或 'dir'
+                type: item.type,
                 htmlUrl: item.html_url
             }));
 
@@ -461,9 +469,6 @@ class GitHubFileAPI {
 
     /**
      * 检查文件是否存在
-     * @param {string} fileName - 文件名
-     * @param {string} [subfolder=''] - 子文件夹
-     * @returns {Promise<boolean>}
      */
     async exists(fileName, subfolder = '') {
         const result = await this.getInfo(fileName, subfolder);
@@ -471,7 +476,7 @@ class GitHubFileAPI {
     }
 
     /**
-     * 清除所有缓存
+     * 清除缓存
      */
     clearCache() {
         this._cache.clear();
@@ -479,7 +484,7 @@ class GitHubFileAPI {
     }
 
     /**
-     * 获取当前配置
+     * 获取当前配置（不含 token）
      */
     getConfig() {
         return {
@@ -494,8 +499,5 @@ class GitHubFileAPI {
 //  导出
 // ================================================================
 
-// 默认导出
 export default GitHubFileAPI;
-
-// 命名导出（兼容两种使用方式）
 export { GitHubFileAPI };
