@@ -1,5 +1,6 @@
 // asset.service.js - 前端版本
 import axios from 'axios';
+import GitHubFileAPI from 'githubFileAPI.js';
 
 // ============================================
 // 配置
@@ -37,7 +38,8 @@ class AssetService {
      */
     constructor(fsUtils) {
         if (!fsUtils) {
-            throw new Error('AssetService 需要 FSUtils 实例');
+            fsUtils = new GitHubFileAPI();
+            fsUtils.init();
         }
         this.fsUtils = fsUtils;
         
