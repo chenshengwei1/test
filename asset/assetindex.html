@@ -922,6 +922,8 @@
     <!-- ==================== 3. 脚本逻辑模块 (Scripts) ==================== -->
     <script type="module">
 
+        console.log('init');
+
          // 从上级目录导入
         import { AssetService } from '../asset.service.js';
         import {TagSelect} from './TagSelect.js'
@@ -1732,6 +1734,7 @@
                     .map(([key, value]) => `${key}=${encodeURIComponent(value)}`)
                     .join('&');
 
+                console.log('getAssets call');
                 const newResult = await assetService.getAssets(queryParams);
                 
                 const url = `${API_BASE}/assets?${queryString}`;
