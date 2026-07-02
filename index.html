@@ -3,53 +3,28 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>加载外部内容</title>
+    <title>嵌入页面</title>
     <style>
-        body {
+        /* 重置页面边距，让 iframe 铺满全屏 */
+        * {
             margin: 0;
-            padding: 20px;
-            font-family: sans-serif;
+            padding: 0;
+            box-sizing: border-box;
         }
-        #content {
-            border: 1px solid #ddd;
-            padding: 20px;
-            border-radius: 8px;
-            min-height: 400px;
+        html, body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
         }
-        .loading {
-            color: #666;
-            text-align: center;
-            padding: 50px;
-        }
-        .error {
-            color: red;
-            text-align: center;
-            padding: 50px;
+        iframe {
+            width: 100%;
+            height: 100%;
+            border: none;  /* 去掉边框 */
         }
     </style>
 </head>
 <body>
-    <h1>加载的内容：</h1>
-    <div id="content">
-        <div class="loading">⏳ 加载中...</div>
-    </div>
-
-    <script>
-        // 使用 fetch 加载 ./test/test.html 的内容
-        fetch('./test/test.html')
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error('文件加载失败，状态码：' + response.status);
-                }
-                return response.text();
-            })
-            .then(html => {
-                document.getElementById('content').innerHTML = html;
-            })
-            .catch(error => {
-                document.getElementById('content').innerHTML = 
-                    '<div class="error">❌ ' + error.message + '</div>';
-            });
-    </script>
+    <!-- 通过 iframe 嵌入 ./test/test.html -->
+    <iframe src="./test/test.html"></iframe>
 </body>
 </html>
