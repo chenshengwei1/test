@@ -7,8 +7,178 @@
 
 //import { createRepHub } from 'https://cdn.jsdelivr.net/npm/repohub@1.0.0/+esm';
 // 尝试不同的导入方式
-import repohub from 'https://cdn.jsdelivr.net/npm/repohub@1.0.0/+esm';
-const { createRepHub } = repohub;
+// import repohub from 'https://cdn.jsdelivr.net/npm/repohub@1.0.0/+esm';
+// ================================================================
+//  自己实现的 createRepHub（替代 repohub 库）
+// ================================================================
+
+function createRepHub(config) {
+    const { ghToken, ghRepo, ghOwner } = config;
+
+    /**
+     * 构建 GitHub API URL
+     */
+    function buildUrl(path, name) {
+        let fullPath = path ? `${path}/${name}` : name;
+        // 移除开头的斜杠
+        fullPath = fullPath.replace(/^\/+/, '');
+        return `https://api.github.com/repos/${ghOwner}/${ghRepo}/contents/${fullPath}`;
+    }
+
+    /**
+     * 获取请求头
+     */
+    function getHeaders(extra = {}) {
+        return {
+            'Authorization': `Bearer ${ghToken}`,
+            'Accept': 'application/vnd.github.v3+json',
+            ...extra
+        };
+    }
+
+    /**
+     * 处理响应
+     */
+    async function handleResponse(response) {
+        if (!response.ok) {
+            const error = await response.json().catch(() => ({}));
+            throw new Error(`HTTP ${response.status}: ${error.message || response.statusText}`);
+        }
+        return response.json();
+    }
+
+    /**
+     * 上传文件
+     */
+    async function upload({ mimeType, content, path = '' }) {
+        // 生成随机文件名（保持和 repohub 行为一致）
+        const timestamp = Date.now();
+        const random = Math.random().toString(36).substring(2, 8);
+        const name = `${timestamp}-${random}.${mimeType}`;
+
+        const url = buildUrl(path, name);
+        const body = {
+            message: `Upload ${name}`,
+            content: content,
+            branch: 'master'
+        };
+
+        const response = await fetch(url, {
+            method: 'PUT',
+            headers: getHeaders({ 'Content-Type': 'application/json' }),
+            body: JSON.stringify(body)
+        });
+
+        const result = await handleResponse(response);
+        return {
+            name: name,
+            path: result.content?.path || `${path}/${name}`,
+            download_url: result.content?.download_url,
+            sha: result.content?.sha,
+            ...result
+        };
+    }
+
+    /**
+     * 获取文件信息
+     */
+    async function get({ name, path = '' }) {
+        const fullPath = path ? `${path}/${name}` : name;
+        const url = buildUrl('', fullPath);
+
+        const response = await fetch(url, {
+            headers: getHeaders()
+        });
+
+        if (response.status === 404) {
+            throw new Error(`文件不存在: ${name}`);
+        }
+
+        const data = await handleResponse(response);
+        return {
+            name: data.name,
+            path: data.path,
+            sha: data.sha,
+            size: data.size,
+            download_url: data.download_url,
+            html_url: data.html_url,
+            ...data
+        };
+    }
+
+    /**
+     * 删除文件
+     */
+    async function del({ name, path = '', sha }) {
+        if (!sha) {
+            // 如果没有提供 sha，先获取文件信息
+            const info = await get({ name, path });
+            sha = info.sha;
+        }
+
+        const fullPath = path ? `${path}/${name}` : name;
+        const url = buildUrl('', fullPath);
+
+        const body = {
+            message: `Delete ${name}`,
+            sha: sha,
+            branch: 'master'
+        };
+
+        const response = await fetch(url, {
+            method: 'DELETE',
+            headers: getHeaders({ 'Content-Type': 'application/json' }),
+            body: JSON.stringify(body)
+        });
+
+        return handleResponse(response);
+    }
+
+    /**
+     * 列出目录
+     */
+    async function list(path = '') {
+        const url = buildUrl('', path);
+
+        const response = await fetch(url, {
+            headers: getHeaders()
+        });
+
+        if (response.status === 404) {
+            return [];
+        }
+
+        const data = await handleResponse(response);
+        return data.map(item => ({
+            name: item.name,
+            path: item.path,
+            sha: item.sha,
+            size: item.size,
+            download_url: item.download_url,
+            type: item.type
+        }));
+    }
+
+    // 返回 API 对象
+    return {
+        upload,
+        get,
+        delete: del,
+        list
+    };
+}
+
+// ================================================================
+//  在 GitHubFileAPI 类中使用
+// ================================================================
+
+// 原来的导入语句删掉，改成这样：
+// import { createRepHub } from '...'  // ← 删除这行
+
+// 在你的 _init 方法中，直接使用上面实现的 createRepHub
+// 不需要任何 import
+
+// const { createRepHub } = repohub;
 
 class GitHubFileAPI {
     /**
