@@ -250,7 +250,7 @@ class AssetService {
             ];
         
         if (!allowedTypes.includes(file.type)) {
-            throw new Error('只支持图片文件 (JPEG, PNG, GIF, WebP)');
+            throw new Error('只支持图片文件 (JPEG, PNG, GIF, WebP),实际格式='+file.type);
         }
 
         // 验证文件大小 (10MB)
