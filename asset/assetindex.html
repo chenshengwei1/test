@@ -917,7 +917,7 @@
     </div>
     <!-- ===== 新增结束 ===== -->
 
-    <script src="https://esm.sh/repohub@1.0.0"></script>
+    <!--<script src="https://esm.sh/repohub@1.0.0"></script> -->
 
     <!-- ==================== 3. 脚本逻辑模块 (Scripts) ==================== -->
     <script type="module">
@@ -928,7 +928,7 @@
 
         // 自动从根目录加载 config.json
         // 注意：在子目录中，/config.json 依然指向根目录
-        const assetService = new AssetService(fsUtils);
+        const assetService = new AssetService();
 
         // 初始化
         await assetService.init();
