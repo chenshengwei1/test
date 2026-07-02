@@ -1142,17 +1142,17 @@
             
             try {
                 showLoading(true);
-                
-                const response = await fetch('/api/assets/batch-tags', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        asset_ids: assetIds,
-                        tags: tags
-                    })
-                });
+                const response = await assetService.batchSetTags(assetIds, tags);
+                // const response = await fetch('/api/assets/batch-tags', {
+                //     method: 'POST',
+                //     headers: {
+                //         'Content-Type': 'application/json'
+                //     },
+                //     body: JSON.stringify({
+                //         asset_ids: assetIds,
+                //         tags: tags
+                //     })
+                // });
                 
                 const result = await response.json();
                 
@@ -1185,7 +1185,8 @@
         */
         async function fetchAllTags() {
             try {
-                const response = await fetch(`${API_BASE}/assets/tags`);
+                const response = await assetService.getTags();
+                //const response = await fetch(`${API_BASE}/assets/tags`);
                 const result = await response.json();
                 if (result.code === 200) {
                     return result.data.map(tag => tag.name || tag);
@@ -1331,19 +1332,24 @@
             
             try {
                 showLoading(true);
-                
-                const response = await fetch('/api/assets/save-canvas', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
+                const response = await assetService.saveCanvas({
                         title: name,
                         description: description,
                         visibility: visibility,
                         type: 'canvas'
-                    })
-                });
+                     })
+                // const response = await fetch('/api/assets/save-canvas', {
+                //     method: 'POST',
+                //     headers: {
+                //         'Content-Type': 'application/json'
+                //     },
+                //     body: JSON.stringify({
+                //         title: name,
+                //         description: description,
+                //         visibility: visibility,
+                //         type: 'canvas'
+                //     })
+                // });
                 
                 const result = await response.json();
                 
@@ -1675,25 +1681,30 @@
                 // 根据资产类型调用不同的 API
                 if (assetType === 'canvas') {
                     // 画布资产使用 save-canvas 接口
-                    response = await fetch('/api/assets/save-canvas', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({
-                            id: id,           // 传入画布ID用于更新
+                    response = await assetService.saveCanvas({
+                        id: id,           // 传入画布ID用于更新
                             ...updatedData    // 合并修改的数据
-                        })
-                    });
+                     })
+                    // response = await fetch('/api/assets/save-canvas', {
+                    //     method: 'POST',
+                    //     headers: {
+                    //         'Content-Type': 'application/json'
+                    //     },
+                    //     body: JSON.stringify({
+                    //         id: id,           // 传入画布ID用于更新
+                    //         ...updatedData    // 合并修改的数据
+                    //     })
+                    // });
                 } else {
                     // 普通资产使用原来的 API
-                    response = await fetch(`${API_BASE}/assets/${id}`, {
-                        method: 'PUT',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify(updatedData)
-                    });
+                    response = await assetService.updateAsset(id, updatedData);
+                    // response = await fetch(`${API_BASE}/assets/${id}`, {
+                    //     method: 'PUT',
+                    //     headers: {
+                    //         'Content-Type': 'application/json'
+                    //     },
+                    //     body: JSON.stringify(updatedData)
+                    // });
                 }
                 
                 result = await response.json();
@@ -1738,7 +1749,7 @@
                 const newResult = await assetService.getAssets(queryParams);
                 
                 const url = `${API_BASE}/assets?${queryString}`;
-                const response = await fetch(url);
+                //const response = await fetch(url);
                 const result = await response.json();
                 
                 if (newResult.code === 200) {
@@ -1758,10 +1769,11 @@
 
         async function fetchCanvasAssets(params = {}) {
             try {
-                const response = await fetch('/api/assets/canvas', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' }
-                });
+                // const response = await fetch('/api/assets/canvas', {
+                //     method: 'POST',
+                //     headers: { 'Content-Type': 'application/json' }
+                // });
+                const response = await assetService.getCanvasList();
                 const result = await response.json();
                 
                 if (result.code === 200) {
@@ -1781,7 +1793,8 @@
 
         async function fetchAssetDetail(id) {
             try {
-                const response = await fetch(`${API_BASE}/assets/${id}`);
+                const response = await assetService.getAssetById(id);
+                //const response = await fetch(`${API_BASE}/assets/${id}`);
                 const result = await response.json();
                 
                 if (result.code === 200) {
@@ -1830,7 +1843,8 @@
             try {
                 if (!confirm('确定要删除这个资产吗？')) return false;
                 
-                const response = await fetch(`${API_BASE}/assets/${id}`, { method: 'DELETE' });
+                //const response = await fetch(`${API_BASE}/assets/${id}`, { method: 'DELETE' });
+                const response = await assetService.deleteAsset(id);
                 const result = await response.json();
                 if (result.code === 200) {
                     await fetchAssets();
@@ -1847,7 +1861,8 @@
 
         async function useAsset(id) {
             try {
-                const response = await fetch(`${API_BASE}/assets/${id}/use`, { method: 'POST' });
+                const response = await assetService.useAsset(id);
+                // const response = await fetch(`${API_BASE}/assets/${id}/use`, { method: 'POST' });
                 const result = await response.json();
                 if (result.code === 200) {
                     alert(`资产使用成功: ${result.message}`);
@@ -1864,7 +1879,8 @@
 
         async function fetchRecentActivities() {
             try {
-                const response = await fetch(`${API_BASE}/activity/recent`);
+                const response = await assetService.getRecentActivity();
+                //const response = await fetch(`${API_BASE}/activity/recent`);
                 const result = await response.json();
                 if (result.code === 200) return result.data;
             } catch (error) {
@@ -1874,7 +1890,8 @@
 
         async function fetchTags() {
             try {
-                const response = await fetch(`${API_BASE}/assets/tags`);
+                const response = await assetService.getTags();
+                //const response = await fetch(`${API_BASE}/assets/tags`);
                 const result = await response.json();
                 if (result.code === 200) return result.data;
             } catch (error) {
@@ -1885,7 +1902,8 @@
 
         async function generateCharacter(prompt, style = 'default') {
             try {
-                const response = await fetch(`${API_BASE}/generate/character`, {
+                const response = await assetService.generateCharacter({ prompt, style });
+                const response1 = await fetch(`${API_BASE}/generate/character`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ prompt, style })
@@ -1910,7 +1928,8 @@
             return new Promise((resolve, reject) => {
                 const checkStatus = async () => {
                     try {
-                        const response = await fetch(`${API_BASE}/generate/task/${taskId}`);
+                        const response = await assetService.getGenerateTaskStatus(taskId);
+                        // const response = await fetch(`${API_BASE}/generate/task/${taskId}`);
                         const result = await response.json();
                         
                         if (result.code === 200) {
@@ -1948,16 +1967,22 @@
 
         async function saveAIGenerated(imageUrl, prompt) {
             try {
-                const response = await fetch(`${API_BASE}/assets/save-ai-result`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
+                const response = await assetService.saveAIResult({
                         title: `AI生成 - ${prompt.slice(0, 20)}`,
                         image_url: imageUrl,
                         tags: 'ai,generated',
                         description: prompt
-                    })
-                });
+                    });
+                // const response1 = await fetch(`${API_BASE}/assets/save-ai-result`, {
+                //     method: 'POST',
+                //     headers: { 'Content-Type': 'application/json' },
+                //     body: JSON.stringify({
+                //         title: `AI生成 - ${prompt.slice(0, 20)}`,
+                //         image_url: imageUrl,
+                //         tags: 'ai,generated',
+                //         description: prompt
+                //     })
+                // });
                 
                 const result = await response.json();
                 if (result.code === 200) {
@@ -1987,18 +2012,20 @@
                 
                 if (assetType === 'canvas') {
                     // 画布资产使用 delete-canvas 接口
-                    response = await fetch('/api/assets/delete-canvas', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({ id: id })
-                    });
+                    response = await assetService.deleteCanvas(id);
+                    // response = await fetch('/api/assets/delete-canvas', {
+                    //     method: 'POST',
+                    //     headers: {
+                    //         'Content-Type': 'application/json'
+                    //     },
+                    //     body: JSON.stringify({ id: id })
+                    // });
                 } else {
                     // 普通资产使用原来的接口
-                    response = await fetch(`${API_BASE}/assets/${id}`, {
-                        method: 'DELETE'
-                    });
+                    response = await assetService.deleteAsset(id);
+                    // response = await fetch(`${API_BASE}/assets/${id}`, {
+                    //     method: 'DELETE'
+                    // });
                 }
                 
                 result = await response.json();
@@ -2064,15 +2091,16 @@
             try {
                 showLoading(true);
                 
-                const response = await fetch('/api/assets/delete-canvas', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        id: canvasId
-                    })
-                });
+                const response = await assetService.deleteCanvas(canvasId);
+                // const response = await fetch('/api/assets/delete-canvas', {
+                //     method: 'POST',
+                //     headers: {
+                //         'Content-Type': 'application/json'
+                //     },
+                //     body: JSON.stringify({
+                //         id: canvasId
+                //     })
+                // });
                 
                 const result = await response.json();
                 
