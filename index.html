@@ -1,9 +1,14 @@
+
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>嵌入页面</title>
+    <title>酷炫项目导航</title>
+    <!-- 引入jQuery -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <!-- 引入字体图标 -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
         /* 重置页面边距，让 iframe 铺满全屏 */
         * {
@@ -21,10 +26,356 @@
             height: 100%;
             border: none;  /* 去掉边框 */
         }
+
+        body {
+            background: #0f0f0f;
+            font-family: 'Arial', sans-serif;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 4rem;
+        }
+
+        .title {
+            color: #fff;
+            font-size: 3.5rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            text-shadow: 0 0 15px rgba(255,255,255,0.5);
+            animation: glow 2s ease-in-out infinite alternate;
+        }
+
+        .projects-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            padding: 1rem;
+        }
+
+        .project-card {
+            background: rgba(255,255,255,0.05);
+            border-radius: 15px;
+            padding: 2rem;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.1);
+            transform-style: preserve-3d;
+            transition: all 0.5s ease;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .project-card:hover {
+            transform: translateY(-10px) rotateX(5deg) rotateY(5deg);
+            box-shadow: 0 15px 30px rgba(0,0,0,0.3);
+            background: rgba(255,255,255,0.1);
+        }
+
+        .project-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(
+                90deg,
+                transparent,
+                rgba(255,255,255,0.2),
+                transparent
+            );
+            transition: 0.5s;
+        }
+
+        .project-card:hover::before {
+            left: 100%;
+        }
+
+        .project-title {
+            color: #fff;
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+            position: relative;
+        }
+
+        .project-description {
+            color: rgba(255,255,255,0.7);
+            line-height: 1.6;
+        }
+
+        .background-effect {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            background: linear-gradient(45deg, #0f0f0f, #1a1a1a);
+        }
+
+        @keyframes glow {
+            from {
+                text-shadow: 0 0 10px #fff,
+                           0 0 20px #fff,
+                           0 0 30px #e60073,
+                           0 0 40px #e60073,
+                           0 0 50px #e60073,
+                           0 0 60px #e60073,
+                           0 0 70px #e60073;
+            }
+            to {
+                text-shadow: 0 0 20px #fff,
+                           0 0 30px #ff4da6,
+                           0 0 40px #ff4da6,
+                           0 0 50px #ff4da6,
+                           0 0 60px #ff4da6,
+                           0 0 70px #ff4da6,
+                           0 0 80px #ff4da6;
+            }
+        }
+
+        /* 响应式设计 */
+        @media (max-width: 768px) {
+            .projects-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+
+        /* 添加组件容器的样式 */
+        .mmd-viewer-container {
+            width: 100%;
+            height: 600px;  /* 根据需要调整高度 */
+            position: relative;
+            overflow: hidden;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        }
+        
+        /* 可选：加载提示样式 */
+        .loading-overlay {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0,0,0,0.6);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 14px;
+            pointer-events: none;
+            z-index: 10;
+        }
     </style>
 </head>
 <body>
+    <div class="background-effect"></div>
+    
+    <div class="container">
+        <header class="header">
+            <h1 class="title">项目中心</h1>
+        </header>
+
+        <div class="projects-grid" id="projectsContainer">
+            <!-- 项目卡片通过JavaScript动态加载 -->
+        </div>
+    </div>
+
+    <script>
+        // 项目数据
+        const projects = [
+            {
+                title: "Chat",
+                description: "聊天室",
+                url: "./chat/wechat.html",
+                icon: "fas fa-robot"
+            },
+            {
+                title: "Easyfile",
+                description: "实时数据展示系统",
+                url: "./easyfile/easyfile.html",
+                icon: "fas fa-chart-line"
+            },
+            {
+                title: "MarkDown",
+                description: "智能设备管理中心",
+                url: "./easyfile/md.html",
+                icon: "fas fa-network-wired"
+            },
+            {
+                title: "云存储",
+                description: "安全文件存储解决方案",
+                url: "./cloudstorage/storage.html",
+                icon: "fas fa-cloud"
+            }
+            ,
+            {
+                title: "漫剧资产",
+                description: "安全文件存储解决方案",
+                url: "./asset/assetindex.html",
+                icon: "fas fa-cloud"
+            }
+            ,
+            {
+                title: "Test",
+                description: "安全文件存储解决方案",
+                url: "./test/test.html",
+                icon: "fas fa-cloud"
+            }
+        ];
+
+        // 动态生成项目卡片
+        $(document).ready(function() {
+            const container = $('#projectsContainer');
+            
+            projects.forEach((project, index) => {
+                const card = $('<div>')
+                    .addClass('project-card')
+                    .html(`
+                        <i class="${project.icon} fa-2x" style="color: #fff; margin-bottom: 1rem;"></i>
+                        <h3 class="project-title">${project.title}</h3>
+                        <p class="project-description">${project.description}</p>
+                    `)
+                    .click(function() {
+                        // 点击动画
+                        $(this).css({
+                            transform: 'scale(0.95)',
+                            opacity: 0.8
+                        });
+                        setTimeout(() => {
+                            // window.location.href = project.url;
+                            const iframe = document.getElementById('pageFrame');
+                            iframe.src = project.url;
+                            
+                        }, 300);
+                    })
+                    .hover(
+                        function() {
+                            $(this).css('transform', 'translateY(-10px) rotateX(5deg) rotateY(5deg)');
+                        },
+                        function() {
+                            $(this).css('transform', 'translateY(0)');
+                        }
+                    );
+
+                // 添加入场动画
+                setTimeout(() => {
+                    card.css({
+                        opacity: 1,
+                        transform: 'translateY(0)'
+                    });
+                }, index * 200);
+
+                container.append(card);
+            });
+        });
+
+        // 鼠标跟随效果
+        $(document).mousemove(function(e) {
+            $('.project-card').each(function() {
+                const rect = this.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                $(this).css('--x', `${x}px`);
+                $(this).css('--y', `${y}px`);
+            });
+        });
+    </script>
+
+     <!-- 在这里放置模型查看器的容器 -->
+    <div id="model-viewer" class="mmd-viewer-container">
+        <div class="loading-overlay" id="loading-status">⏳ 加载中...</div>
+    </div>
+
+     <!-- 引入组件模块 -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.128.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.128.0/examples/jsm/"
+            }
+        }
+    </script>
+
+     <div class="controls-panel">
+        <div class="animation-controls">
+            <button id="play-vmd">▶ 播放舞蹈</button>
+            <button id="stop-vmd">⏹ 停止</button>
+            <button id="reset-pose">🔄 重置姿势</button>
+        </div>
+        <div style="width: 1px; background: rgba(255,255,255,0.3); margin: 0 10px;"></div>
+        <button id="switch-furina">✨ 芙宁娜</button>
+        <button id="switch-furina2">💧 芙卡洛斯</button>
+        <button id="view-both">👥 同时显示</button>
+    </div>
+
+    <!-- 3D 画布容器 -->
+    <div id="canvas-container"></div>
+    
+    <!-- 标题 -->
+    <div class="title">
+        ✨ 芙宁娜 · 水之舞者
+    </div>
+    
+    <!-- 状态提示 -->
+    <div class="status" id="status">
+        ⏳ 初始化场景...
+    </div>
+    
+    <!-- 控制面板 -->
+    <div class="controls-panel">
+        <button id="btn-reset-camera">🎥 重置相机</button>
+        <button id="btn-auto-rotate">🔄 自动旋转</button>
+        <button id="btn-toggle-grid">📐 切换网格</button>
+    </div>
     <!-- 通过 iframe 嵌入 ./test/test.html -->
-    <iframe src="./test/test.html"></iframe>
+    <iframe id="pageFrame" src="./test/test.html"></iframe>
+    
+    <script type="module" src="./modelloader.js">
+       /** import MMDViewer from './MMDViewer.js';
+        let model = '【芙宁娜】';
+        let modelName = '【芙宁娜】';
+        let rawPath = `./${model}/${modelName}.pmx`;
+        const encodedPath = encodeURI(rawPath);
+        // 创建模型查看器实例
+        const viewer = new MMDViewer('model-viewer', {
+            backgroundColor: 0x1a1a2e,      // 深紫色背景
+            cameraPosition: { x: 5, y: 3, z: 8 },
+            targetPosition: { x: 0, y: 1.2, z: 0 },
+            modelPath: rawPath,  // 👈 改成你的模型路径
+            modelScale: 0.08,
+            modelYOffset: -0.5,
+            autoRotate: false,
+            showGrid: true
+        });
+        
+        // 监听加载事件，更新提示文字
+        viewer
+            .onLoad(() => {
+                document.getElementById('loading-status').innerHTML = `✅ 模型已加载 |
+                鼠标拖拽旋转 | 右键平移 | 滚轮缩放`;
+            })
+            .onProgress((percent) => {
+                document.getElementById('loading-status').innerHTML = `⏳ 加载中... ${Math.floor(percent)}%`;
+            })
+            .onError((error) => {
+                document.getElementById('loading-status').innerHTML = '❌ 模型加载失败，请检查路径';
+                console.error(error);
+            });
+        **/
+        // 可选：添加一个按钮来控制自动旋转
+        // 在页面中添加一个按钮后，可以这样调用：
+        // document.getElementById('toggle-rotate').onclick = () => {
+        //     viewer.setAutoRotate(!viewer.controls.autoRotate);
+        // };
+    </script>
 </body>
 </html>
