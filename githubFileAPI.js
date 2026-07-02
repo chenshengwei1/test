@@ -5,7 +5,10 @@
  * 支持从根目录的 config.json 读取配置
  */
 
-import { createRepHub } from 'https://cdn.jsdelivr.net/npm/repohub@1.0.0/+esm';
+//import { createRepHub } from 'https://cdn.jsdelivr.net/npm/repohub@1.0.0/+esm';
+// 尝试不同的导入方式
+import repohub from 'https://cdn.jsdelivr.net/npm/repohub@1.0.0/+esm';
+const { createRepHub } = repohub;
 
 class GitHubFileAPI {
     /**
