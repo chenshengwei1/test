@@ -238,7 +238,7 @@ class AssetService {
     // ============================================
     async _uploadFile(file, subfolder = this.PATHS.IMAGES_DIR) {
         // 验证文件类型
-        const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+        const allowedTypes = ['image/jpeg', 'image/jpg', 'image/avif', 'image/png', 'image/gif', 'image/webp'];
         if (!allowedTypes.includes(file.type)) {
             throw new Error('只支持图片文件 (JPEG, PNG, GIF, WebP)');
         }
