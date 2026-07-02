@@ -1,0 +1,3592 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>画布工作流</title>
+    <style>
+        :root {
+            --bg-color: #f0f0f0;
+            --node-bg: #ffffff;
+            --node-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            --handle-color: #6366f1;
+            --line-color: #a5b4fc;
+            --primary-color: #6366f1;
+            --menu-bg: #ffffff;
+            --menu-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        body { margin: 0; overflow: hidden; font-family: system-ui, sans-serif; background-color: var(--bg-color); }
+
+        .top-nav {
+            position: fixed; top: 0; left: 0; right: 0; height: 60px;
+            background: #fff; border-bottom: 1px solid #e5e7eb;
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 0 20px; z-index: 10;
+        }
+        .nav-title { font-weight: 600; color: #333; display: flex; align-items: center; gap: 10px; }
+        .save-status { font-size: 12px; color: #10b981; }
+        .nav-right { display: flex; align-items: center; gap: 15px; }
+
+        #canvas-container {
+            width: 100vw; height: 100vh;
+            background-color: #f4f4f5;
+            background-image: radial-gradient(circle, #ddd 1px, transparent 1px);
+            background-size: 20px 20px;
+            overflow: hidden;
+            cursor: grab;
+            position: relative;
+            transform: translateZ(0);
+            backface-visibility: hidden;
+        }
+        #canvas-container:active { cursor: grabbing; }
+
+        #svg-layer {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none;
+            z-index: 1;
+            transform: translateZ(0);
+            backface-visibility: hidden;
+        }
+        .connection-line {
+            stroke: var(--line-color);
+            stroke-width: 2.5;
+            fill: none;
+            will-change: d;
+            transition: d 0.05s linear;
+            vector-effect: non-scaling-stroke;
+        }
+
+        .node {
+            position: absolute;
+            background: var(--node-bg);
+            border-radius: 12px;
+            box-shadow: var(--node-shadow);
+            padding: 12px 12px 36px 12px;
+            min-width: 160px;
+            cursor: default;
+            user-select: none;
+            z-index: 2;
+            transition: box-shadow 0.2s, border-color 0.2s;
+            border: 1px solid transparent;
+            will-change: transform;
+            backface-visibility: hidden;
+            -webkit-backface-visibility: hidden;
+            transform-origin: top left;
+        }
+        .node:hover { box-shadow: 0 8px 20px rgba(0,0,0,0.12); }
+        .node.selected { border-color: #6366f1; }
+        .node.dragging {
+            transition: none !important;
+            cursor: grabbing !important;
+            opacity: 0.95;
+        }
+
+        .node-header {
+            font-size: 12px; font-weight: 600; color: #6b7280;
+            margin-bottom: 8px; display: flex; justify-content: space-between;
+        }
+        .node-content img {
+            width: 100%; height: auto; border-radius: 6px;
+            display: block; background: #f3f4f6;
+        }
+
+        .node-character { width: 180px; }
+        .node-reference { width: 140px; background: #f8fafc; }
+        .node-video { width: 180px; }
+        .node-generate {
+            width: 240px;
+            background: linear-gradient(135deg, #a78bfa, #8b5cf6);
+            color: white;
+        }
+        .node-generate .node-header { color: rgba(255,255,255,0.8); }
+        .node-prompt {
+            width: 400px;
+            border-left: 4px solid #6366f1;
+        }
+
+        .handle {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background: transparent;
+            border: 2px solid transparent;
+            border-radius: 50%;
+            z-index: 10;
+            pointer-events: auto !important;
+            cursor: crosshair;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+        }
+        
+        .handle::after {
+            content: '+';
+            position: absolute;
+            font-size: 16px;
+            color: transparent;
+            font-weight: bold;
+            line-height: 1;
+            transition: all 0.2s ease;
+            opacity: 0;
+            transform: scale(0.5);
+            pointer-events: none;
+        }
+        
+        .handle-output { right: -10px; top: 50%; transform: translateY(-50%); }
+        .handle-input { left: -10px; top: 50%; transform: translateY(-50%); }
+
+        .node:hover .handle::after,
+        .node.selected .handle::after {
+            color: #6366f1;
+            opacity: 1;
+            transform: scale(1);
+        }
+
+        .node:hover .handle,
+        .node.selected .handle {
+            background: #ffffff;
+            border-color: #6366f1;
+            box-shadow: 0 2px 6px rgba(99, 102, 241, 0.3);
+        }
+
+        .handle.connected {
+            background: var(--handle-color);
+            border-color: #fff;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+        }
+
+        .handle.connected::after {
+            opacity: 0;
+            transform: scale(0.5);
+        }
+
+        .node:hover .handle.connected::after,
+        .node.selected .handle.connected::after {
+            opacity: 1;
+            transform: scale(1);
+        }
+
+        .handle:hover {
+            background: #4f46e5 !important;
+            border-color: #c7d2fe !important;
+            width: 24px;
+            height: 24px;
+            box-shadow: 0 3px 8px rgba(99, 102, 241, 0.4) !important;
+        }
+
+        .handle-output:hover { right: -12px; }
+        .handle-input:hover { left: -12px; }
+
+        .handle:hover::after {
+            color: #ffffff;
+            font-size: 18px;
+            opacity: 1 !important;
+            transform: scale(1) !important;
+        }
+
+        .connection-line.dragging {
+            stroke: #6366f1;
+            stroke-width: 2.5;
+            stroke-dasharray: 8 4;
+            animation: dash 0.5s linear infinite;
+        }
+
+        @keyframes dash {
+            to { stroke-dashoffset: -24; }
+        }
+
+        .handle.drop-target {
+            background: #10b981 !important;
+            border-color: #6ee7b7 !important;
+            width: 24px !important;
+            height: 24px !important;
+            animation: pulse 0.8s ease-in-out infinite;
+        }
+        
+        .handle-output.drop-target { right: -12px !important; }
+        .handle-input.drop-target { left: -12px !important; }
+
+        .handle.potential-target {
+            background: #10b981 !important;
+            border-color: #6ee7b7 !important;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: translateY(-50%) scale(1); }
+            50% { transform: translateY(-50%) scale(1.3); }
+        }
+
+        .floating-menu {
+            position: fixed; left: 30px; top: 50%; transform: translateY(-50%);
+            display: flex; flex-direction: column; gap: 12px;
+            z-index: 20;
+        }
+        .menu-btn {
+            width: 48px; height: 48px; background: #fff;
+            border-radius: 50%; box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; transition: transform 0.2s; border: none;
+            font-size: 20px; color: #333;
+        }
+        .menu-btn:hover { transform: scale(1.05); }
+        .menu-btn.primary { background: #000; color: #fff; }
+
+        .zoom-controls {
+            position: fixed;
+            bottom: 30px;
+            left: 30px;
+            background: #fff;
+            border-radius: 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            display: flex;
+            gap: 10px;
+            padding: 8px 16px;
+            z-index: 20;
+            align-items: center;
+        }
+        .zoom-controls button { 
+            border: none; background: none; cursor: pointer; font-size: 16px; color: #555;
+            padding: 4px 8px; border-radius: 6px; transition: all 0.2s;
+        }
+        .zoom-controls button:hover { background: #f3f4f6; }
+        .zoom-controls button.active { background: #eef2ff; color: #6366f1; }
+        .zoom-level { min-width: 40px; text-align: center; font-size: 13px; color: #666; }
+
+        .top-toolbar {
+            position: absolute;
+            background: #fff;
+            border-radius: 16px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            padding: 8px 16px;
+            gap: 12px;
+            z-index: 100;
+            align-items: center;
+            white-space: nowrap;
+            display: none;
+            pointer-events: auto;
+            transform-origin: top center;
+        }
+        .top-toolbar.visible { display: flex; }
+        .toolbar-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 13px;
+            color: #555;
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 6px;
+            transition: background 0.2s;
+        }
+        .toolbar-item:hover { background: #f3f4f6; }
+        .toolbar-item.active { background: #eef2ff; color: var(--primary-color); }
+        .toolbar-divider { width: 1px; height: 20px; background: #e5e7eb; }
+
+        .bottom-input {
+            position: absolute;
+            background: #fff;
+            border-radius: 16px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            padding: 16px 20px;
+            z-index: 100;
+            width: 640px;
+            display: none;
+            pointer-events: auto;
+            transform-origin: top center;
+            transition: all 0.3s ease;
+        }
+        .bottom-input.visible { display: block; }
+        .bottom-input textarea {
+            width: 100%;
+            border: none;
+            outline: none;
+            resize: none;
+            font-size: 14px;
+            color: #333;
+            min-height: 60px;
+            font-family: inherit;
+        }
+        .bottom-input .input-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 10px;
+            border-top: 1px solid #f3f4f6;
+            padding-top: 10px;
+        }
+        .input-footer .tools { display: flex; gap: 12px; font-size: 14px; color: #888; align-items: center; flex-wrap: wrap; }
+        .input-footer .tools span { cursor: pointer; padding: 2px 8px; border-radius: 4px; }
+        .input-footer .tools span:hover { background: #f3f4f6; }
+        .input-footer .actions { display: flex; gap: 8px; align-items: center; }
+        .input-footer .actions button {
+            padding: 6px 16px;
+            border-radius: 20px;
+            border: none;
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.2s;
+        }
+        .btn-primary { background: var(--primary-color); color: #fff; }
+        .btn-primary:hover { background: #4f46e5; }
+        .btn-secondary { background: #f3f4f6; color: #333; }
+        .btn-secondary:hover { background: #e5e7eb; }
+
+        .bottom-input.fullscreen {
+            position: fixed;
+            top: 50% !important;
+            left: 50% !important;
+            transform: translate(-50%, -50%) !important;
+            width: 66.67vw !important;
+            height: 66.67vh !important;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            z-index: 1000;
+        }
+        .bottom-input.fullscreen textarea {
+            height: calc(100% - 60px);
+            font-size: 16px;
+        }
+
+        .canvas-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 999;
+            display: none;
+        }
+        .canvas-overlay.visible { display: block; }
+
+        .fullscreen-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            width: 32px;
+            height: 32px;
+            border: none;
+            background: #f3f4f6;
+            border-radius: 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            color: #666;
+            transition: all 0.2s ease;
+            z-index: 10;
+        }
+        .fullscreen-btn:hover { background: #e5e7eb; color: #333; }
+
+        .minimap-container {
+            position: fixed;
+            bottom: 80px;
+            left: 30px;
+            width: 200px;
+            height: 150px;
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            z-index: 30;
+            display: none;
+            overflow: hidden;
+            border: 2px solid #e5e7eb;
+        }
+        .minimap-container.visible { display: block; }
+
+        .menu-item-wrapper {
+            position: relative;
+        }
+
+        .add-menu-fab {
+            position: absolute;
+            left: 60px;
+            top: 50%;
+            transform: translateY(-50%);
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.3s ease;
+            background: #fff;
+            padding: 8px;
+            border-radius: 16px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+            white-space: nowrap;
+            z-index: 25;
+        }
+
+        .add-menu-fab::before {
+            content: '';
+            position: absolute;
+            left: -20px;
+            top: -10px;
+            bottom: -10px;
+            width: 20px;
+            background: transparent;
+        }
+
+        .menu-item-wrapper:hover .add-menu-fab,
+        .add-menu-fab:hover {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .add-menu-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 13px;
+            color: #555;
+            transition: all 0.2s ease;
+            user-select: none;
+            min-width: 80px;
+        }
+
+        .add-menu-item:hover {
+            background: #f3f4f6;
+            color: #6366f1;
+        }
+
+        .context-menu {
+            position: fixed;
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+            padding: 8px 0;
+            z-index: 1000;
+            min-width: 160px;
+            display: none;
+            opacity: 0;
+            transform: scale(0.95);
+            transition: opacity 0.15s ease, transform 0.15s ease;
+            pointer-events: auto;
+        }
+        .context-menu.visible {
+            display: block;
+            opacity: 1;
+            transform: scale(1);
+        }
+        .context-menu-item {
+            padding: 8px 16px;
+            cursor: pointer;
+            font-size: 13px;
+            color: #333;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: background 0.15s;
+            user-select: none;
+        }
+        .context-menu-item:hover {
+            background: #f3f4f6;
+            color: #6366f1;
+        }
+        .context-menu-item.danger { color: #ef4444; }
+        .context-menu-item.danger:hover {
+            background: #fef2f2;
+            color: #dc2626;
+        }
+        .context-menu-divider {
+            height: 1px;
+            background: #e5e7eb;
+            margin: 4px 0;
+        }
+
+        .connection-line.selected {
+            stroke: #6366f1;
+            stroke-width: 3;
+            stroke-dasharray: 10 5;
+            animation: dash 0.5s linear infinite;
+            filter: drop-shadow(0 0 4px rgba(99, 102, 241, 0.4));
+        }
+
+        .connection-delete-btn {
+            position: fixed;
+            background: #ef4444;
+            color: #fff;
+            border: none;
+            border-radius: 50%;
+            width: 28px;
+            height: 28px;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 14px;
+            z-index: 1000;
+            box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
+            transition: all 0.2s ease;
+            pointer-events: auto;
+        }
+        .connection-delete-btn:hover {
+            background: #dc2626;
+            transform: scale(1.1);
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
+        }
+
+        @keyframes flowGlow {
+            0% { stroke-dashoffset: 0; }
+            100% { stroke-dashoffset: -20; }
+        }
+        .connection-line.flowing {
+            stroke: #818cf8;
+            stroke-width: 3;
+            filter: drop-shadow(0 0 6px rgba(129, 140, 248, 0.6));
+        }
+
+        .flow-particle {
+            position: absolute;
+            width: 6px;
+            height: 6px;
+            background: #6366f1;
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 3;
+            box-shadow: 0 0 8px rgba(99, 102, 241, 0.8);
+        }
+
+        .toolbar-content {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            white-space: nowrap;
+        }
+        /* 资产库对话框 */
+.asset-dialog-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 1001;
+    display: none;
+    align-items: center;
+    justify-content: center;
+}
+
+.asset-dialog-overlay.visible {
+    display: flex;
+}
+
+.asset-dialog {
+    background: #fff;
+    border-radius: 16px;
+    width: 66.67vw;
+    height: 66.67vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    overflow: hidden;
+}
+
+.asset-dialog-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 24px;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.asset-dialog-header h3 {
+    margin: 0;
+    font-size: 16px;
+    color: #333;
+}
+
+.asset-dialog-close {
+    width: 32px;
+    height: 32px;
+    border: none;
+    background: #f3f4f6;
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    color: #666;
+    transition: all 0.2s;
+}
+
+.asset-dialog-close:hover {
+    background: #e5e7eb;
+    color: #333;
+}
+
+.asset-dialog-tabs {
+    display: flex;
+    gap: 0;
+    padding: 0 24px;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.asset-dialog-tab {
+    padding: 10px 20px;
+    cursor: pointer;
+    font-size: 13px;
+    color: #666;
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s;
+    background: none;
+    border-top: none;
+    border-left: none;
+    border-right: none;
+}
+
+.asset-dialog-tab:hover {
+    color: #6366f1;
+}
+
+.asset-dialog-tab.active {
+    color: #6366f1;
+    border-bottom-color: #6366f1;
+}
+
+
+
+.asset-card:hover {
+    border-color: #6366f1;
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.15);
+}
+
+.asset-card.selected {
+    border-color: #6366f1;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+}
+
+
+.asset-card-info {
+    padding: 8px 12px;
+    border-top: 1px solid #f3f4f6;
+}
+
+.asset-card-title {
+    font-size: 12px;
+    color: #333;
+    font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.asset-card-id {
+    font-size: 10px;
+    color: #999;
+    margin-top: 2px;
+}
+
+.asset-dialog-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    padding: 16px 24px;
+    border-top: 1px solid #e5e7eb;
+}
+
+.asset-dialog-footer button {
+    padding: 8px 20px;
+    border-radius: 20px;
+    border: none;
+    cursor: pointer;
+    font-size: 13px;
+    transition: all 0.2s;
+}
+
+.asset-dialog-footer .btn-cancel {
+    background: #f3f4f6;
+    color: #333;
+}
+
+.asset-dialog-footer .btn-cancel:hover {
+    background: #e5e7eb;
+}
+
+.asset-dialog-footer .btn-apply {
+    background: #6366f1;
+    color: #fff;
+}
+
+.asset-dialog-footer .btn-apply:hover {
+    background: #4f46e5;
+}
+
+.asset-dialog-footer .btn-apply:disabled {
+    background: #c7d2fe;
+    cursor: not-allowed;
+}
+
+/* 空状态 */
+.asset-empty {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 40px;
+    color: #999;
+    font-size: 14px;
+}
+.asset-dialog-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px 24px;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    align-content: start;
+}
+
+.asset-card {
+    border: 2px solid #e5e7eb;
+    border-radius: 12px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: #fff;
+    min-height: 220px;
+}
+
+.asset-card-image {
+    width: 100%;
+    height: 180px;
+    background: #f9fafb;
+    overflow: hidden;
+}
+
+.asset-card-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    display: block;
+}
+
+.asset-card-image .placeholder {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #ccc;
+    font-size: 40px;
+    background: #f9fafb;
+}
+
+.asset-card-info {
+    padding: 10px 12px;
+    flex-shrink: 0;
+}
+
+.asset-card-title {
+    font-size: 12px;
+    color: #333;
+    font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.asset-card-id {
+    font-size: 10px;
+    color: #999;
+    margin-top: 2px;
+}
+
+/* 节点底部更多按钮 */
+.node-more-btn {
+    position: absolute;
+    bottom: 6px;
+    right: 12px;
+    width: 26px;
+    height: 26px;
+    padding: 0;
+    border: none;
+    background: #f3f4f6;
+    color: #9ca3af;
+    cursor: pointer;
+    font-size: 14px;
+    border-radius: 6px;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    letter-spacing: 2px;
+    z-index: 5;
+}
+
+.node-more-btn:hover {
+    background: #e5e7eb;
+    color: #6366f1;
+}
+
+/* 节点编辑对话框 */
+.node-edit-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1001;
+    display: none;
+}
+
+.node-edit-overlay.visible {
+    display: block;
+}
+
+.node-edit-dialog {
+    background: #fff;
+    border-radius: 16px;
+    width: 500px;
+    max-height: 80vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    overflow: hidden;
+}
+
+.node-edit-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 24px;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.node-edit-header h3 {
+    margin: 0;
+    font-size: 16px;
+    color: #333;
+}
+
+.node-edit-close {
+    width: 32px;
+    height: 32px;
+    border: none;
+    background: #f3f4f6;
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    color: #666;
+    transition: all 0.2s;
+}
+
+.node-edit-close:hover {
+    background: #e5e7eb;
+    color: #333;
+}
+
+.node-edit-content {
+    padding: 20px 24px;
+    overflow-y: auto;
+    flex: 1;
+}
+
+.node-edit-field {
+    margin-bottom: 16px;
+}
+
+.node-edit-field label {
+    display: block;
+    font-size: 13px;
+    color: #666;
+    margin-bottom: 6px;
+    font-weight: 500;
+}
+
+.node-edit-field input,
+.node-edit-field textarea {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    font-size: 13px;
+    color: #333;
+    font-family: inherit;
+    outline: none;
+    transition: border-color 0.2s;
+    box-sizing: border-box;
+}
+
+.node-edit-field input:focus,
+.node-edit-field textarea:focus {
+    border-color: #6366f1;
+}
+
+.node-edit-field textarea {
+    min-height: 80px;
+    resize: vertical;
+}
+
+.node-edit-audio-section {
+    background: #f9fafb;
+    border-radius: 12px;
+    padding: 16px;
+    margin-top: 16px;
+}
+
+.node-edit-audio-section h4 {
+    margin: 0 0 12px 0;
+    font-size: 14px;
+    color: #333;
+}
+
+.node-edit-audio-preview {
+    width: 100%;
+    height: 80px;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #9ca3af;
+    font-size: 13px;
+    margin-bottom: 12px;
+}
+
+.node-edit-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    padding: 16px 24px;
+    border-top: 1px solid #e5e7eb;
+}
+
+.node-edit-footer button {
+    padding: 8px 20px;
+    border-radius: 20px;
+    border: none;
+    cursor: pointer;
+    font-size: 13px;
+    transition: all 0.2s;
+}
+
+.node-edit-footer .btn-cancel {
+    background: #f3f4f6;
+    color: #333;
+}
+
+.node-edit-footer .btn-cancel:hover {
+    background: #e5e7eb;
+}
+
+.node-edit-footer .btn-save {
+    background: #6366f1;
+    color: #fff;
+}
+
+.node-edit-footer .btn-save:hover {
+    background: #4f46e5;
+}
+.node-content video {
+    width: 100%;
+    height: auto;
+    max-height: 160px;
+    border-radius: 6px;
+    background: #f3f4f6;
+    object-fit: contain;
+}
+
+.node-video {
+    width: 200px;
+    min-height: 180px;
+}
+
+/* 进度对话框最小化样式 */
+.progress-dialog[data-minimized="true"] .dialog-minimize-btn {
+    background: rgba(255,255,255,0.25) !important;
+}
+
+.progress-dialog[data-minimized="true"] .dialog-close-btn {
+    background: rgba(255,255,255,0.25) !important;
+}
+
+.progress-dialog[data-minimized="true"] .dialog-close-btn:hover {
+    background: rgba(239,68,68,0.4) !important;
+}
+
+.progress-dialog[data-minimized="true"]:hover {
+    box-shadow: 0 8px 30px rgba(0,0,0,0.6) !important;
+}
+
+.progress-dialog .minimized-status {
+    animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
+}
+    </style>
+</head>
+<body>
+
+    <div class="top-nav">
+        <div class="nav-title">
+            <span style="background:#000; color:#fff; padding:2px 8px; border-radius:4px;">Q</span>
+            使用上传的角色设计图
+            <span class="save-status">● 已保存</span>
+        </div>
+        <div class="nav-right">
+            <button onclick="saveCanvas(true)" style="background:#6366f1; color:#fff; border:none; padding:6px 16px; border-radius:20px; cursor:pointer; font-size:13px;" id="saveBtn">💾 保存</button>
+            <span style="background: #eef2ff; color: #4f46e5; padding: 2px 12px; border-radius: 12px; font-size: 12px;">0 积分</span>
+        </div>
+    </div>
+
+    <div id="canvas-container">
+        <svg id="svg-layer"></svg>
+
+        <div class="top-toolbar" id="topToolbar">
+            <!-- 默认工具栏 -->
+            <div class="toolbar-content" id="defaultToolbar">
+                <div class="toolbar-item active">📐 角色三视图</div>
+                <div class="toolbar-item">💡 光影控制</div>
+                <div class="toolbar-item">🎥 镜头控制</div>
+                <div class="toolbar-divider"></div>
+                <div class="toolbar-item">✂️ 裁剪</div>
+                <div class="toolbar-item">🔄 旋转</div>
+                <div class="toolbar-divider"></div>
+                <div class="toolbar-item">⬇️ 下载</div>
+                <div class="toolbar-item">↗️ 分享</div>
+                <div class="toolbar-divider"></div>
+                <button class="fullscreen-btn" title="全屏编辑" onclick="toggleFullscreen()" style="position: relative; top: auto; right: auto;">⛶</button>
+            </div>
+            
+            <!-- 图片节点工具栏 -->
+            <div class="toolbar-content" id="imageToolbar" style="display:none;">
+                <div class="toolbar-item active" onclick="uploadImage()">📤 上传图片</div>
+                <div class="toolbar-item" onclick="selectFromAssetLibrary()">🖼️ 从资产库选择</div>
+                <div class="toolbar-divider"></div>
+                <button class="fullscreen-btn" title="全屏编辑" onclick="toggleFullscreen()" style="position: relative; top: auto; right: auto;">⛶</button>
+            </div>
+        </div>
+
+        <div class="canvas-overlay" id="canvasOverlay"></div>
+
+        <div class="bottom-input" id="bottomInput">
+            <button class="fullscreen-btn" id="fullscreenBtn" title="全屏编辑" onclick="toggleFullscreen()">⛶</button>
+            <textarea id="promptInput" placeholder="描述你想要生成的画面内容，@引用素材"></textarea>
+            <div class="input-footer">
+                <div class="tools">
+                    <span>+</span>
+                    <span>@</span>
+                    <span>🎨 风格</span>
+                    <span>📊 Agent AI</span>
+                    <span>9:16 · 4K</span>
+                </div>
+                <div class="actions">
+                    <button class="btn-secondary" onclick="handleSavePrompt()">📄 保存</button>
+                    <button class="btn-primary" onclick="handleGenerate()">✨ 生成</button>
+                    <button class="btn-secondary" onclick="handleSettings()">⚙️</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="floating-menu">
+        <div class="menu-item-wrapper">
+            <button class="menu-btn primary" id="addNodeBtn">+</button>
+            <div class="add-menu-fab" id="addMenuFab">
+                <div class="add-menu-item" data-type="text">📝 文本</div>
+                <div class="add-menu-item" data-type="image">🖼️ 图片</div>
+                <div class="add-menu-item" data-type="video">🎬 视频</div>
+                <div class="add-menu-item" data-type="audio">🎵 音频</div>
+            </div>
+        </div>
+        <button class="menu-btn" onclick="alert('添加参考图')">🖼️</button>
+        <button class="menu-btn" onclick="alert('添加文本')">📝</button>
+    </div>
+
+    <div class="zoom-controls">
+        <button onclick="zoomOut()" title="缩小">−</button>
+        <div class="zoom-level" id="zoom-level">100%</div>
+        <button onclick="zoomIn()" title="放大">+</button>
+        <span style="border-left:1px solid #ddd; margin:0 5px;"></span>
+        <button onclick="fitView()" title="自动布局">📐</button>
+        <button onclick="resetView()" title="重置视图">⟲</button>
+        <span style="border-left:1px solid #ddd; margin:0 5px;"></span>
+        <button onclick="toggleMinimap()" id="minimapBtn" title="小地图">🗺️</button>
+        <button onclick="toggleGridSnap()" id="gridSnapBtn" title="网格吸附">📐</button>
+    </div>
+
+    <div class="context-menu" id="canvasContextMenu">
+        <div class="context-menu-item" data-action="add-text">📝 添加文本节点</div>
+        <div class="context-menu-item" data-action="add-image">🖼️ 添加图片节点</div>
+        <div class="context-menu-item" data-action="add-video">🎬 添加视频节点</div>
+        <div class="context-menu-item" data-action="add-audio">🎵 添加音频节点</div>
+    </div>
+
+    <div class="context-menu" id="nodeContextMenu">
+        <div class="context-menu-item" data-action="copy-node">📋 复制节点</div>
+        <div class="context-menu-divider"></div>
+        <div class="context-menu-item danger" data-action="delete-node">🗑️ 删除节点</div>
+    </div>
+
+    <div class="context-menu" id="connectionContextMenu">
+        <div class="context-menu-item danger" data-action="delete-connection">🗑️ 删除连线</div>
+    </div>
+
+    <div class="connection-delete-btn" id="connectionDeleteBtn" title="删除连线">✕</div>
+
+
+    
+    <!-- 资产库对话框 -->
+<div class="asset-dialog-overlay" id="assetDialogOverlay">
+    <div class="asset-dialog">
+        <div class="asset-dialog-header">
+            <h3>从资产库选择</h3>
+            <button class="asset-dialog-close" onclick="closeAssetDialog()">✕</button>
+        </div>
+        <div class="asset-dialog-tabs">
+            <button class="asset-dialog-tab active" data-tab="all" onclick="switchAssetTab('all')">所有</button>
+            <button class="asset-dialog-tab" data-tab="image" onclick="switchAssetTab('image')">图片</button>
+            <button class="asset-dialog-tab" data-tab="video" onclick="switchAssetTab('video')">视频</button>
+        </div>
+        <div class="asset-dialog-content" id="assetDialogContent">
+            <!-- 动态加载 -->
+        </div>
+        <div class="asset-dialog-footer">
+            <button class="btn-cancel" onclick="closeAssetDialog()">取消</button>
+            <button class="btn-apply" id="assetApplyBtn" disabled onclick="applySelectedAsset()">应用</button>
+        </div>
+    </div>
+</div>
+
+
+<!-- 节点编辑对话框 -->
+<div class="node-edit-overlay" id="nodeEditOverlay">
+    <div class="node-edit-dialog">
+        <div class="node-edit-header">
+            <h3>编辑节点信息</h3>
+            <button class="node-edit-close" onclick="closeNodeEdit()">✕</button>
+        </div>
+        <div class="node-edit-content">
+            <div class="node-edit-field">
+                <label>角色名称</label>
+                <input type="text" id="editNodeTitle" placeholder="输入角色名称">
+            </div>
+            <div class="node-edit-field">
+                <label>形象名字</label>
+                <input type="text" id="editNodeImageName" placeholder="【基础形象】">
+            </div>
+            <div class="node-edit-field">
+                <label>出现集数</label>
+                <input type="text" id="editNodeEpisodes" placeholder="输入出现集数">
+            </div>
+            <div class="node-edit-field">
+                <label>音色</label>
+                <input type="text" id="editNodeVoice" placeholder="输入音色描述">
+            </div>
+            <div class="node-edit-audio-section">
+                <h4>文本音色预览</h4>
+                <div class="node-edit-audio-preview" id="audioPreview">
+                    点击下方按钮试听
+                </div>
+                <div style="text-align:center;">
+                    <button class="btn-secondary" onclick="previewAudio()" style="padding:6px 16px;">▶ 试听</button>
+                </div>
+            </div>
+        </div>
+        <div class="node-edit-footer">
+            <button class="btn-cancel" onclick="closeNodeEdit()">取消</button>
+            <button class="btn-save" onclick="saveNodeEdit()">保存</button>
+        </div>
+    </div>
+</div>
+
+    <script>
+        const state = {
+            nodes: [],
+            connections: [],
+            viewTransform: { x: 0, y: 0, scale: 1 },
+            selectedNodeId: null,
+            dragging: false,
+            startX: 0, startY: 0,
+            currentDragNodeId: null,
+            dragOffsetX: 0, dragOffsetY: 0,
+            isDraggingNode: false,
+            needsFullRender: false,
+            isDraggingConnection: false,
+            connectionStartNodeId: null,
+            connectionStartHandleType: null,
+            tempConnectionLine: null,
+            tempLineStartX: 0,
+            tempLineStartY: 0,
+            gridSnap: false,
+            showMinimap: false,
+            contextMenuNodeId: null,
+            contextMenuConnection: null,
+            selectedConnection: null,
+            flowAnimations: [],
+            particleAnimationRunning: false,
+            lastSaveData: null,
+            autoSaveTimer: null,
+            hasUnsavedChanges: false
+        };
+
+        const container = document.getElementById('canvas-container');
+        const svgLayer = document.getElementById('svg-layer');
+        const zoomLevelDisplay = document.getElementById('zoom-level');
+        const topToolbar = document.getElementById('topToolbar');
+        const bottomInput = document.getElementById('bottomInput');
+        const promptInput = document.getElementById('promptInput');
+        const canvasOverlay = document.getElementById('canvasOverlay');
+        let isFullscreen = false;
+        let minimapContainer = null;
+        let canvasContextMenu = null;
+        let nodeContextMenu = null;
+        let connectionContextMenu = null;
+        let activeContextMenu = null;
+        let connectionDeleteBtn = null;
+        let flowParticles = [];
+        let selectedConnectionEl = null;
+
+        let renderScheduled = false;
+        let dragFrameRequest = null;
+        let canvasDragFrame = null;
+
+        // 资产库状态
+        let assetList = [];
+        let filteredAssets = [];
+        let selectedAssetId = null;
+        let currentAssetTab = 'all';
+        let assetDisplayCount = 12; // 初始显示12个（3行）
+        let assetPageSize = 12; // 每次加载12个
+
+        let progressDialogs = [];
+        let dialogIdCounter = 0;
+
+
+        // 当前页面 URL
+        const url = new URL(window.location.href);
+
+        // 获取查询参数
+        const inputid = url.searchParams.get('id');    // "123"
+        const inputname = url.searchParams.get('name'); // "张三"
+
+        function initMockData() {
+            const nodes = [
+                { id: 'char-1', type: 'character', x: 300, y: 100, title: '角色参考', img: 'https://placehold.co/150x200/e0e7ff/6366f1?text=Character+Sheet' },
+                { id: 'ref-1', type: 'reference', x: 550, y: 20, title: '参考图', img: 'https://placehold.co/100x100/fef3c7/f59e0b?text=Ref' },
+                { id: 'video-1', type: 'video', x: 850, y: 100, title: '预览视频', img: 'https://placehold.co/150x200/1e293b/fff?text=Video+Preview' },
+                { id: 'gen-1', type: 'generate', x: 550, y: 400, title: '生成节点' },
+                { id: 'prompt-1', type: 'prompt', x: 850, y: 500, title: '任务详情', content: '【任务类型】视频片段创作\n【生成时长】5秒\n【需求】光线追踪，虚幻引擎渲染...' }
+            ];
+            nodes.forEach(n => state.nodes.push(n));
+            const connections = [
+                { from: 'char-1', to: 'video-1', fromHandle: 'out', toHandle: 'in' },
+                { from: 'ref-1', to: 'gen-1', fromHandle: 'out', toHandle: 'in' },
+                { from: 'video-1', to: 'gen-1', fromHandle: 'out', toHandle: 'in' },
+                { from: 'gen-1', to: 'prompt-1', fromHandle: 'out', toHandle: 'in' }
+            ];
+            connections.forEach(c => state.connections.push(c));
+        }
+
+        function render() {
+            if (renderScheduled) return;
+            renderScheduled = true;
+            requestAnimationFrame(() => {
+                const nodesToRemove = container.querySelectorAll('.node');
+                nodesToRemove.forEach(el => el.remove());
+                state.nodes.forEach(node => {
+                    const el = document.createElement('div');
+                    el.className = `node node-${node.type}`;
+                    const left = node.x * state.viewTransform.scale + state.viewTransform.x;
+                    const top = node.y * state.viewTransform.scale + state.viewTransform.y;
+                    el.style.transform = `translate(${left}px, ${top}px) scale(${state.viewTransform.scale})`;
+                    el.style.transformOrigin = 'top left';
+                    el.dataset.id = node.id;
+
+                    const header = document.createElement('div');
+                    header.className = 'node-header';
+                    header.innerHTML = `<span>${node.title}</span><span>⚙️</span>`;
+                    el.appendChild(header);
+
+                    const content = document.createElement('div');
+                    content.className = 'node-content';
+                    if (node.type === 'character' || node.type === 'reference') {
+                        if (node.img) {
+                            const img = document.createElement('img');
+                            img.src = node.img;
+                            content.appendChild(img);
+                        } else {
+                            // 使用 SVG 占位图标
+                            content.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;min-height:100px;background:#f9fafb;border-radius:8px;">
+                                <svg aria-hidden="true" fill="none" focusable="false" height="44" viewBox="0 0 44 44" width="44">
+                                    <g transform="translate(2.29 5.96)">
+                                        <path d="M26.4551 5.09492e-07C28.4174 4.81834e-07 29.9691 -0.00107295 31.2188 0.0976568C32.4835 0.197594 33.5556 0.406009 34.5391 0.887696C36.2745 1.73788 37.6781 3.14156 38.5283 4.87695C39.0101 5.86041 39.2194 6.93247 39.3193 8.19727C39.4181 9.44698 39.417 10.9995 39.417 12.9619V19.1221C39.417 21.0843 39.4181 22.6361 39.3193 23.8857C39.2194 25.1507 39.0102 26.2225 38.5283 27.2061C37.6781 28.9416 36.2746 30.3451 34.5391 31.1953C33.5556 31.677 32.4836 31.8854 31.2188 31.9854C29.9691 32.0841 28.4174 32.083 26.4551 32.083H12.9619C10.9995 32.083 9.44698 32.0841 8.19727 31.9854C6.9325 31.8854 5.8604 31.6771 4.87695 31.1953C3.1415 30.3451 1.7379 28.9415 0.887696 27.2061C0.405933 26.2226 0.197607 25.1506 0.0976568 23.8857C-0.00108342 22.6361 3.73084e-07 21.0843 5.09479e-07 19.1221V12.9619C5.09479e-07 10.9995 -0.00109017 9.44698 0.0976568 8.19727C0.197623 6.93249 0.405908 5.8604 0.887696 4.87695C1.73792 3.14147 3.14147 1.73792 4.87695 0.887696C5.8604 0.405908 6.93249 0.197623 8.19727 0.0976568C9.44698 -0.00109018 10.9995 5.09492e-07 12.9619 5.09492e-07H26.4551ZM12.9619 2.75C10.9556 2.75 9.53033 2.75067 8.41406 2.83887C7.3132 2.92587 6.62975 3.09149 6.08691 3.35742C4.89946 3.93916 3.93916 4.89946 3.35742 6.08691C3.09149 6.62975 2.92587 7.3132 2.83887 8.41406C2.75067 9.53033 2.75 10.9556 2.75 12.9619V15.9824C2.80209 15.9407 2.85551 15.9004 2.91016 15.8613L5.35742 14.1133C6.77421 13.1014 8.70746 13.2256 9.9834 14.4102L18.6504 22.458C19.8252 23.5489 21.5729 23.7505 22.9648 22.9551L24.1895 22.2549C25.8128 21.3273 27.8739 21.7701 28.9736 23.2822L33.0264 28.8545C33.1327 28.8136 33.2341 28.7726 33.3301 28.7256C34.5174 28.1438 35.4769 27.1834 36.0586 25.9961C36.3245 25.4532 36.4902 24.77 36.5771 23.6689C36.6653 22.5528 36.667 21.1281 36.667 19.1221V12.9619C36.667 10.9556 36.6654 9.53033 36.5771 8.41406C36.4901 7.31323 36.3245 6.62974 36.0586 6.08691C35.4769 4.89967 34.5173 3.93913 33.3301 3.35742C32.7872 3.09147 32.103 2.92586 31.002 2.83887C29.8858 2.7507 28.4611 2.75 26.4551 2.75H12.9619ZM27.958 8.70801C29.4767 8.70801 30.7078 9.93937 30.708 11.458C30.708 12.9768 29.4768 14.208 27.958 14.208C26.4394 14.2078 25.208 12.9767 25.208 11.458C25.2082 9.93948 26.4395 8.70818 27.958 8.70801Z" fill="rgba(36, 61, 73, 0.12)"></path>
+                                    </g>
+                                </svg>
+                            </div>`;
+                        }
+                    } else if (node.type === 'video') {
+                        // 保持原有的视频处理逻辑
+                        if (node.source_url){
+                            const videoElement = document.createElement('video');
+                            videoElement.controls = true;
+                            videoElement.autoplay = false;
+                            videoElement.name = "media";
+                            videoElement.style.width = '100%';
+                            videoElement.style.height = 'auto';
+                            videoElement.style.maxHeight = '160px';
+                            videoElement.style.borderRadius = '6px';
+                            videoElement.style.backgroundColor = '#f3f4f6';
+
+                            const sourceElement = document.createElement('source');
+                            sourceElement.src = node.source_url;
+                            sourceElement.type = 'video/mp4';
+                            videoElement.appendChild(sourceElement);
+                            content.appendChild(videoElement);
+                        }else{
+                            // 无视频时的占位符
+                            const placeholder = document.createElement('div');
+                            placeholder.style.cssText = 'display:flex;align-items:center;justify-content:center;min-height:120px;background:#f9fafb;border-radius:8px;color:#9ca3af;font-size:14px;';
+                            placeholder.innerHTML = '🎬 视频预览<br><span style="font-size:12px;">暂无视频</span>';
+                            content.appendChild(placeholder);
+                        }
+                    } else if (node.type === 'generate') {
+                        content.innerHTML = `<div style="text-align:center; padding:20px; color:#fff;"><div style="font-size:40px;">✨</div><div style="font-size:12px; margin-top:5px;">点击生成</div></div>`;
+                    } else if (node.type === 'prompt') {
+                        content.innerHTML = `<div style="font-size:12px; line-height:1.6; white-space:pre-wrap;">${node.content}</div>`;
+                    }
+                    el.appendChild(content);
+
+                    // 添加底部更多按钮
+                    const moreBtn = document.createElement('button');
+                    moreBtn.className = 'node-more-btn';
+                    moreBtn.textContent = '...';
+                    moreBtn.title = '编辑节点信息';
+                    moreBtn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        openNodeEdit(node.id);
+                    });
+                    el.appendChild(moreBtn);
+
+                    const outputHandle = document.createElement('div');
+                    outputHandle.className = 'handle handle-output';
+                    outputHandle.dataset.nodeId = node.id;
+                    outputHandle.dataset.handleType = 'output';
+                    outputHandle.dataset.handleId = 'out';
+                    outputHandle.title = '拖拽创建连线';
+                    outputHandle.addEventListener('mousedown', (e) => {
+                        if (isFullscreen) return;
+                        e.stopPropagation(); e.preventDefault();
+                        startConnectionDrag(node.id, 'output', outputHandle);
+                    });
+                    el.appendChild(outputHandle);
+
+                    const inputHandle = document.createElement('div');
+                    inputHandle.className = 'handle handle-input';
+                    inputHandle.dataset.nodeId = node.id;
+                    inputHandle.dataset.handleType = 'input';
+                    inputHandle.dataset.handleId = 'in';
+                    inputHandle.title = '接受连线';
+                    inputHandle.addEventListener('mousedown', (e) => {
+                        if (isFullscreen) return;
+                        e.stopPropagation(); e.preventDefault();
+                        startConnectionDrag(node.id, 'input', inputHandle);
+                    });
+                    el.appendChild(inputHandle);
+
+                    el.addEventListener('click', (e) => {
+                        if (isFullscreen) return;
+                        if (e.target.classList.contains('handle')) return;
+                        e.stopPropagation();
+                        selectNode(node.id);
+                    });
+
+                    el.addEventListener('mousedown', (e) => {
+                        if (isFullscreen) return;
+                        if (e.target.classList.contains('handle')) return;
+                        e.preventDefault(); e.stopPropagation();
+                        const rect = el.getBoundingClientRect();
+                        state.currentDragNodeId = node.id;
+                        state.dragOffsetX = (e.clientX - rect.left) / state.viewTransform.scale;
+                        state.dragOffsetY = (e.clientY - rect.top) / state.viewTransform.scale;
+                        state.isDraggingNode = true;
+                        el.classList.add('dragging');
+                        window.addEventListener('mousemove', onNodeDrag);
+                        window.addEventListener('mouseup', onNodeDragEnd);
+                    });
+
+                    container.appendChild(el);
+                });
+
+                renderConnections();
+                updateHandleConnectionStates();
+                if (state.selectedNodeId) updateUIPosition();
+                if (state.showMinimap) updateMinimap();
+                renderScheduled = false;
+            });
+        }
+
+        function renderConnections() {
+            const existingPaths = svgLayer.querySelectorAll('path:not(.dragging)');
+            existingPaths.forEach(path => path.remove());
+            clearFlowParticles();
+            
+            state.connections.forEach(conn => {
+                const fromNode = state.nodes.find(n => n.id === conn.from);
+                const toNode = state.nodes.find(n => n.id === conn.to);
+                
+                if (fromNode && toNode) {
+                    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                    path.setAttribute('data-connection', `${conn.from}-${conn.to}`);
+                    path.setAttribute('class', 'connection-line');
+                    path.style.pointerEvents = 'stroke';
+                    path.style.cursor = 'pointer';
+                    
+                    path.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        selectConnection(conn, path);
+                    });
+                    
+                    svgLayer.appendChild(path);
+                    updatePathPosition(path, fromNode, toNode);
+                    
+                    if (state.selectedConnection && 
+                        state.selectedConnection.from === conn.from && 
+                        state.selectedConnection.to === conn.to) {
+                        selectConnection(conn, path);
+                    }
+                }
+            });
+
+            if (state.selectedNodeId) {
+                updateFlowAnimations(state.selectedNodeId);
+            }
+        }
+
+        function updatePathPosition(path, fromNode, toNode) {
+            const fromNodeEl = document.querySelector(`.node[data-id="${fromNode.id}"]`);
+            const toNodeEl = document.querySelector(`.node[data-id="${toNode.id}"]`);
+            if (fromNodeEl && toNodeEl) {
+                const fromHandle = fromNodeEl.querySelector('.handle-output');
+                const toHandle = toNodeEl.querySelector('.handle-input');
+                if (fromHandle && toHandle) {
+                    const containerRect = container.getBoundingClientRect();
+                    const fromRect = fromHandle.getBoundingClientRect();
+                    const toRect = toHandle.getBoundingClientRect();
+                    const x1 = fromRect.left + fromRect.width / 2 - containerRect.left;
+                    const y1 = fromRect.top + fromRect.height / 2 - containerRect.top;
+                    const x2 = toRect.left + toRect.width / 2 - containerRect.left;
+                    const y2 = toRect.top + toRect.height / 2 - containerRect.top;
+                    const dx = Math.abs(x2 - x1);
+                    const offset = Math.min(Math.max(dx * 0.5, 50), 200);
+                    const cx1 = x1 + offset;
+                    const cy1 = y1;
+                    const cx2 = x2 - offset;
+                    const cy2 = y2;
+                    path.setAttribute('d', `M ${x1} ${y1} C ${cx1} ${cy1}, ${cx2} ${cy2}, ${x2} ${y2}`);
+                }
+            }
+        }
+
+        function updateHandleConnectionStates() {
+            document.querySelectorAll('.handle').forEach(handle => handle.classList.remove('connected'));
+            state.connections.forEach(conn => {
+                const fromNode = document.querySelector(`.node[data-id="${conn.from}"]`);
+                const toNode = document.querySelector(`.node[data-id="${conn.to}"]`);
+                if (fromNode) { const h = fromNode.querySelector('.handle-output'); if (h) h.classList.add('connected'); }
+                if (toNode) { const h = toNode.querySelector('.handle-input'); if (h) h.classList.add('connected'); }
+            });
+        }
+
+        function updateUIPosition() {
+            if (!state.selectedNodeId || isFullscreen) return;
+            const node = state.nodes.find(n => n.id === state.selectedNodeId);
+            if (!node) return;
+            const nodeEl = document.querySelector(`.node[data-id="${node.id}"]`);
+            if (!nodeEl) return;
+            
+            // 根据节点类型切换工具栏内容
+            const defaultToolbar = document.getElementById('defaultToolbar');
+            const imageToolbar = document.getElementById('imageToolbar');
+            
+            if ((node.type === 'character' || node.type === 'reference') && !node.img) {
+                // 图片节点且没有图片，显示图片工具栏
+                if (defaultToolbar) defaultToolbar.style.display = 'none';
+                if (imageToolbar) imageToolbar.style.display = 'flex';
+            } else {
+                // 其他情况显示默认工具栏
+                if (defaultToolbar) defaultToolbar.style.display = 'flex';
+                if (imageToolbar) imageToolbar.style.display = 'none';
+            }
+            
+            const nodeLeft = node.x * state.viewTransform.scale + state.viewTransform.x;
+            const nodeTop = node.y * state.viewTransform.scale + state.viewTransform.y;
+            const nodeWidth = nodeEl.offsetWidth * state.viewTransform.scale;
+            const nodeHeight = nodeEl.offsetHeight * state.viewTransform.scale;
+            
+            const wasToolbarVisible = topToolbar.classList.contains('visible');
+            const wasInputVisible = bottomInput.classList.contains('visible');
+            
+            if (!wasToolbarVisible) {
+                topToolbar.style.display = 'flex';
+                topToolbar.style.visibility = 'hidden';
+            }
+            if (!wasInputVisible) {
+                bottomInput.style.display = 'block';
+                bottomInput.style.visibility = 'hidden';
+            }
+            
+            topToolbar.offsetHeight;
+            bottomInput.offsetHeight;
+            
+            const toolbarHeight = topToolbar.offsetHeight;
+            const inputHeight = bottomInput.offsetHeight;
+            const toolbarWidth = topToolbar.offsetWidth;
+            const inputWidth = bottomInput.offsetWidth;
+
+            if (!wasToolbarVisible) {
+                topToolbar.style.display = '';
+                topToolbar.style.visibility = '';
+            }
+            if (!wasInputVisible) {
+                bottomInput.style.display = '';
+                bottomInput.style.visibility = '';
+            }
+
+            const toolbarTop = nodeTop - toolbarHeight;
+            const toolbarLeft = nodeLeft + nodeWidth / 2 - toolbarWidth / 2;
+            const inputTop = nodeTop + nodeHeight;
+            const inputLeft = nodeLeft + nodeWidth / 2 - inputWidth / 2;
+
+            if (nodeTop >= 0) {
+                topToolbar.style.top = toolbarTop + 'px';
+                topToolbar.style.left = toolbarLeft + 'px';
+                topToolbar.classList.add('visible');
+            } else {
+                topToolbar.classList.remove('visible');
+            }
+
+            bottomInput.style.top = inputTop + 'px';
+            bottomInput.style.left = inputLeft + 'px';
+            bottomInput.classList.add('visible');
+        }
+
+        function startConnectionDrag(nodeId, handleType, handleElement) {
+            state.isDraggingConnection = true;
+            state.connectionStartNodeId = nodeId;
+            state.connectionStartHandleType = handleType;
+            const tempLine = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            tempLine.setAttribute('class', 'connection-line dragging');
+            tempLine.style.pointerEvents = 'none';
+            svgLayer.appendChild(tempLine);
+            state.tempConnectionLine = tempLine;
+            const containerRect = container.getBoundingClientRect();
+            const handleRect = handleElement.getBoundingClientRect();
+            state.tempLineStartX = handleRect.left + handleRect.width / 2 - containerRect.left;
+            state.tempLineStartY = handleRect.top + handleRect.height / 2 - containerRect.top;
+            document.addEventListener('mousemove', onConnectionDrag);
+            document.addEventListener('mouseup', onConnectionDragEnd);
+            highlightPotentialTargets(handleType);
+        }
+
+        function onConnectionDrag(e) {
+            if (!state.isDraggingConnection) return;
+            const containerRect = container.getBoundingClientRect();
+            const currentX = e.clientX - containerRect.left;
+            const currentY = e.clientY - containerRect.top;
+            if (state.tempConnectionLine) {
+                const dx = Math.abs(currentX - state.tempLineStartX);
+                const offset = Math.min(Math.max(dx * 0.5, 50), 200);
+                state.tempConnectionLine.setAttribute('d', `M ${state.tempLineStartX} ${state.tempLineStartY} C ${state.tempLineStartX + offset} ${state.tempLineStartY}, ${currentX - offset} ${currentY}, ${currentX} ${currentY}`);
+            }
+            const el = document.elementFromPoint(e.clientX, e.clientY);
+            document.querySelectorAll('.handle.drop-target').forEach(h => h.classList.remove('drop-target'));
+            if (el && el.classList.contains('handle') && el.dataset.nodeId !== state.connectionStartNodeId && el.dataset.handleType !== state.connectionStartHandleType) {
+                el.classList.add('drop-target');
+            }
+        }
+
+        function onConnectionDragEnd(e) {
+            if (!state.isDraggingConnection) return;
+            if (state.tempConnectionLine) { state.tempConnectionLine.remove(); state.tempConnectionLine = null; }
+            document.querySelectorAll('.handle.drop-target').forEach(h => h.classList.remove('drop-target'));
+            document.querySelectorAll('.handle.potential-target').forEach(h => h.classList.remove('potential-target'));
+            const el = document.elementFromPoint(e.clientX, e.clientY);
+            if (el && el.classList.contains('handle') && el.dataset.nodeId !== state.connectionStartNodeId && el.dataset.handleType !== state.connectionStartHandleType) {
+                createConnection(state.connectionStartNodeId, el.dataset.nodeId, state.connectionStartHandleType, el.dataset.handleType);
+            }
+            state.isDraggingConnection = false;
+            state.connectionStartNodeId = null;
+            state.connectionStartHandleType = null;
+            document.removeEventListener('mousemove', onConnectionDrag);
+            document.removeEventListener('mouseup', onConnectionDragEnd);
+        }
+
+        function highlightPotentialTargets(startHandleType) {
+            const targetType = startHandleType === 'output' ? 'input' : 'output';
+            document.querySelectorAll(`.handle[data-handle-type="${targetType}"]`).forEach(handle => {
+                if (handle.dataset.nodeId !== state.connectionStartNodeId) handle.classList.add('potential-target');
+            });
+        }
+
+        function createConnection(fromNodeId, toNodeId, fromHandleType, toHandleType) {
+            let actualFrom, actualTo;
+            if (fromHandleType === 'output' && toHandleType === 'input') { actualFrom = fromNodeId; actualTo = toNodeId; }
+            else if (fromHandleType === 'input' && toHandleType === 'output') { actualFrom = toNodeId; actualTo = fromNodeId; }
+            else return;
+            if (state.connections.some(conn => conn.from === actualFrom && conn.to === actualTo)) { console.log('连接已存在'); return; }
+            state.connections.push({ from: actualFrom, to: actualTo, fromHandle: 'out', toHandle: 'in' });
+            renderConnections();
+            updateHandleConnectionStates();
+            markChanged();
+        }
+
+        function toggleFullscreen() {
+            isFullscreen = !isFullscreen;
+            if (isFullscreen) {
+                bottomInput.classList.add('fullscreen');
+                canvasOverlay.classList.add('visible');
+                document.querySelectorAll('.fullscreen-btn').forEach(btn => { btn.textContent = '✕'; btn.title = '退出全屏'; });
+                setTimeout(() => promptInput.focus(), 300);
+            } else {
+                bottomInput.classList.remove('fullscreen');
+                canvasOverlay.classList.remove('visible');
+                document.querySelectorAll('.fullscreen-btn').forEach(btn => { btn.textContent = '⛶'; btn.title = '全屏编辑'; });
+                if (state.selectedNodeId) updateUIPosition();
+            }
+        }
+
+        function hideNodeUI() {
+            if (isFullscreen) return;
+            topToolbar.classList.remove('visible');
+            bottomInput.classList.remove('visible');
+        }
+
+        function snapToGrid(value) {
+            if (!state.gridSnap) return value;
+            return Math.round(value / 20) * 20;
+        }
+
+        function onNodeDrag(e) {
+            e.preventDefault(); e.stopPropagation();
+            if (!state.currentDragNodeId) return;
+            if (dragFrameRequest) return;
+            dragFrameRequest = requestAnimationFrame(() => {
+                const node = state.nodes.find(n => n.id === state.currentDragNodeId);
+                if (!node) { dragFrameRequest = null; return; }
+                let x = (e.clientX - state.viewTransform.x - state.dragOffsetX * state.viewTransform.scale) / state.viewTransform.scale;
+                let y = (e.clientY - state.viewTransform.y - state.dragOffsetY * state.viewTransform.scale) / state.viewTransform.scale;
+                x = snapToGrid(x);
+                y = snapToGrid(y);
+                if (Math.abs(node.x - x) < 0.01 && Math.abs(node.y - y) < 0.01) { dragFrameRequest = null; return; }
+                node.x = x; node.y = y;
+                updateNodePosition(node.id);
+                if (state.selectedNodeId === state.currentDragNodeId) hideNodeUI();
+                if (state.showMinimap) updateMinimap();
+                dragFrameRequest = null;
+            });
+        }
+
+        function onNodeDragEnd(e) {
+            e.preventDefault(); e.stopPropagation();
+            if (dragFrameRequest) { cancelAnimationFrame(dragFrameRequest); dragFrameRequest = null; }
+            window.removeEventListener('mousemove', onNodeDrag);
+            window.removeEventListener('mouseup', onNodeDragEnd);
+            if (state.currentDragNodeId) {
+                const nodeEl = document.querySelector(`.node[data-id="${state.currentDragNodeId}"]`);
+                if (nodeEl) nodeEl.classList.remove('dragging');
+            }
+            if (state.selectedNodeId && state.selectedNodeId === state.currentDragNodeId) {
+                setTimeout(() => updateUIPosition(), 10);
+            }
+            state.isDraggingNode = false;
+            state.currentDragNodeId = null;
+            markChanged();
+        }
+
+        function updateNodePosition(nodeId) {
+            const node = state.nodes.find(n => n.id === nodeId);
+            const nodeEl = document.querySelector(`.node[data-id="${nodeId}"]`);
+            if (nodeEl && node) {
+                const left = node.x * state.viewTransform.scale + state.viewTransform.x;
+                const top = node.y * state.viewTransform.scale + state.viewTransform.y;
+                nodeEl.style.transform = `translate(${left}px, ${top}px) scale(${state.viewTransform.scale})`;
+                nodeEl.style.left = '0'; nodeEl.style.top = '0';
+                state.connections.filter(conn => conn.from === nodeId || conn.to === nodeId).forEach(conn => {
+                    const fromNode = state.nodes.find(n => n.id === conn.from);
+                    const toNode = state.nodes.find(n => n.id === conn.to);
+                    if (fromNode && toNode) {
+                        const path = svgLayer.querySelector(`path[data-connection="${conn.from}-${conn.to}"]`);
+                        if (path) updatePathPosition(path, fromNode, toNode);
+                    }
+                });
+                if (state.selectedNodeId === nodeId) updateUIPosition();
+            }
+        }
+
+        function updateAllConnectionsPosition() {
+            state.connections.forEach(conn => {
+                const fromNode = state.nodes.find(n => n.id === conn.from);
+                const toNode = state.nodes.find(n => n.id === conn.to);
+                if (fromNode && toNode) {
+                    let path = svgLayer.querySelector(`path[data-connection="${conn.from}-${conn.to}"]`);
+                    if (!path) {
+                        path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                        path.setAttribute('data-connection', `${conn.from}-${conn.to}`);
+                        path.setAttribute('class', 'connection-line');
+                        svgLayer.appendChild(path);
+                    }
+                    updatePathPosition(path, fromNode, toNode);
+                }
+            });
+        }
+
+        container.addEventListener('mousedown', (e) => {
+            if (isFullscreen || state.isDraggingConnection) return;
+            if (e.target === container || e.target === svgLayer || e.target === topToolbar || e.target === bottomInput || e.target.closest('#topToolbar') || e.target.closest('#bottomInput')) {
+                if (e.target.closest('#topToolbar') || e.target.closest('#bottomInput')) return;
+                state.dragging = true;
+                state.startX = e.clientX - state.viewTransform.x;
+                state.startY = e.clientY - state.viewTransform.y;
+                document.addEventListener('mousemove', onCanvasDrag);
+                document.addEventListener('mouseup', onCanvasDragEnd);
+            }
+        });
+
+        function onCanvasDrag(e) {
+            if (!state.dragging || canvasDragFrame) return;
+            canvasDragFrame = requestAnimationFrame(() => {
+                state.viewTransform.x = e.clientX - state.startX;
+                state.viewTransform.y = e.clientY - state.startY;
+                updateAllNodePositions();
+                canvasDragFrame = null;
+            });
+        }
+
+        function onCanvasDragEnd() {
+            state.dragging = false;
+            document.removeEventListener('mousemove', onCanvasDrag);
+            document.removeEventListener('mouseup', onCanvasDragEnd);
+            if (canvasDragFrame) { cancelAnimationFrame(canvasDragFrame); canvasDragFrame = null; }
+            if (state.selectedNodeId) updateUIPosition();
+        }
+
+        function updateAllNodePositions() {
+            state.nodes.forEach(node => {
+                const nodeEl = document.querySelector(`.node[data-id="${node.id}"]`);
+                if (nodeEl) {
+                    const left = node.x * state.viewTransform.scale + state.viewTransform.x;
+                    const top = node.y * state.viewTransform.scale + state.viewTransform.y;
+                    nodeEl.style.transform = `translate(${left}px, ${top}px) scale(${state.viewTransform.scale})`;
+                }
+            });
+            updateAllConnectionsPosition();
+            if (state.selectedNodeId) updateUIPosition();
+            if (state.showMinimap) updateMinimap();
+        }
+
+        function selectNode(id) {
+            if (state.selectedNodeId === id) return;
+            if (state.selectedNodeId) {
+                const prevEl = document.querySelector(`.node[data-id="${state.selectedNodeId}"]`);
+                if (prevEl) prevEl.classList.remove('selected');
+                hideNodeUI();
+                clearFlowAnimations();
+            }
+            state.selectedNodeId = id;
+            const el = document.querySelector(`.node[data-id="${id}"]`);
+            if (el) el.classList.add('selected');
+            const node = state.nodes.find(n => n.id === id);
+            promptInput.value = (node && node.content) ? node.content : (node && node.prompt) ? node.prompt : '';
+            
+            deselectConnection();
+            
+            setTimeout(() => {
+                updateUIPosition();
+                updateFlowAnimations(id);
+            }, 10);
+        }
+
+        container.addEventListener('click', (e) => {
+            if (isFullscreen || state.isDraggingNode) return;
+            const isNode = e.target.closest('.node');
+            const isToolbar = e.target.closest('#topToolbar');
+            const isInput = e.target.closest('#bottomInput');
+            const isPath = e.target.closest('path[data-connection]');
+            
+            if (!isNode && !isToolbar && !isInput && !isPath) {
+                if (state.selectedNodeId) {
+                    const prevEl = document.querySelector(`.node[data-id="${state.selectedNodeId}"]`);
+                    if (prevEl) prevEl.classList.remove('selected');
+                    state.selectedNodeId = null;
+                    hideNodeUI();
+                    clearFlowAnimations();
+                }
+                deselectConnection();
+            }
+        });
+
+        canvasOverlay.addEventListener('click', () => { if (isFullscreen) toggleFullscreen(); });
+
+        window.addEventListener('resize', () => {
+            if (state.selectedNodeId && !isFullscreen) updateUIPosition();
+            if (state.showMinimap) updateMinimap();
+        });
+
+        function zoomIn() {
+            state.viewTransform.scale = Math.min(2, state.viewTransform.scale + 0.1);
+            updateZoomDisplay(); updateAllNodePositions();
+        }
+        function zoomOut() {
+            state.viewTransform.scale = Math.max(0.2, state.viewTransform.scale - 0.1);
+            updateZoomDisplay(); updateAllNodePositions();
+        }
+        function resetView() {
+            state.viewTransform = { x: 0, y: 0, scale: 1 };
+            updateZoomDisplay(); updateAllNodePositions();
+        }
+
+        function fitView() {
+            autoLayout();
+        }
+
+        function autoLayout() {
+            if (state.nodes.length === 0) return;
+            
+            const nodeMap = new Map();
+            const inDegree = new Map();
+            const outEdges = new Map();
+            
+            state.nodes.forEach(node => {
+                nodeMap.set(node.id, node);
+                inDegree.set(node.id, 0);
+                outEdges.set(node.id, []);
+            });
+            
+            state.connections.forEach(conn => {
+                if (nodeMap.has(conn.from) && nodeMap.has(conn.to)) {
+                    outEdges.get(conn.from).push(conn.to);
+                    inDegree.set(conn.to, (inDegree.get(conn.to) || 0) + 1);
+                }
+            });
+            
+            const layers = [];
+            const visited = new Set();
+            let currentLayer = [];
+            
+            state.nodes.forEach(node => {
+                if (inDegree.get(node.id) === 0) {
+                    currentLayer.push(node);
+                    visited.add(node.id);
+                }
+            });
+            
+            state.nodes.forEach(node => {
+                if (!visited.has(node.id) && outEdges.get(node.id).length === 0 && inDegree.get(node.id) === 0) {
+                    currentLayer.push(node);
+                    visited.add(node.id);
+                }
+            });
+            
+            while (currentLayer.length > 0) {
+                layers.push(currentLayer);
+                const nextLayer = [];
+                const tempInDegree = new Map(inDegree);
+                
+                currentLayer.forEach(node => {
+                    (outEdges.get(node.id) || []).forEach(childId => {
+                        if (!visited.has(childId)) {
+                            tempInDegree.set(childId, (tempInDegree.get(childId) || 1) - 1);
+                            if (tempInDegree.get(childId) === 0) {
+                                nextLayer.push(nodeMap.get(childId));
+                                visited.add(childId);
+                            }
+                        }
+                    });
+                });
+                
+                currentLayer = nextLayer;
+            }
+            
+            state.nodes.forEach(node => {
+                if (!visited.has(node.id)) {
+                    if (layers.length === 0) layers.push([]);
+                    layers[layers.length - 1].push(node);
+                    visited.add(node.id);
+                }
+            });
+            
+            const horizontalGap = 350;
+            const verticalGap = 80;
+            const startX = 100;
+            const startY = 100;
+            
+            layers.forEach((layer, layerIndex) => {
+                let totalHeight = 0;
+                layer.forEach(node => {
+                    totalHeight += getNodeHeight(node) + verticalGap;
+                });
+                totalHeight -= verticalGap;
+                
+                let currentY = startY;
+                layer.forEach(node => {
+                    const nodeHeight = getNodeHeight(node);
+                    node.x = startX + layerIndex * horizontalGap;
+                    node.y = currentY;
+                    currentY += nodeHeight + verticalGap;
+                });
+            });
+            
+            let maxX = 0, maxY = 0;
+            state.nodes.forEach(node => {
+                const nodeWidth = getNodeWidth(node);
+                const nodeHeight = getNodeHeight(node);
+                maxX = Math.max(maxX, node.x + nodeWidth + 150);
+                maxY = Math.max(maxY, node.y + nodeHeight + 150);
+            });
+            
+            const viewportWidth = window.innerWidth;
+            const viewportHeight = window.innerHeight;
+            const scaleX = (viewportWidth - 150) / maxX;
+            const scaleY = (viewportHeight - 150) / maxY;
+            const scale = Math.min(Math.min(scaleX, scaleY), 1);
+            
+            state.viewTransform = { x: 80, y: 80, scale: Math.max(0.3, scale) };
+            updateZoomDisplay();
+            updateAllNodePositions();
+        }
+
+        function getNodeWidth(node) {
+            switch(node.type) {
+                case 'character': return 180;
+                case 'reference': return 140;
+                case 'video': return 180;
+                case 'generate': return 240;
+                case 'prompt': return 400;
+                default: return 180;
+            }
+        }
+
+        function getNodeHeight(node) {
+            switch(node.type) {
+                case 'character': return 250;
+                case 'reference': return 150;
+                case 'video': return 250;
+                case 'generate': return 140;
+                case 'prompt': return 120;
+                default: return 200;
+            }
+        }
+
+        function updateZoomDisplay() { zoomLevelDisplay.textContent = Math.round(state.viewTransform.scale * 100) + '%'; }
+
+        function toggleGridSnap() {
+            state.gridSnap = !state.gridSnap;
+            const btn = document.getElementById('gridSnapBtn');
+            if (state.gridSnap) { btn.classList.add('active'); btn.title = '网格吸附：开'; }
+            else { btn.classList.remove('active'); btn.title = '网格吸附：关'; }
+        }
+
+        function toggleMinimap() {
+            state.showMinimap = !state.showMinimap;
+            if (state.showMinimap) createMinimap();
+            else removeMinimap();
+        }
+
+        function createMinimap() {
+            if (minimapContainer) return;
+            minimapContainer = document.createElement('div');
+            minimapContainer.className = 'minimap-container visible';
+            minimapContainer.id = 'minimapContainer';
+            document.body.appendChild(minimapContainer);
+            updateMinimap();
+        }
+
+        function removeMinimap() {
+            if (minimapContainer) { minimapContainer.remove(); minimapContainer = null; }
+        }
+
+        function updateMinimap() {
+            if (!minimapContainer || !state.showMinimap) return;
+            const mw = 200, mh = 150;
+            let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+            state.nodes.forEach(node => {
+                minX = Math.min(minX, node.x); minY = Math.min(minY, node.y);
+                maxX = Math.max(maxX, node.x + 180); maxY = Math.max(maxY, node.y + 200);
+            });
+            if (minX === Infinity) { minX = 0; minY = 0; maxX = 1000; maxY = 1000; }
+            const pad = 50; minX -= pad; minY -= pad; maxX += pad; maxY += pad;
+            const ww = maxX - minX, wh = maxY - minY;
+            const scale = Math.min(mw / ww, mh / wh);
+            const ox = (mw - ww * scale) / 2, oy = (mh - wh * scale) / 2;
+            minimapContainer.innerHTML = `<canvas id="minimapCanvas" width="${mw}" height="${mh}"></canvas>`;
+            const canvas = document.getElementById('minimapCanvas');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#f4f4f5'; ctx.fillRect(0, 0, mw, mh);
+            state.nodes.forEach(node => {
+                const x = (node.x - minX) * scale + ox;
+                const y = (node.y - minY) * scale + oy;
+                const w = Math.max((node.type === 'prompt' ? 400 : node.type === 'generate' ? 240 : 180) * scale, 4);
+                const h = Math.max((node.type === 'prompt' ? 80 : node.type === 'generate' ? 100 : 200) * scale, 4);
+                ctx.fillStyle = '#6366f1'; ctx.fillRect(x, y, w, h);
+                if (node.id === state.selectedNodeId) { ctx.strokeStyle = '#4f46e5'; ctx.lineWidth = 2; ctx.strokeRect(x-1, y-1, w+2, h+2); }
+            });
+            const vx = (-state.viewTransform.x / state.viewTransform.scale - minX) * scale + ox;
+            const vy = (-state.viewTransform.y / state.viewTransform.scale - minY) * scale + oy;
+            const vw = (window.innerWidth / state.viewTransform.scale) * scale;
+            const vh = (window.innerHeight / state.viewTransform.scale) * scale;
+            ctx.strokeStyle = '#6366f1'; ctx.lineWidth = 1.5; ctx.strokeRect(vx, vy, vw, vh);
+            ctx.fillStyle = 'rgba(99,102,241,0.05)'; ctx.fillRect(vx, vy, vw, vh);
+        }
+
+        function selectConnection(conn, pathEl) {
+            deselectConnection();
+            state.selectedConnection = conn;
+            selectedConnectionEl = pathEl;
+            pathEl.classList.add('selected');
+            
+            const containerRect = container.getBoundingClientRect();
+            const pathLength = pathEl.getTotalLength();
+            const midPoint = pathEl.getPointAtLength(pathLength / 2);
+            
+            if (connectionDeleteBtn) {
+                const btnX = containerRect.left + midPoint.x;
+                const btnY = containerRect.top + midPoint.y;
+                connectionDeleteBtn.style.left = (btnX - 14) + 'px';
+                connectionDeleteBtn.style.top = (btnY - 14) + 'px';
+                connectionDeleteBtn.style.display = 'flex';
+            }
+            
+            if (state.selectedNodeId) {
+                const prevEl = document.querySelector(`.node[data-id="${state.selectedNodeId}"]`);
+                if (prevEl) prevEl.classList.remove('selected');
+                state.selectedNodeId = null;
+                hideNodeUI();
+                clearFlowAnimations();
+            }
+        }
+
+        function deselectConnection() {
+            if (selectedConnectionEl) {
+                selectedConnectionEl.classList.remove('selected');
+                selectedConnectionEl = null;
+            }
+            state.selectedConnection = null;
+            if (connectionDeleteBtn) {
+                connectionDeleteBtn.style.display = 'none';
+            }
+        }
+
+        function clearFlowAnimations() {
+            document.querySelectorAll('.connection-line.flowing').forEach(line => {
+                line.classList.remove('flowing');
+            });
+            clearFlowParticles();
+            state.flowAnimations = [];
+        }
+
+        function clearFlowParticles() {
+            flowParticles.forEach(particle => {
+                if (particle && particle.element && particle.element.parentNode) {
+                    particle.element.remove();
+                }
+            });
+            flowParticles = [];
+        }
+
+        function updateFlowAnimations(nodeId) {
+            clearFlowAnimations();
+            if (!nodeId) return;
+            
+            const relevantConnections = state.connections.filter(conn => 
+                conn.from === nodeId || conn.to === nodeId
+            );
+            
+            relevantConnections.forEach(conn => {
+                const path = svgLayer.querySelector(`path[data-connection="${conn.from}-${conn.to}"]`);
+                if (path) {
+                    path.classList.add('flowing');
+                    createFlowParticles(path, conn);
+                }
+            });
+        }
+
+        function createFlowParticles(path, conn) {
+            const pathLength = path.getTotalLength();
+            const numParticles = 3;
+            
+            for (let i = 0; i < numParticles; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'flow-particle';
+                particle.style.position = 'absolute';
+                particle.style.pointerEvents = 'none';
+                particle.style.zIndex = '3';
+                container.appendChild(particle);
+                
+                const particleData = {
+                    element: particle,
+                    path: path,
+                    connection: conn,
+                    offset: (i / numParticles) * pathLength,
+                    speed: 0.5 + Math.random() * 0.5
+                };
+                
+                flowParticles.push(particleData);
+            }
+            
+            if (!state.particleAnimationRunning) {
+                animateParticles();
+            }
+        }
+
+        function animateParticles() {
+            state.particleAnimationRunning = true;
+            
+            function update() {
+                if (flowParticles.length === 0) {
+                    state.particleAnimationRunning = false;
+                    return;
+                }
+                
+                const containerRect = container.getBoundingClientRect();
+                
+                flowParticles.forEach(data => {
+                    if (!data.element || !data.path) return;
+                    
+                    const pathLength = data.path.getTotalLength();
+                    data.offset += data.speed;
+                    if (data.offset > pathLength) data.offset = 0;
+                    
+                    const point = data.path.getPointAtLength(data.offset);
+                    data.element.style.left = (containerRect.left + point.x - 3) + 'px';
+                    data.element.style.top = (containerRect.top + point.y - 3) + 'px';
+                    
+                    const progress = data.offset / pathLength;
+                    data.element.style.opacity = progress < 0.1 ? progress * 10 : progress > 0.9 ? (1 - progress) * 10 : 1;
+                });
+                
+                requestAnimationFrame(update);
+            }
+            
+            requestAnimationFrame(update);
+        }
+
+        function hideAllContextMenus() {
+            if (canvasContextMenu) canvasContextMenu.classList.remove('visible');
+            if (nodeContextMenu) nodeContextMenu.classList.remove('visible');
+            if (connectionContextMenu) connectionContextMenu.classList.remove('visible');
+            activeContextMenu = null;
+            // 延迟清除 ID，确保菜单项的点击事件能读取到
+            //setTimeout(() => {
+            //    state.contextMenuNodeId = null;
+            //    state.contextMenuConnection = null;
+            //}, 100);
+        }
+
+        function showContextMenu(menu, x, y, contextData = {}) {
+            hideAllContextMenus();
+            
+            // 设置上下文数据
+            state.contextMenuNodeId = contextData.nodeId || null;
+            state.contextMenuConnection = contextData.connection || null;
+            
+            menu.style.display = 'block';
+            menu.style.visibility = 'hidden';
+            const actualWidth = menu.offsetWidth;
+            const actualHeight = menu.offsetHeight;
+            menu.style.display = '';
+            menu.style.visibility = '';
+            let posX = x;
+            let posY = y;
+            if (posX + actualWidth > window.innerWidth) posX = window.innerWidth - actualWidth - 10;
+            if (posY + actualHeight > window.innerHeight) posY = window.innerHeight - actualHeight - 10;
+            menu.style.left = posX + 'px';
+            menu.style.top = posY + 'px';
+            menu.classList.add('visible');
+            activeContextMenu = menu;
+        }
+
+        container.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+            const targetNode = e.target.closest('.node');
+            const targetPath = e.target.closest('path[data-connection]');
+            if (targetNode) {
+                //state.contextMenuNodeId = targetNode.dataset.id;
+                showContextMenu(nodeContextMenu, e.clientX, e.clientY, { nodeId: targetNode.dataset.id });
+            } else if (targetPath) {
+                const connectionData = targetPath.dataset.connection;
+                const [from, to] = connectionData.split('-');
+                showContextMenu(connectionContextMenu, e.clientX, e.clientY, { connection: { from, to } });
+            } else {
+                showContextMenu(canvasContextMenu, e.clientX, e.clientY);
+            }
+        });
+
+        document.addEventListener('click', (e) => {
+            // 如果点击的是右键菜单内的元素，不隐藏
+            if (e.target.closest('.context-menu')) {
+                return;
+            }
+            if (activeContextMenu) {
+                hideAllContextMenus();
+            }
+
+            // 点击节点编辑对话框外部时关闭
+            const nodeEditOverlay = document.getElementById('nodeEditOverlay');
+            if (nodeEditOverlay && nodeEditOverlay.classList.contains('visible')) {
+                if (!e.target.closest('.node-edit-dialog') && !e.target.closest('.node-more-btn')) {
+                    closeNodeEdit();
+                }
+            }
+        });
+
+        function initContextMenus() {
+            canvasContextMenu = document.getElementById('canvasContextMenu');
+            nodeContextMenu = document.getElementById('nodeContextMenu');
+            connectionContextMenu = document.getElementById('connectionContextMenu');
+            
+            if (canvasContextMenu) {
+                canvasContextMenu.querySelectorAll('.context-menu-item').forEach(item => {
+                    item.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        const typeMap = { 'add-text': 'text', 'add-image': 'image', 'add-video': 'video', 'add-audio': 'audio' };
+                        const type = typeMap[item.dataset.action];
+                        if (type) addNode(type);
+                        hideAllContextMenus();
+                    });
+                });
+            }
+            
+            if (nodeContextMenu) {
+                nodeContextMenu.querySelectorAll('.context-menu-item').forEach(item => {
+                    item.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        const nodeId = state.contextMenuNodeId;
+                        const action = item.dataset.action;
+                        if (action === 'delete-node' && nodeId) {
+                            deleteNode(nodeId);
+                        } else if (action === 'copy-node' && nodeId) {
+                            copyNode(nodeId);
+                        }
+                        hideAllContextMenus();
+                    });
+                });
+            }
+            
+            if (connectionContextMenu) {
+                connectionContextMenu.querySelectorAll('.context-menu-item').forEach(item => {
+                    item.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        const conn = state.contextMenuConnection;
+                        if (item.dataset.action === 'delete-connection' && conn) {
+                            deleteConnection(conn.from, conn.to);
+                        }
+                        hideAllContextMenus();
+                    });
+                });
+            }
+        }
+
+        function deleteNode(nodeId) {
+            state.connections = state.connections.filter(conn => conn.from !== nodeId && conn.to !== nodeId);
+            state.nodes = state.nodes.filter(node => node.id !== nodeId);
+            if (state.selectedNodeId === nodeId) {
+                state.selectedNodeId = null;
+                hideNodeUI();
+                clearFlowAnimations();
+            }
+            render();
+            markChanged();
+        }
+
+        function copyNode(nodeId) {
+            const sourceNode = state.nodes.find(n => n.id === nodeId);
+            if (!sourceNode) return;
+            const newNode = { ...sourceNode, id: 'node-' + Date.now(), x: sourceNode.x + 50, y: sourceNode.y + 50 };
+            if (sourceNode.img) newNode.img = sourceNode.img;
+            if (sourceNode.content) newNode.content = sourceNode.content;
+            if (sourceNode.prompt) newNode.prompt = sourceNode.prompt;
+            state.nodes.push(newNode);
+            render();
+            setTimeout(() => selectNode(newNode.id), 50);
+            markChanged();
+        }
+
+        function deleteConnection(fromId, toId) {
+            if (state.selectedConnection && state.selectedConnection.from === fromId && state.selectedConnection.to === toId) {
+                deselectConnection();
+            }
+            state.connections = state.connections.filter(conn => !(conn.from === fromId && conn.to === toId));
+            renderConnections();
+            updateHandleConnectionStates();
+            if (state.selectedNodeId) updateFlowAnimations(state.selectedNodeId);
+            markChanged();
+        }
+
+        function addNode(type) {
+            if (!type) {
+                type = prompt('输入节点类型 (character/reference/video/generate/prompt):', 'character');
+            }
+            if (!type) return;
+            const typeMap = { 'text': 'prompt', 'image': 'reference', 'video': 'video', 'audio': 'generate' };
+            const nodeType = typeMap[type] || type;
+            const newNode = {
+                id: 'node-' + Date.now(), type: nodeType,
+                x: (600 - state.viewTransform.x) / state.viewTransform.scale,
+                y: (300 - state.viewTransform.y) / state.viewTransform.scale,
+                title: nodeType.charAt(0).toUpperCase() + nodeType.slice(1)
+            };
+            if (nodeType === 'character' || nodeType === 'reference') {
+                // 新增的图片节点不设置 img，使用 SVG 占位图标
+                newNode.img = null;
+            } else if (nodeType === 'video') {
+                newNode.img = 'https://placehold.co/150x200/1e293b/fff?text=Video';
+            } else if (nodeType === 'prompt') {
+                newNode.content = '请输入新的任务描述...';
+            }
+            state.nodes.push(newNode);
+            render();
+            markChanged();
+        }
+
+        function handleSavePrompt() {
+            if (state.selectedNodeId) {
+                const node = state.nodes.find(n => n.id === state.selectedNodeId);
+                if (node) { node.prompt = promptInput.value; if (node.type === 'prompt') node.content = promptInput.value; alert('提示词已保存'); }
+            }
+        }
+        async function handleGenerate() {
+            const promptInput = document.getElementById('promptInput');
+            const prompt = promptInput.value.trim();
+            
+            if (!prompt) {
+                alert('请先输入描述内容');
+                return;
+            }
+
+            let node = null;
+            if (state.selectedNodeId) {
+                node = state.nodes.find(n => n.id === state.selectedNodeId);
+                if (node) {
+                    node.prompt = prompt;
+                }
+            }
+            if (!node){
+                return;
+            }
+            // 核心修改：根据节点类型分发
+            if (node.type === 'video') {
+                // 生成视频
+                await handleGenerateVideo();
+            } else if (node.type === 'reference' || node.type === 'character' || node.type === 'image') {
+                // 生成图片
+                await handleGenerateImage();
+            } else {
+                alert('当前节点类型不支持生成，请选择图片或视频节点');
+            }
+        }
+
+
+        async function handleGenerateImage() {
+            const prompt = promptInput.value.trim();
+            const node = state.nodes.find(n => n.id === state.selectedNodeId);
+            
+            // 显示加载状态
+            const generateBtn = document.querySelector('.btn-primary');
+            const originalText = generateBtn.textContent;
+            generateBtn.textContent = '⏳ 生成中...';
+            generateBtn.disabled = true;
+            
+            // 创建进度提示
+            const progressDiv = document.createElement('div');
+            progressDiv.style.cssText = `
+                position: fixed;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                background: rgba(0,0,0,0.8);
+                color: white;
+                padding: 20px 40px;
+                border-radius: 12px;
+                z-index: 1000;
+                text-align: center;
+            `;
+            progressDiv.innerHTML = `
+                <div style="font-size: 40px; margin-bottom: 10px;">🎨</div>
+                <div>AI 正在创作中...</div>
+                <div style="font-size: 12px; margin-top: 8px; color: #aaa;">${prompt.slice(0, 30)}${prompt.length > 30 ? '...' : ''}</div>
+                <div style="margin-top: 12px;">
+                    <div style="width: 200px; height: 4px; background: #333; border-radius: 2px; overflow: hidden;">
+                        <div id="progressBar" style="width: 0%; height: 100%; background: #6366f1; transition: width 0.3s;"></div>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(progressDiv);
+            
+            // 模拟进度（实际项目中可以用 WebSocket 或轮询获取真实进度）
+            let progress = 0;
+            const progressInterval = setInterval(() => {
+                progress += Math.random() * 10;
+                if (progress > 90) {
+                    progress = 90;
+                    clearInterval(progressInterval);
+                }
+                const progressBar = document.getElementById('progressBar');
+                if (progressBar) {
+                    progressBar.style.width = progress + '%';
+                }
+            }, 300);
+            
+            try {
+                const response = await fetch('/api/assets/generateImage', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ prompt })
+                });
+                
+                // 完成进度
+                clearInterval(progressInterval);
+                const progressBar = document.getElementById('progressBar');
+                if (progressBar) {
+                    progressBar.style.width = '100%';
+                }
+                
+                const result = await response.json();
+                
+                // 延迟一下让用户看到完成效果
+                await new Promise(resolve => setTimeout(resolve, 500));
+                
+                // 移除进度提示
+                document.body.removeChild(progressDiv);
+                
+                if (response.ok && result.code === 200) {
+                    // 生成成功
+                    console.log('生成成功:', result.data);
+                    
+                    // 更新当前节点的图片
+                    if (state.selectedNodeId) {
+                        const node = state.nodes.find(n => n.id === state.selectedNodeId);
+                        if (node) {
+                            node.img = result.data.image_url;
+                            node.prompt = prompt;
+                            // 更新节点标题
+                            node.title = prompt.slice(0, 15) + '...';
+                            render();
+                            
+                            // 显示成功消息
+                            const successMsg = document.createElement('div');
+                            successMsg.style.cssText = `
+                                position: fixed;
+                                bottom: 100px;
+                                left: 50%;
+                                transform: translateX(-50%);
+                                background: #10b981;
+                                color: white;
+                                padding: 10px 24px;
+                                border-radius: 8px;
+                                z-index: 1000;
+                                box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+                            `;
+                            successMsg.textContent = '✅ 生成成功！图片已添加到节点';
+                            document.body.appendChild(successMsg);
+                            setTimeout(() => {
+                                document.body.removeChild(successMsg);
+                            }, 3000);
+                        }
+                    }
+                } else {
+                    alert('生成失败: ' + (result.message || '未知错误'));
+                }
+            } catch (error) {
+                clearInterval(progressInterval);
+                document.body.removeChild(progressDiv);
+                console.error('API 请求错误:', error);
+                alert('请求失败，请检查网络连接');
+            } finally {
+                generateBtn.textContent = originalText;
+                generateBtn.disabled = false;
+            }
+        }
+        // ==========================================
+        // 视频生成函数
+        // ==========================================
+
+        async function handleGenerateVideo() {
+            const promptInput = document.getElementById('promptInput');
+            const prompt = promptInput.value.trim();
+            
+            if (!prompt) {
+                alert('请先输入视频描述内容');
+                return;
+            }
+
+             // 更新节点
+            let node = null;
+            if (state.selectedNodeId) {
+                node = state.nodes.find(n => n.id === state.selectedNodeId);
+                if (node) {
+                    node.prompt = prompt;
+                }
+            }
+            if (!node){
+                alert('请先选择一个节点来保存视频');
+                return;
+            }
+            if (node.type !== 'video') {
+                alert('请选择一个视频节点');
+                return;
+            }
+            
+            // 显示加载状态
+            const generateBtn = document.querySelector('.btn-primary');
+            const originalText = generateBtn.textContent;
+            generateBtn.textContent = '⏳ 生成视频中...';
+            generateBtn.disabled = true;
+            
+            // 创建进度提示
+            const progressDiv = createProgressDialog('🎬 视频生成中...', prompt);
+            document.body.appendChild(progressDiv);
+            
+            try {
+                // 调用视频生成 API
+                const response = await fetch('/api/assets/generateVideo', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        prompt: prompt,
+                        resolution: '1080p',
+                        style: 'cinematic'
+                    })
+                });
+                
+                const result = await response.json();
+                
+                // 移除进度对话框
+                document.body.removeChild(progressDiv);
+                
+                if (response.ok && result.code === 200) {
+                    // 检查是否是异步任务
+                    if (result.data.task_id) {
+                        node.task_id = result.data.task_id;
+                        node.video_id = result.data.video_id;
+                        node.asssetId = result.data.asssetId;
+                        node.status = 'processing';
+                        // 异步任务，开始轮询
+                        alert('视频生成任务已提交，开始轮询进度...');
+                        pollVideoGenerationTask(result.data.task_id);
+                    } else {
+                        // 同步完成
+                        console.log('视频生成成功:', result.data);
+                        alert('✅ 视频生成成功！');
+                        
+                        // 更新节点
+                        if (state.selectedNodeId) {
+                            const node = state.nodes.find(n => n.id === state.selectedNodeId);
+                            if (node) {
+                                node.video_url = result.data.video_url;
+                                node.prompt = prompt;
+                                node.source_url = result.data.source_url;
+                                node.type = 'video';
+                                node.task_id = result.data.task_id;
+                                node.video_id = result.data.video_id;
+                                node.asssetId = result.data.asssetId;
+                                node.status = 'processing';
+                                render();
+                            }
+                        }
+                    }
+                } else {
+                    alert('生成失败: ' + (result.message || '未知错误'));
+                }
+            } catch (error) {
+                document.body.removeChild(progressDiv);
+                console.error('API 请求错误:', error);
+                node.status = 'error';
+                node.error = error.message;
+                alert('请求失败，请检查网络连接');
+            } finally {
+                generateBtn.textContent = originalText;
+                generateBtn.disabled = false;
+            }
+        }
+
+        // ==========================================
+        // 轮询视频生成任务状态
+        // ==========================================
+
+        async function pollVideoGenerationTask(taskId) {
+            // 创建进度对话框
+            const progressDiv = createProgressDialog('⏳ 视频生成中...', '任务 ID: ' + taskId);
+            document.body.appendChild(progressDiv);
+            
+            let attempts = 0;
+            const maxAttempts = 60; // 最多轮询 60 次
+            const interval = 5000; // 每 3 秒轮询一次
+            let recallFlag = true;
+            const pollInterval = setInterval(async () => {
+                attempts++;
+                
+                try {
+                    if (!recallFlag){
+                        return;
+                    }
+                    recallFlag = false;
+                    const response = await fetch(`/api/assets/generateVideo/task/${taskId}`);
+                    const result = await response.json();
+                    recallFlag = true;
+                    
+                    if (response.ok && result.code === 200) {
+                        const taskData = result.data;
+                        
+                        // 更新进度显示
+                        if (taskData.progress !== undefined) {
+                            updateProgressDialog(progressDiv, taskData.progress);
+                        }
+                        
+                        if (taskData.status === 'completed' && taskData.result) {
+                            // 任务完成
+                            clearInterval(pollInterval);
+                            document.body.removeChild(progressDiv);
+                            
+                            alert('✅ 视频生成完成！');
+                            
+                            // 更新节点
+                            const node = state.nodes.find(n => n.task_id === taskId);
+                            if (node) {
+                                node.source_url = taskData.result.video_url || taskData.result.remixed_from_video_id;
+                                node.status = 'completed';
+                                node.size = taskData.result.size || null;
+                                node.object = taskData.result.object || null;
+                                render();
+                            }
+                            
+                            // 刷新资产列表
+                            await fetchAssets();
+                        } else if (taskData.status === 'failed') {
+                            // 任务失败
+                            clearInterval(pollInterval);
+                            document.body.removeChild(progressDiv);
+                            alert('❌ 视频生成失败: ' + (taskData.error || '未知错误'));
+                        }
+                    }
+                } catch (error) {
+                    console.error('轮询任务状态失败:', error);
+                }
+                
+                if (attempts >= maxAttempts) {
+                    clearInterval(pollInterval);
+                    document.body.removeChild(progressDiv);
+                    alert('⏰ 视频生成超时，请稍后查看资产库');
+                }
+            }, interval);
+        }
+
+        // ==========================================
+        // 辅助函数：创建进度对话框
+        // ==========================================
+
+        // 全局变量：管理所有进度对话框
+        function createProgressDialog(title, content) {
+            const id = 'progress-dialog-' + (++dialogIdCounter);
+            const div = document.createElement('div');
+            div.id = id;
+            div.className = 'progress-dialog';
+            div.dataset.minimized = 'false';
+            
+            div.style.cssText = `
+                position: fixed;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                background: rgba(0,0,0,0.85);
+                color: white;
+                padding: 24px 40px;
+                border-radius: 16px;
+                z-index: 1000;
+                text-align: center;
+                min-width: 320px;
+                max-width: 500px;
+                box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+                transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                cursor: default;
+                user-select: none;
+            `;
+            
+            div.innerHTML = `
+                <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;">
+                    <div style="display:flex;align-items:center;gap:10px;">
+                        <span style="font-size:28px;">${title.split(' ')[0]}</span>
+                        <span style="font-size:16px;font-weight:bold;">${title}</span>
+                    </div>
+                    <div style="display:flex;gap:6px;">
+                        <button class="dialog-minimize-btn" style="
+                            background:rgba(255,255,255,0.15);
+                            border:none;
+                            color:#fff;
+                            width:28px;
+                            height:28px;
+                            border-radius:6px;
+                            cursor:pointer;
+                            font-size:16px;
+                            display:flex;
+                            align-items:center;
+                            justify-content:center;
+                            transition:background 0.2s;
+                        " title="最小化">─</button>
+                        <button class="dialog-close-btn" style="
+                            background:rgba(255,255,255,0.15);
+                            border:none;
+                            color:#fff;
+                            width:28px;
+                            height:28px;
+                            border-radius:6px;
+                            cursor:pointer;
+                            font-size:16px;
+                            display:flex;
+                            align-items:center;
+                            justify-content:center;
+                            transition:background 0.2s;
+                        " title="关闭">✕</button>
+                    </div>
+                </div>
+                <div class="dialog-body" style="font-size:14px;color:#aaa;margin-bottom:16px;">${content}</div>
+                <div class="dialog-progress" style="width:100%;height:6px;background:#333;border-radius:3px;overflow:hidden;margin:0 auto;">
+                    <div class="progress-bar" style="width:0%;height:100%;background:linear-gradient(90deg,#6366f1,#8b5cf6);transition:width 0.3s;"></div>
+                </div>
+                <div class="dialog-progress-text" style="font-size:12px;color:#888;margin-top:8px;">处理中...</div>
+            `;
+            
+            // 存储状态
+            const dialogState = {
+                element: div,
+                id: id,
+                isMinimized: false,
+                title: title,
+                content: content,
+                progress: 0
+            };
+            progressDialogs.push(dialogState);
+            
+            // 最小化按钮事件
+            const minimizeBtn = div.querySelector('.dialog-minimize-btn');
+            minimizeBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                toggleMinimizeDialog(id);
+            });
+            
+            // 关闭按钮事件
+            const closeBtn = div.querySelector('.dialog-close-btn');
+            closeBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                closeDialog(id);
+            });
+            
+            // 双击切换最小化
+            div.addEventListener('dblclick', () => {
+                toggleMinimizeDialog(id);
+            });
+            
+            // 保存引用到元素本身，方便查找
+            div._dialogId = id;
+            
+            document.body.appendChild(div);
+            return div;
+        }
+
+        function toggleMinimizeDialog(id) {
+            const dialog = progressDialogs.find(d => d.id === id);
+            if (!dialog) return;
+            
+            const el = dialog.element;
+            const isMinimized = dialog.isMinimized;
+            
+            if (isMinimized) {
+                // 恢复
+                dialog.isMinimized = false;
+                el.dataset.minimized = 'false';
+                el.style.top = '50%';
+                el.style.left = '50%';
+                el.style.transform = 'translate(-50%, -50%)';
+                el.style.width = '';
+                el.style.padding = '24px 40px';
+                el.style.borderRadius = '16px';
+                el.style.cursor = 'default';
+                
+                // 恢复内容显示
+                const body = el.querySelector('.dialog-body');
+                const progress = el.querySelector('.dialog-progress');
+                const progressText = el.querySelector('.dialog-progress-text');
+                if (body) body.style.display = 'block';
+                if (progress) progress.style.display = 'block';
+                if (progressText) progressText.style.display = 'block';
+                
+                // 更新最小化按钮图标
+                const minBtn = el.querySelector('.dialog-minimize-btn');
+                if (minBtn) minBtn.textContent = '─';
+                
+                // 恢复 z-index
+                el.style.zIndex = '1000';
+            } else {
+                // 最小化
+                dialog.isMinimized = true;
+                el.dataset.minimized = 'true';
+                el.style.top = 'auto';
+                el.style.left = 'auto';
+                el.style.bottom = '20px';
+                el.style.right = '20px';
+                el.style.transform = 'none';
+                el.style.width = 'auto';
+                el.style.minWidth = 'auto';
+                el.style.padding = '10px 16px';
+                el.style.borderRadius = '12px';
+                el.style.cursor = 'pointer';
+                el.style.maxWidth = '300px';
+                
+                // 隐藏内容，只显示标题和进度
+                const body = el.querySelector('.dialog-body');
+                const progress = el.querySelector('.dialog-progress');
+                const progressText = el.querySelector('.dialog-progress-text');
+                if (body) body.style.display = 'none';
+                if (progress) progress.style.display = 'none';
+                if (progressText) progressText.style.display = 'none';
+                
+                // 在标题栏显示进度
+                const headerDiv = el.querySelector('div:first-child');
+                if (headerDiv) {
+                    const existingStatus = headerDiv.querySelector('.minimized-status');
+                    if (!existingStatus) {
+                        const statusSpan = document.createElement('span');
+                        statusSpan.className = 'minimized-status';
+                        statusSpan.style.cssText = `
+                            font-size:11px;
+                            color:#10b981;
+                            margin-left:8px;
+                            background:rgba(16,185,129,0.2);
+                            padding:2px 8px;
+                            border-radius:10px;
+                        `;
+                        statusSpan.textContent = `${Math.round(dialog.progress)}%`;
+                        headerDiv.appendChild(statusSpan);
+                    }
+                }
+                
+                // 更新最小化按钮图标
+                const minBtn = el.querySelector('.dialog-minimize-btn');
+                if (minBtn) minBtn.textContent = '□';
+                
+                // 降低 z-index
+                el.style.zIndex = '999';
+            }
+        }
+
+        function closeDialog(id) {
+            const dialog = progressDialogs.find(d => d.id === id);
+            if (dialog) {
+                dialog.element.remove();
+                progressDialogs = progressDialogs.filter(d => d.id !== id);
+            }
+        }
+
+
+        function updateProgressDialog(div, progress) {
+            // 查找对应的 dialog 状态
+            const id = div._dialogId;
+            const dialog = progressDialogs.find(d => d.id === id);
+            
+            const progressBar = div.querySelector('.progress-bar');
+            const progressText = div.querySelector('.dialog-progress-text');
+            
+            if (progressBar) {
+                const pct = Math.min(progress, 100);
+                progressBar.style.width = pct + '%';
+            }
+            if (progressText) {
+                progressText.textContent = `进度: ${Math.min(progress, 100)}%`;
+            }
+            
+            // 更新状态
+            if (dialog) {
+                dialog.progress = Math.min(progress, 100);
+                
+                // 如果是最小化状态，更新状态显示
+                if (dialog.isMinimized) {
+                    const statusEl = div.querySelector('.minimized-status');
+                    if (statusEl) {
+                        statusEl.textContent = `${Math.round(dialog.progress)}%`;
+                    }
+                }
+            }
+        }
+
+        function handleSettings() { alert('设置功能开发中...'); }
+
+
+        // ==========================================
+        // 保存/加载功能
+        // ==========================================
+        function getSaveData() {
+            return {
+                nodes: state.nodes.map(node => ({
+                    x: Math.round(node.x * 100) / 100,
+                    y: Math.round(node.y * 100) / 100,
+                    ...node
+                })),
+                connections: state.connections.map(conn => ({
+                    from: conn.from,
+                    to: conn.to,
+                    fromHandle: conn.fromHandle || 'out',
+                    toHandle: conn.toHandle || 'in'
+                })),
+                viewTransform: {
+                    x: Math.round(state.viewTransform.x * 100) / 100,
+                    y: Math.round(state.viewTransform.y * 100) / 100,
+                    scale: Math.round(state.viewTransform.scale * 100) / 100
+                },
+                selectedNodeId: state.selectedNodeId || null,
+                gridSnap: state.gridSnap || false,
+                id: inputid || null
+            };
+        }
+
+        function hasChanges() {
+            const currentData = getSaveData();
+            if (!state.lastSaveData) return true;
+            return JSON.stringify(currentData) !== JSON.stringify(state.lastSaveData);
+        }
+
+        function markChanged() {
+            state.hasUnsavedChanges = true;
+        }
+
+        async function saveCanvas(showMessage = false) {
+            const saveData = getSaveData();
+            const saveBtn = document.getElementById('saveBtn');
+            
+            try {
+                if (saveBtn && showMessage) {
+                    saveBtn.textContent = '⏳ 保存中...';
+                    saveBtn.disabled = true;
+                }
+
+                const response = await fetch('/api/assets/save-canvas', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(saveData)
+                });
+
+                if (!response.ok) throw new Error(`保存失败: ${response.status}`);
+
+                await response.json();
+                state.lastSaveData = JSON.parse(JSON.stringify(saveData));
+                state.hasUnsavedChanges = false;
+                console.log('画布已保存');
+                updateSaveStatus(true);
+                
+                if (saveBtn && showMessage) {
+                    saveBtn.textContent = '✅ 已保存';
+                    saveBtn.style.background = '#10b981';
+                    setTimeout(() => {
+                        saveBtn.textContent = '💾 保存';
+                        saveBtn.style.background = '#6366f1';
+                        saveBtn.disabled = false;
+                    }, 2000);
+                }
+                return true;
+            } catch (error) {
+                console.log('保存失败（调试模式）:', error.message);
+                state.lastSaveData = JSON.parse(JSON.stringify(saveData));
+                state.hasUnsavedChanges = false;
+                updateSaveStatus(false);
+                
+                if (saveBtn && showMessage) {
+                    saveBtn.textContent = '❌ 失败';
+                    saveBtn.style.background = '#ef4444';
+                    setTimeout(() => {
+                        saveBtn.textContent = '💾 保存';
+                        saveBtn.style.background = '#6366f1';
+                        saveBtn.disabled = false;
+                    }, 2000);
+                }
+                return false;
+            }
+        }
+
+        function updateSaveStatus(saved) {
+            const saveStatus = document.querySelector('.save-status');
+            if (saveStatus) {
+                if (saved) {
+                    saveStatus.textContent = '● 已保存';
+                    saveStatus.style.color = '#10b981';
+                } else {
+                    saveStatus.textContent = '● 未同步';
+                    saveStatus.style.color = '#f59e0b';
+                }
+            }
+        }
+
+        async function loadCanvas() {
+            try {
+                const response = await fetch('/api/assets/canvas', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+
+                if (!response.ok) throw new Error('加载失败');
+
+                const data = await response.json();
+                let firstCancas = null;
+                if (data.data && Array.isArray(data.data)){
+                    if (inputid) {
+                        const matched = data.data.find(item => item.id === inputid);
+                        firstCancas = matched || (data.data.length > 0 ? data.data[0] : {});
+                    } else {
+                        firstCancas = data.data.length > 0 ? data.data[0] : {};
+                    }
+                }else{
+                    firstCancas = data.data;
+                }
+                applyLoadedData(firstCancas);
+                await checkProcessingVideos();
+                console.log('画布数据已从服务器加载');
+                return true;
+            } catch (error) {
+                console.log('无法从服务器加载，使用默认数据');
+                initMockData();
+                return false;
+            }
+        }
+
+        function applyLoadedData(data) {
+            state.nodes = [];
+            state.connections = [];
+            state.selectedNodeId = null;
+            clearFlowAnimations();
+            deselectConnection();
+            
+            if (data.nodes && Array.isArray(data.nodes)) {
+                data.nodes.forEach(nodeData => {
+                    state.nodes.push({
+                        ...nodeData
+                    });
+                });
+            }
+            
+            if (data.connections && Array.isArray(data.connections)) {
+                data.connections.forEach(connData => {
+                    state.connections.push({
+                        from: connData.from,
+                        to: connData.to,
+                        fromHandle: connData.fromHandle || 'out',
+                        toHandle: connData.toHandle || 'in'
+                    });
+                });
+            }
+            
+            if (data.viewTransform) state.viewTransform = data.viewTransform;
+            if (data.gridSnap !== undefined) {
+                state.gridSnap = data.gridSnap;
+                const btn = document.getElementById('gridSnapBtn');
+                if (btn) {
+                    if (state.gridSnap) btn.classList.add('active');
+                    else btn.classList.remove('active');
+                }
+            }
+            
+            state.lastSaveData = JSON.parse(JSON.stringify(getSaveData()));
+            state.hasUnsavedChanges = false;
+            render();
+            updateZoomDisplay();
+            
+            if (data.selectedNodeId && state.nodes.find(n => n.id === data.selectedNodeId)) {
+                setTimeout(() => selectNode(data.selectedNodeId), 100);
+            }
+        }
+
+        function startAutoSave() {
+            if (state.autoSaveTimer) clearInterval(state.autoSaveTimer);
+            state.autoSaveTimer = setInterval(() => {
+                if (hasChanges()) {
+                    console.log('检测到变更，自动保存...');
+                    saveCanvas(false);
+                }
+            }, 30000);
+        }
+
+        // 上传图片功能
+        function uploadImage() {
+            if (!state.selectedNodeId) return;
+            
+            // 创建文件选择器
+            const fileInput = document.createElement('input');
+            fileInput.type = 'file';
+            fileInput.accept = 'image/*';
+            fileInput.style.display = 'none';
+            
+            fileInput.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                        const node = state.nodes.find(n => n.id === state.selectedNodeId);
+                        if (node) {
+                            node.img = event.target.result;
+                            render();
+                            markChanged();
+                        }
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+            
+            document.body.appendChild(fileInput);
+            fileInput.click();
+            document.body.removeChild(fileInput);
+        }
+
+        // 从资产库选择（预留功能）
+        function selectFromAssetLibrary() {
+            selectedAssetId = null;
+            currentAssetTab = 'all';
+            assetDisplayCount = assetPageSize;
+            
+            // 重置选项卡
+            document.querySelectorAll('.asset-dialog-tab').forEach(tab => {
+                tab.classList.remove('active');
+                if (tab.dataset.tab === 'all') tab.classList.add('active');
+            });
+            
+            // 显示对话框
+            const overlay = document.getElementById('assetDialogOverlay');
+            if (overlay) overlay.classList.add('visible');
+            
+            // 加载资产
+            loadAssets();
+            
+            // 初始化滚动监听
+            setTimeout(() => initAssetScrollListener(), 200);
+        }
+
+        function closeAssetDialog() {
+            const overlay = document.getElementById('assetDialogOverlay');
+            if (overlay) overlay.classList.remove('visible');
+            selectedAssetId = null;
+            updateApplyButton();
+        }
+
+        function switchAssetTab(tab) {
+            currentAssetTab = tab;
+            
+            // 更新选项卡样式
+            document.querySelectorAll('.asset-dialog-tab').forEach(t => {
+                t.classList.remove('active');
+                if (t.dataset.tab === tab) t.classList.add('active');
+            });
+            
+            // 过滤资产
+            filterAssets();
+        }
+
+        async function loadAssets() {
+            try {
+                const response = await fetch('/api/assets', {
+                    method: 'GET',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                
+                if (!response.ok) throw new Error('加载失败');
+                
+                const result = await response.json();
+                assetList = result.data?.list || [];
+            } catch (error) {
+                console.log('无法从服务器加载资产，使用模拟数据');
+                // 模拟数据
+                assetList = [
+                    { id: 'asset-001', title: '山水风景', type: 'image', cover_url: 'https://placehold.co/300x200/4f46e5/fff?text=山水风景' },
+                    { id: 'asset-002', title: '城市建筑', type: 'image', cover_url: 'https://placehold.co/300x200/10b981/fff?text=城市建筑' },
+                    { id: 'asset-003', title: '人物肖像', type: 'image', cover_url: 'https://placehold.co/300x200/f59e0b/fff?text=人物肖像' },
+                    { id: 'asset-004', title: '演示视频', type: 'video', cover_url: 'https://placehold.co/300x200/ef4444/fff?text=演示视频' },
+                    { id: 'asset-005', title: '自然风光', type: 'image', cover_url: 'https://placehold.co/300x200/8b5cf6/fff?text=自然风光' },
+                    { id: 'asset-006', title: '教程视频', type: 'video', cover_url: 'https://placehold.co/300x200/06b6d4/fff?text=教程视频' },
+                    { id: 'asset-007', title: '抽象艺术', type: 'image', cover_url: 'https://placehold.co/300x200/ec4899/fff?text=抽象艺术' },
+                    { id: 'asset-008', title: '产品展示', type: 'image', cover_url: 'https://placehold.co/300x200/14b8a6/fff?text=产品展示' }
+                ];
+            }
+            
+            filterAssets();
+        }
+
+
+        function renderAssetCards() {
+    const content = document.getElementById('assetDialogContent');
+    if (!content) return;
+    
+    if (filteredAssets.length === 0) {
+        content.innerHTML = '<div class="asset-empty">暂无资产</div>';
+        return;
+    }
+    
+    const displayAssets = filteredAssets.slice(0, assetDisplayCount);
+    
+    content.innerHTML = displayAssets.map(asset => `
+        <div class="asset-card ${selectedAssetId === asset.id ? 'selected' : ''}" 
+             data-asset-id="${asset.id}" 
+             onclick="selectAsset('${asset.id}')">
+            <div class="asset-card-image">
+                <img src="${asset.cover_url || ''}" 
+                     alt="${asset.title || ''}" 
+                     loading="lazy"
+                     onerror="this.style.display='none';this.parentElement.querySelector('.placeholder').style.display='flex';"
+                     onload="this.parentElement.querySelector('.placeholder').style.display='none';">
+                <span class="placeholder" style="${asset.cover_url ? 'display:none;' : 'display:flex;'}">${asset.type === 'video' ? '🎬' : '🖼️'}</span>
+            </div>
+            <div class="asset-card-info">
+                <div class="asset-card-title">${asset.title || '未命名'}</div>
+                <div class="asset-card-id">${asset.id}</div>
+            </div>
+        </div>
+    `).join('');
+    
+    if (assetDisplayCount < filteredAssets.length) {
+        const loadMore = document.createElement('div');
+        loadMore.className = 'asset-empty';
+        loadMore.textContent = `还有 ${filteredAssets.length - assetDisplayCount} 个资产...`;
+        loadMore.style.gridColumn = '1 / -1';
+        content.appendChild(loadMore);
+    }
+}
+
+        // 重置显示数量（切换 tab 时调用）
+        function resetAssetDisplay() {
+            assetDisplayCount = assetPageSize;
+        }
+
+        // 修改 filterAssets 函数，重置显示数量
+        function filterAssets() {
+            if (currentAssetTab === 'all') {
+                filteredAssets = [...assetList];
+            } else {
+                filteredAssets = assetList.filter(asset => asset.type === currentAssetTab);
+            }
+            selectedAssetId = null;
+            resetAssetDisplay();
+            updateApplyButton();
+            renderAssetCards();
+        }
+
+        function selectAsset(id) {
+            selectedAssetId = id;
+            
+            // 更新卡片选中状态
+            document.querySelectorAll('.asset-card').forEach(card => {
+                card.classList.remove('selected');
+                if (card.dataset.assetId == id) card.classList.add('selected');
+            });
+            
+            updateApplyButton();
+        }
+
+        // 在 init 函数或启动代码中添加滚动监听
+        function initAssetScrollListener() {
+            const content = document.getElementById('assetDialogContent');
+            if (!content) return;
+            
+            content.addEventListener('scroll', () => {
+                const { scrollTop, scrollHeight, clientHeight } = content;
+                
+                // 滚动到底部时加载更多
+                if (scrollTop + clientHeight >= scrollHeight - 50) {
+                    if (assetDisplayCount < filteredAssets.length) {
+                        assetDisplayCount += assetPageSize;
+                        renderAssetCards();
+                    }
+                }
+            });
+        }
+
+        function updateApplyButton() {
+            const btn = document.getElementById('assetApplyBtn');
+            if (btn) {
+                btn.disabled = !selectedAssetId;
+            }
+        }
+
+        function applySelectedAsset() {
+            if (!selectedAssetId || !state.selectedNodeId) return;
+            
+            const asset = assetList.find(a => a.id == selectedAssetId);
+            if (!asset) return;
+            
+            const node = state.nodes.find(n => n.id === state.selectedNodeId);
+            if (node) {
+                node.img = asset.cover_url;
+                node.assetId = asset.id;
+                node.title = asset.title;
+                render();
+                markChanged();
+            }
+            
+            closeAssetDialog();
+        }
+
+        // ==========================================
+        // 节点编辑功能
+        // ==========================================
+        function openNodeEdit(nodeId) {
+            const node = state.nodes.find(n => n.id === nodeId);
+            if (!node) return;
+            
+            // 填充表单数据
+            document.getElementById('editNodeTitle').value = node.title || '';
+            document.getElementById('editNodeImageName').value = node.imageName || '';
+            document.getElementById('editNodeEpisodes').value = node.episodes || '';
+            document.getElementById('editNodeVoice').value = node.voice || '';
+            
+            // 存储当前编辑的节点ID
+            document.getElementById('nodeEditOverlay').dataset.nodeId = nodeId;
+            
+            // 定位对话框到节点右侧
+            const nodeEl = document.querySelector(`.node[data-id="${nodeId}"]`);
+            if (nodeEl) {
+                const nodeRect = nodeEl.getBoundingClientRect();
+                const overlay = document.getElementById('nodeEditOverlay');
+                const dialog = overlay.querySelector('.node-edit-dialog');
+                
+                // 先显示才能获取尺寸
+                overlay.style.display = 'flex';
+                overlay.style.visibility = 'hidden';
+                const dialogWidth = dialog.offsetWidth;
+                const dialogHeight = dialog.offsetHeight;
+                overlay.style.display = '';
+                overlay.style.visibility = '';
+                
+                let left = nodeRect.right + 16;
+                let top = nodeRect.top;
+                
+                // 如果右侧空间不够，放到左侧
+                if (left + dialogWidth > window.innerWidth) {
+                    left = nodeRect.left - dialogWidth - 16;
+                }
+                
+                // 如果下方空间不够，向上调整
+                if (top + dialogHeight > window.innerHeight) {
+                    top = window.innerHeight - dialogHeight - 20;
+                }
+                
+                // 确保不超出视口
+                if (left < 0) left = 16;
+                if (top < 0) top = 16;
+                
+                dialog.style.position = 'fixed';
+                dialog.style.left = left + 'px';
+                dialog.style.top = top + 'px';
+                dialog.style.margin = '0';
+            }
+            
+            // 显示对话框
+            const overlay = document.getElementById('nodeEditOverlay');
+            overlay.classList.add('visible');
+            // 去掉遮罩背景
+            overlay.style.background = 'transparent';
+            overlay.style.pointerEvents = 'none';
+            overlay.querySelector('.node-edit-dialog').style.pointerEvents = 'auto';
+        }
+
+        function closeNodeEdit() {
+            const overlay = document.getElementById('nodeEditOverlay');
+            overlay.classList.remove('visible');
+            overlay.style.background = '';
+            overlay.style.pointerEvents = '';
+            const dialog = overlay.querySelector('.node-edit-dialog');
+            dialog.style.position = '';
+            dialog.style.left = '';
+            dialog.style.top = '';
+            dialog.style.margin = '';
+            dialog.style.pointerEvents = '';
+        }
+
+        function saveNodeEdit() {
+            const nodeId = document.getElementById('nodeEditOverlay').dataset.nodeId;
+            if (!nodeId) return;
+            
+            const node = state.nodes.find(n => n.id === nodeId);
+            if (!node) return;
+            
+            // 保存表单数据到节点
+            node.title = document.getElementById('editNodeTitle').value || node.title;
+            node.imageName = document.getElementById('editNodeImageName').value;
+            node.episodes = document.getElementById('editNodeEpisodes').value;
+            node.voice = document.getElementById('editNodeVoice').value;
+            
+            // 更新节点标题显示
+            const nodeEl = document.querySelector(`.node[data-id="${nodeId}"]`);
+            if (nodeEl) {
+                const headerSpan = nodeEl.querySelector('.node-header span:first-child');
+                if (headerSpan) {
+                    headerSpan.textContent = node.title;
+                }
+            }
+            
+            closeNodeEdit();
+            markChanged();
+        }
+
+        function previewAudio() {
+            const voice = document.getElementById('editNodeVoice').value;
+            const preview = document.getElementById('audioPreview');
+            
+            if (!voice) {
+                preview.textContent = '请先输入音色描述';
+                return;
+            }
+            
+            // 模拟音频预览
+            preview.innerHTML = `<div style="text-align:center;">
+                <div style="font-size:24px;margin-bottom:8px;">🔊</div>
+                <div style="color:#6366f1;">正在生成音色预览...</div>
+                <div style="font-size:12px;color:#999;margin-top:4px;">音色: ${voice}</div>
+            </div>`;
+            
+            setTimeout(() => {
+                preview.innerHTML = `<div style="text-align:center;">
+                    <div style="font-size:24px;margin-bottom:8px;">✅</div>
+                    <div style="color:#10b981;">预览完成</div>
+                    <div style="font-size:12px;color:#999;margin-top:4px;">音色: ${voice}</div>
+                </div>`;
+            }, 1500);
+        }
+
+
+        // ==========================================
+        // 视频生成任务监控系统
+        // ==========================================
+
+        // 启动定时任务监控
+        function startTaskPolling() {
+            
+            // 每 3 秒检查一次
+            setTimeout(async () => {
+                await checkProcessingVideos();
+            }, 3000);
+            
+            console.log('定时任务监控已启动');
+        }
+
+        // 检查所有状态为 processing 的视频节点
+        async function checkProcessingVideos() {
+            // 找出所有状态为 processing 的视频节点
+            const processingNodes = state.nodes.filter(node => 
+                node.type === 'video' && node.status === 'processing'
+            );
+            
+            if (processingNodes.length === 0) return;
+            
+            console.log(`发现 ${processingNodes.length} 个视频正在生成中...`);
+            
+            for (const node of processingNodes) {
+                await checkVideoTaskStatus(node);
+            }
+        }
+
+        // 检查单个视频任务状态
+        async function checkVideoTaskStatus(node) {
+            if (!node.task_id) {
+                // 没有 taskId，可能是旧数据，直接标记为失败
+                node.status = 'failed';
+                node.errorMessage = '任务ID丢失';
+                return;
+            }
+            
+            await pollVideoGenerationTask(node.task_id);
+        }
+
+
+
+
+        // 挂载到 window
+        window.openNodeEdit = openNodeEdit;
+        window.closeNodeEdit = closeNodeEdit;
+        window.saveNodeEdit = saveNodeEdit;
+        window.previewAudio = previewAudio;
+
+        // 挂载到 window
+        window.selectFromAssetLibrary = selectFromAssetLibrary;
+        window.closeAssetDialog = closeAssetDialog;
+        window.switchAssetTab = switchAssetTab;
+        window.selectAsset = selectAsset;
+        window.applySelectedAsset = applySelectedAsset;
+
+        // 挂载到 window
+        window.uploadImage = uploadImage;
+
+        window.zoomIn = zoomIn;
+        window.zoomOut = zoomOut;
+        window.resetView = resetView;
+        window.fitView = fitView;
+        window.addNode = addNode;
+        window.handleSavePrompt = handleSavePrompt;
+        window.handleGenerate = handleGenerate;
+        window.handleSettings = handleSettings;
+        window.toggleFullscreen = toggleFullscreen;
+        window.toggleMinimap = toggleMinimap;
+        window.toggleGridSnap = toggleGridSnap;
+        window.saveCanvas = saveCanvas;
+        window.loadCanvas = loadCanvas;
+
+        async function init() {
+            const loaded = await loadCanvas();
+            if (!loaded) {
+                render();
+                resetView();
+            }
+            
+            initContextMenus();
+            
+            connectionDeleteBtn = document.getElementById('connectionDeleteBtn');
+            if (connectionDeleteBtn) {
+                connectionDeleteBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    if (state.selectedConnection) {
+                        deleteConnection(state.selectedConnection.from, state.selectedConnection.to);
+                        deselectConnection();
+                    }
+                });
+            }
+            
+            const addMenuFab = document.getElementById('addMenuFab');
+            if (addMenuFab) {
+                addMenuFab.querySelectorAll('.add-menu-item').forEach(item => {
+                    item.addEventListener('click', (e) => addNode(item.dataset.type));
+                });
+            }
+            
+            const addNodeBtn = document.getElementById('addNodeBtn');
+            if (addNodeBtn) {
+                addNodeBtn.addEventListener('click', () => addNode());
+            }
+            
+            startAutoSave();
+            updateSaveStatus(false);
+            //startTaskPolling();
+        }
+
+        init();
+
+        container.addEventListener('wheel', (e) => {
+            if (isFullscreen) return;
+            e.preventDefault();
+            const delta = e.deltaY > 0 ? -0.1 : 0.1;
+            state.viewTransform.scale = Math.min(2, Math.max(0.2, state.viewTransform.scale + delta));
+            updateZoomDisplay();
+            updateAllNodePositions();
+        });
+    </script>
+</body>
+</html>
