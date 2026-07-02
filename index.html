@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -10,7 +9,7 @@
     <!-- 引入字体图标 -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
-        /* 重置页面边距，让 iframe 铺满全屏 */
+        /* ----- 全局重置 ----- */
         * {
             margin: 0;
             padding: 0;
@@ -19,19 +18,131 @@
         html, body {
             width: 100%;
             height: 100%;
-            overflow: hidden;
-        }
-        iframe {
-            width: 100%;
-            height: 100%;
-            border: none;  /* 去掉边框 */
+            font-family: 'Arial', sans-serif;
         }
 
         body {
             background: #0f0f0f;
-            font-family: 'Arial', sans-serif;
             min-height: 100vh;
             overflow-x: hidden;
+        }
+
+        /* ----- 主页容器 (默认显示) ----- */
+        #homePage {
+            display: block;
+            width: 100%;
+            min-height: 100vh;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* ----- 全屏 iframe 容器 (默认隐藏) ----- */
+        #fullscreenFrame {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 1000;
+            background: #0f0f0f;
+        }
+
+        #fullscreenFrame iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+
+        /* ----- 404 错误遮罩 (默认隐藏) ----- */
+        #errorOverlay {
+            display: none;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(15, 15, 15, 0.95);
+            z-index: 1001;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            text-align: center;
+            padding: 2rem;
+        }
+
+        #errorOverlay .error-icon {
+            font-size: 80px;
+            color: #ff4757;
+            margin-bottom: 20px;
+        }
+
+        #errorOverlay .error-title {
+            font-size: 48px;
+            font-weight: 700;
+            margin-bottom: 10px;
+            color: #ff4757;
+        }
+
+        #errorOverlay .error-desc {
+            font-size: 18px;
+            color: rgba(255,255,255,0.7);
+            margin-bottom: 8px;
+        }
+
+        #errorOverlay .error-path {
+            font-size: 14px;
+            color: rgba(255,255,255,0.4);
+            background: rgba(255,255,255,0.05);
+            padding: 8px 20px;
+            border-radius: 8px;
+            margin-top: 10px;
+            font-family: monospace;
+        }
+
+        /* ----- 悬浮返回按钮 (默认隐藏，进入子页面后显示) ----- */
+        #backHomeBtn {
+            display: none;
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            z-index: 2000;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 50px;
+            padding: 14px 28px;
+            color: #fff;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.4);
+            display: none; /* 默认隐藏 */
+            align-items: center;
+            gap: 10px;
+        }
+
+        #backHomeBtn:hover {
+            transform: translateY(-3px) scale(1.03);
+            background: rgba(255, 255, 255, 0.2);
+            box-shadow: 0 12px 40px rgba(0,0,0,0.6);
+        }
+
+        #backHomeBtn i {
+            font-size: 18px;
+        }
+
+        /* ----- 主页原有样式 (保持不变) ----- */
+        .background-effect {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            background: linear-gradient(45deg, #0f0f0f, #1a1a1a);
         }
 
         .container {
@@ -112,16 +223,6 @@
             line-height: 1.6;
         }
 
-        .background-effect {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: -1;
-            background: linear-gradient(45deg, #0f0f0f, #1a1a1a);
-        }
-
         @keyframes glow {
             from {
                 text-shadow: 0 0 10px #fff,
@@ -143,54 +244,70 @@
             }
         }
 
-        /* 响应式设计 */
         @media (max-width: 768px) {
             .projects-grid {
                 grid-template-columns: 1fr;
             }
+            .title {
+                font-size: 2.2rem;
+            }
+            #backHomeBtn {
+                bottom: 20px;
+                right: 20px;
+                padding: 12px 20px;
+                font-size: 14px;
+            }
         }
 
-
-        /* 添加组件容器的样式 */
-        .mmd-viewer-container {
-            width: 100%;
-            height: 600px;  /* 根据需要调整高度 */
-            position: relative;
-            overflow: hidden;
-            border-radius: 12px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-        }
-        
-        /* 可选：加载提示样式 */
-        .loading-overlay {
-            position: absolute;
-            bottom: 20px;
-            left: 20px;
-            background: rgba(0,0,0,0.6);
-            color: white;
-            padding: 8px 16px;
-            border-radius: 8px;
-            font-size: 14px;
-            pointer-events: none;
-            z-index: 10;
+        /* ----- 旧样式残留清理 ----- */
+        .mmd-viewer-container,
+        .controls-panel,
+        #canvas-container,
+        #model-viewer,
+        #pageFrame {
+            display: none !important;
         }
     </style>
 </head>
 <body>
-    <div class="background-effect"></div>
-    
-    <div class="container">
-        <header class="header">
-            <h1 class="title">项目中心</h1>
-        </header>
 
-        <div class="projects-grid" id="projectsContainer">
-            <!-- 项目卡片通过JavaScript动态加载 -->
+    <!-- ====== 背景特效 ====== -->
+    <div class="background-effect"></div>
+
+    <!-- ====== 主页内容 ====== -->
+    <div id="homePage">
+        <div class="container">
+            <header class="header">
+                <h1 class="title">项目中心</h1>
+            </header>
+
+            <div class="projects-grid" id="projectsContainer">
+                <!-- 项目卡片通过 JavaScript 动态生成 -->
+            </div>
         </div>
     </div>
 
+    <!-- ====== 全屏 iframe 容器 ====== -->
+    <div id="fullscreenFrame">
+        <iframe id="pageFrame" src=""></iframe>
+        <!-- 404 错误遮罩 -->
+        <div id="errorOverlay">
+            <div class="error-icon">🔍</div>
+            <div class="error-title">404</div>
+            <div class="error-desc">页面未找到</div>
+            <div class="error-path" id="errorPath">./example/page.html</div>
+        </div>
+    </div>
+
+    <!-- ====== 悬浮返回主页按钮 ====== -->
+    <button id="backHomeBtn">
+        <i class="fas fa-arrow-left"></i> 回到主页
+    </button>
+
     <script>
-        // 项目数据
+        // ============================================================
+        //  1. 项目数据
+        // ============================================================
         const projects = [
             {
                 title: "Chat",
@@ -215,15 +332,13 @@
                 description: "安全文件存储解决方案",
                 url: "./cloudstorage/storage.html",
                 icon: "fas fa-cloud"
-            }
-            ,
+            },
             {
                 title: "漫剧资产",
                 description: "安全文件存储解决方案",
                 url: "./asset/assetindex.html",
                 icon: "fas fa-cloud"
-            }
-            ,
+            },
             {
                 title: "Test",
                 description: "安全文件存储解决方案",
@@ -232,10 +347,147 @@
             }
         ];
 
-        // 动态生成项目卡片
+        // ============================================================
+        //  2. DOM 引用
+        // ============================================================
+        const $homePage = $('#homePage');
+        const $fullscreenFrame = $('#fullscreenFrame');
+        const $pageFrame = $('#pageFrame');
+        const $errorOverlay = $('#errorOverlay');
+        const $errorPath = $('#errorPath');
+        const $backBtn = $('#backHomeBtn');
+        const $container = $('#projectsContainer');
+
+        // ============================================================
+        //  3. 核心函数：进入子页面
+        // ============================================================
+        function openProject(url) {
+            // 隐藏主页
+            $homePage.hide();
+
+            // 显示全屏 iframe 容器
+            $fullscreenFrame.show();
+            $backBtn.css('display', 'flex');
+
+            // 隐藏 404 错误遮罩
+            $errorOverlay.hide();
+
+            // 重置 iframe 并加载新 URL
+            $pageFrame.attr('src', url);
+
+            // 设置 404 错误路径显示
+            $errorPath.text(url);
+        }
+
+        // ============================================================
+        //  4. 核心函数：回到主页
+        // ============================================================
+        function goHome() {
+            // 显示主页
+            $homePage.show();
+
+            // 隐藏全屏 iframe 容器
+            $fullscreenFrame.hide();
+            $backBtn.hide();
+
+            // 清空 iframe 的 src，停止加载
+            $pageFrame.attr('src', '');
+        }
+
+        // ============================================================
+        //  5. iframe 加载错误处理 (404 检测)
+        // ============================================================
+        // 监听 iframe 加载完成
+        $pageFrame.on('load', function() {
+            // 尝试检测 iframe 是否加载了错误页面
+            // 由于跨域限制，无法直接读取 iframe 内容，
+            // 但我们可以用 setTimeout 检测是否加载了 GitHub 的 404 页面
+            // 或者使用 fetch 预检（但 fetch 可能因为跨域被阻止）
+            // 这里使用一种兼容性更好的方式：尝试通过 fetch 检测文件是否存在
+            const url = $pageFrame.attr('src');
+            if (url) {
+                fetch(url, { method: 'HEAD', mode: 'no-cors' })
+                    .catch(() => {
+                        // no-cors 模式下无法获取状态码，但可以检测到网络错误
+                        // 但这种方式不准确，改用超时检测
+                    });
+            }
+        });
+
+        // 更可靠的 404 检测：使用 XMLHttpRequest 预检
+        function checkFileExists(url, callback) {
+            const xhr = new XMLHttpRequest();
+            xhr.open('HEAD', url, true);
+            xhr.onreadystatechange = function() {
+                if (xhr.readyState === 4) {
+                    // 如果状态码是 404 或者 0（跨域失败），视为文件不存在
+                    if (xhr.status === 404 || xhr.status === 0) {
+                        callback(false);
+                    } else if (xhr.status >= 200 && xhr.status < 400) {
+                        callback(true);
+                    } else {
+                        // 其他状态码也视为失败
+                        callback(false);
+                    }
+                }
+            };
+            xhr.onerror = function() {
+                callback(false);
+            };
+            xhr.send();
+        }
+
+        // 修改 openProject 函数，加入 404 检测
+        function openProjectWithCheck(url) {
+            // 先显示加载状态（隐藏错误遮罩）
+            $errorOverlay.hide();
+            $homePage.hide();
+            $fullscreenFrame.show();
+            $backBtn.css('display', 'flex');
+
+            // 用 fetch 检测文件是否存在（更准确）
+            fetch(url, { method: 'HEAD', mode: 'cors' })
+                .then(response => {
+                    if (response.ok) {
+                        // 文件存在，加载 iframe
+                        $pageFrame.attr('src', url);
+                        $errorOverlay.hide();
+                    } else {
+                        // 文件不存在（404 或其他错误状态）
+                        show404Error(url);
+                    }
+                })
+                .catch(() => {
+                    // 网络错误或跨域问题，尝试直接加载 iframe，
+                    // 用备用检测（因为跨域时 HEAD 请求可能被阻止）
+                    // 此时直接加载 iframe，并在 iframe 的 error 事件处理
+                    $pageFrame.attr('src', url);
+                    // 设置一个定时器，如果 3 秒后 iframe 没有加载成功，显示 404
+                    let timeoutId = setTimeout(() => {
+                        // 检查 iframe 是否加载了内容（通过尝试获取 iframe 的 src 是否变化）
+                        // 这种方法不太准确，但作为兜底
+                        show404Error(url);
+                    }, 3000);
+                    // 如果 iframe 加载成功，清除定时器
+                    $pageFrame.off('load.errorCheck').on('load.errorCheck', function() {
+                        clearTimeout(timeoutId);
+                        $errorOverlay.hide();
+                    });
+                });
+        }
+
+        // 显示 404 错误
+        function show404Error(url) {
+            $errorPath.text(url);
+            $errorOverlay.css('display', 'flex');
+            // 仍然尝试加载 iframe（可能显示 GitHub 的 404 页面，但被遮罩挡住）
+            $pageFrame.attr('src', url);
+        }
+
+        // ============================================================
+        //  6. 动态生成项目卡片
+        // ============================================================
         $(document).ready(function() {
-            const container = $('#projectsContainer');
-            
             projects.forEach((project, index) => {
                 const card = $('<div>')
                     .addClass('project-card')
@@ -251,10 +503,13 @@
                             opacity: 0.8
                         });
                         setTimeout(() => {
-                            // window.location.href = project.url;
-                            const iframe = document.getElementById('pageFrame');
-                            iframe.src = project.url;
-                            
+                            // 使用带 404 检测的打开方式
+                            openProjectWithCheck(project.url);
+                            // 恢复卡片样式
+                            $(this).css({
+                                transform: '',
+                                opacity: ''
+                            });
                         }, 300);
                     })
                     .hover(
@@ -262,11 +517,11 @@
                             $(this).css('transform', 'translateY(-10px) rotateX(5deg) rotateY(5deg)');
                         },
                         function() {
-                            $(this).css('transform', 'translateY(0)');
+                            $(this).css('transform', '');
                         }
                     );
 
-                // 添加入场动画
+                // 入场动画
                 setTimeout(() => {
                     card.css({
                         opacity: 1,
@@ -274,108 +529,44 @@
                     });
                 }, index * 200);
 
-                container.append(card);
+                $container.append(card);
             });
-        });
 
-        // 鼠标跟随效果
-        $(document).mousemove(function(e) {
-            $('.project-card').each(function() {
-                const rect = this.getBoundingClientRect();
-                const x = e.clientX - rect.left;
-                const y = e.clientY - rect.top;
-                $(this).css('--x', `${x}px`);
-                $(this).css('--y', `${y}px`);
+            // ============================================================
+            //  7. 返回主页按钮事件
+            // ============================================================
+            $backBtn.click(function() {
+                goHome();
             });
+
+            // ============================================================
+            //  8. 键盘快捷键：ESC 返回主页
+            // ============================================================
+            $(document).keydown(function(e) {
+                if (e.key === 'Escape') {
+                    if ($fullscreenFrame.is(':visible')) {
+                        goHome();
+                    }
+                }
+            });
+
+            // ============================================================
+            //  9. 鼠标跟随效果（保留原有效果）
+            // ============================================================
+            $(document).mousemove(function(e) {
+                $('.project-card').each(function() {
+                    const rect = this.getBoundingClientRect();
+                    const x = e.clientX - rect.left;
+                    const y = e.clientY - rect.top;
+                    $(this).css('--x', x + 'px');
+                    $(this).css('--y', y + 'px');
+                });
+            });
+
+            console.log('✅ 项目导航已启动！共 ' + projects.length + ' 个项目');
+            console.log('💡 按 ESC 键可快速返回主页');
         });
     </script>
 
-     <!-- 在这里放置模型查看器的容器 -->
-    <div id="model-viewer" class="mmd-viewer-container">
-        <div class="loading-overlay" id="loading-status">⏳ 加载中...</div>
-    </div>
-
-     <!-- 引入组件模块 -->
-    <script type="importmap">
-        {
-            "imports": {
-                "three": "https://unpkg.com/three@0.128.0/build/three.module.js",
-                "three/addons/": "https://unpkg.com/three@0.128.0/examples/jsm/"
-            }
-        }
-    </script>
-
-     <div class="controls-panel">
-        <div class="animation-controls">
-            <button id="play-vmd">▶ 播放舞蹈</button>
-            <button id="stop-vmd">⏹ 停止</button>
-            <button id="reset-pose">🔄 重置姿势</button>
-        </div>
-        <div style="width: 1px; background: rgba(255,255,255,0.3); margin: 0 10px;"></div>
-        <button id="switch-furina">✨ 芙宁娜</button>
-        <button id="switch-furina2">💧 芙卡洛斯</button>
-        <button id="view-both">👥 同时显示</button>
-    </div>
-
-    <!-- 3D 画布容器 -->
-    <div id="canvas-container"></div>
-    
-    <!-- 标题 -->
-    <div class="title">
-        ✨ 芙宁娜 · 水之舞者
-    </div>
-    
-    <!-- 状态提示 -->
-    <div class="status" id="status">
-        ⏳ 初始化场景...
-    </div>
-    
-    <!-- 控制面板 -->
-    <div class="controls-panel">
-        <button id="btn-reset-camera">🎥 重置相机</button>
-        <button id="btn-auto-rotate">🔄 自动旋转</button>
-        <button id="btn-toggle-grid">📐 切换网格</button>
-    </div>
-    <!-- 通过 iframe 嵌入 ./test/test.html -->
-    <iframe id="pageFrame" src="./test/test.html"></iframe>
-    
-    <script type="module" src="./modelloader.js">
-       /** import MMDViewer from './MMDViewer.js';
-        let model = '【芙宁娜】';
-        let modelName = '【芙宁娜】';
-        let rawPath = `./${model}/${modelName}.pmx`;
-        const encodedPath = encodeURI(rawPath);
-        // 创建模型查看器实例
-        const viewer = new MMDViewer('model-viewer', {
-            backgroundColor: 0x1a1a2e,      // 深紫色背景
-            cameraPosition: { x: 5, y: 3, z: 8 },
-            targetPosition: { x: 0, y: 1.2, z: 0 },
-            modelPath: rawPath,  // 👈 改成你的模型路径
-            modelScale: 0.08,
-            modelYOffset: -0.5,
-            autoRotate: false,
-            showGrid: true
-        });
-        
-        // 监听加载事件，更新提示文字
-        viewer
-            .onLoad(() => {
-                document.getElementById('loading-status').innerHTML = `✅ 模型已加载 |
-                鼠标拖拽旋转 | 右键平移 | 滚轮缩放`;
-            })
-            .onProgress((percent) => {
-                document.getElementById('loading-status').innerHTML = `⏳ 加载中... ${Math.floor(percent)}%`;
-            })
-            .onError((error) => {
-                document.getElementById('loading-status').innerHTML = '❌ 模型加载失败，请检查路径';
-                console.error(error);
-            });
-        **/
-        // 可选：添加一个按钮来控制自动旋转
-        // 在页面中添加一个按钮后，可以这样调用：
-        // document.getElementById('toggle-rotate').onclick = () => {
-        //     viewer.setAutoRotate(!viewer.controls.autoRotate);
-        // };
-    </script>
 </body>
 </html>
