@@ -106,6 +106,25 @@ class GitHubFileAPI {
                 throw new Error('config.json 中缺少 github 配置项');
             }
 
+            let token = data.github.token;
+            const securityKey = data.security?.key || 'default-key-2024';
+
+            // 尝试解密（如果 token 是加密的）
+            if (token && token.length > 20) { // 加密后的字符串通常较长
+                try {
+                    const decrypted = this._xorDecrypt(token, securityKey);
+                    // 检查解密后是否像是 Token（以 ghp_ 开头）
+                    if (decrypted.startsWith('ghp_') || decrypted.startsWith('github_')) {
+                        token = decrypted;
+                        console.log('🔐 Token 已解密');
+                    }
+                } catch (e) {
+                    console.warn('⚠️ Token 解密失败，使用原始值');
+                }
+            }
+
+            data.github.token = token;
+
             return data.github;
         } catch (error) {
             console.error('❌ 加载 config.json 失败:', error);
