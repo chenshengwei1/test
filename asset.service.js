@@ -404,11 +404,11 @@ class AssetService {
 
     // ---------- 创建资产（上传） ----------
     async createAsset(formData) {
-        const file = formData.file;
-        const title = formData.title || '未命名素材';
-        const type = formData.type || 'material';
-        const sourceType = formData.source_type || 'upload';
-        const tags = formData.tags || '';
+        const file = formData.get('file');
+        const title = formData.get('title') || '未命名素材';
+        const type = formData.get('type') || 'material';
+        const sourceType = formData.get('source_type') || 'upload';
+        const tags = formData.get('tags') || '';
 
         if (!file) {
             return { code: 400, message: '请上传文件' };
