@@ -1,236 +1,55 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-<meta charset="UTF-8">
-<style>
-  /* 容器样式 */
-  .tag-select-wrapper {
-    position: relative;
-    width: 100%;
-    max-width: 500px;
-    font-family: Arial, sans-serif;
-  }
-
-  /* 输入框主体（看起来像一个框，里面放了标签和输入） */
-  .tag-input-box {
-    border: 1px solid #d9d9d9;
-    border-radius: 4px;
-    padding: 4px 8px;
-    display: flex;
-    flex-wrap: wrap; /* 标签多时换行 */
-    align-items: center;
-    background: #fff;
-    min-height: 36px;
-    box-sizing: border-box;
-    cursor: text;
-    transition: all 0.3s;
-  }
-  .tag-input-box:hover {
-    border-color: #409EFF;
-  }
-  .tag-input-box:focus-within {
-    border-color: #409EFF;
-    box-shadow: 0 0 0 2px rgba(64, 158, 255, 0.2);
-  }
-
-  /* 单个标签卡片样式 */
-  .tag-item {
-    display: flex;
-    align-items: center;
-    background-color: #f4f4f5;
-    border: 1px solid #e9e9eb;
-    color: #606266;
-    font-size: 12px;
-    padding: 0 10px;
-    height: 24px;
-    border-radius: 4px;
-    margin: 2px 4px 2px 0;
-    box-sizing: border-box;
-    white-space: nowrap;
-  }
-  .tag-item .close-btn {
-    margin-left: 6px;
-    cursor: pointer;
-    color: #909399;
-    font-weight: bold;
-  }
-  .tag-item .close-btn:hover {
-    color: #f56c6c;
-  }
-
-  /* 输入框 */
-  .tag-input {
-    border: none;
-    outline: none;
-    height: 24px;
-    line-height: 24px;
-    font-size: 14px;
-    flex-grow: 1;
-    min-width: 60px;
-    padding: 0;
-  }
-
-  /* 下拉菜单 */
-  .dropdown-list {
-    position: absolute;
-    top: 100%;
-    left: 0;
-    right: 0;
-    max-height: 200px;
-    overflow-y: auto;
-    border: 1px solid #e4e7ed;
-    border-radius: 4px;
-    background: #fff;
-    box-shadow: 0 2px 12px 0 rgba(0,0,0,0.1);
-    margin-top: 4px;
-    display: none; /* 默认隐藏 */
-    z-index: 100;
-  }
-  .dropdown-list.show {
-    display: block;
-  }
-  
-  .dropdown-item {
-    padding: 8px 12px;
-    cursor: pointer;
-    color: #606266;
-    font-size: 14px;
-  }
-  .dropdown-item:hover {
-    background-color: #f5f7fa;
-  }
-  .dropdown-item.selected {
-    color: #409EFF;
-    font-weight: bold;
-  }
-
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>加载外部内容</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: sans-serif;
+        }
+        #content {
+            border: 1px solid #ddd;
+            padding: 20px;
+            border-radius: 8px;
+            min-height: 400px;
+        }
+        .loading {
+            color: #666;
+            text-align: center;
+            padding: 50px;
+        }
+        .error {
+            color: red;
+            text-align: center;
+            padding: 50px;
+        }
+    </style>
 </head>
 <body>
+    <h1>加载的内容：</h1>
+    <div id="content">
+        <div class="loading">⏳ 加载中...</div>
+    </div>
 
-<div class="tag-select-wrapper" id="app">
-  <!-- 标签输入容器 -->
-  <div class="tag-input-box" id="inputContainer">
-    <!-- 标签动态插入到这里 -->
-    <input type="text" class="tag-input" id="tagInput" placeholder="请输入或选择版本">
-  </div>
-
-  <!-- 下拉选项列表 -->
-  <div class="dropdown-list" id="dropdownList">
-    <!-- 选项动态插入到这里 -->
-  </div>
-</div>
-
-<script>
-  // 1. 模拟数据源（参考图片）
-  const options = [
-    "1.0.0.0", "2023.12.FH", "2024.01.FH", "2024.01.SH", 
-    "2024.01.W3", "2024.02.SH", "2024.02.SH.002", 
-    "2024.02.W1", "2024.03.FH", "2024.03.SH", 
-    "2024.04.FH", "2024.04.W3", "2024.05.FH", 
-    "2024.05.SH", "2024.06.FH", "2024.06.SH"
-  ];
-
-  const input = document.getElementById('tagInput');
-  const dropdown = document.getElementById('dropdownList');
-  const container = document.getElementById('inputContainer');
-  // 存储已选中的标签值
-  let selectedTags = [];
-
-  // 2. 初始化下拉列表
-  function renderDropdown(filterText = '') {
-    // 过滤：排除已经选中的，并且根据输入框文字过滤
-    const filtered = options.filter(item => 
-      !selectedTags.includes(item) && 
-      item.toLowerCase().includes(filterText.toLowerCase())
-    );
-
-    // 如果输入了非选项文字，显示“新增”选项（对于手动输入）
-    let html = '';
-    if (filterText && !options.includes(filterText) && !selectedTags.includes(filterText)) {
-      html += `<div class="dropdown-item" onclick="addTag('${filterText}')">创建 "${filterText}"</div>`;
-    }
-
-    filtered.forEach(item => {
-      html += `<div class="dropdown-item" onclick="addTag('${item}')">${item}</div>`;
-    });
-
-    if (html === '') {
-      html = `<div class="dropdown-item" style="color:#909399; cursor:default;">无匹配选项</div>`;
-    }
-    
-    dropdown.innerHTML = html;
-    dropdown.classList.add('show');
-  }
-
-  // 3. 添加标签的核心函数
-  function addTag(value) {
-    if (!value || selectedTags.includes(value)) return;
-    
-    selectedTags.push(value);
-    renderTags();
-    input.value = ''; // 清空输入
-    dropdown.classList.remove('show'); // 关闭列表
-    input.focus();
-  }
-
-  // 4. 删除标签
-  function removeTag(value) {
-    selectedTags = selectedTags.filter(t => t !== value);
-    renderTags();
-    input.focus();
-    // 如果输入框不为空，重新刷新下拉
-    if(input.value) renderDropdown(input.value);
-  }
-
-  // 5. 渲染标签UI
-  function renderTags() {
-    // 清除所有标签卡片，保留 input
-    const tagsNodes = container.querySelectorAll('.tag-item');
-    tagsNodes.forEach(el => el.remove());
-
-    // 倒序插入到 input 前面
-    selectedTags.forEach(tag => {
-      const div = document.createElement('div');
-      div.className = 'tag-item';
-      div.innerHTML = `${tag} <span class="close-btn" onclick="removeTag('${tag}')">×</span>`;
-      container.insertBefore(div, input);
-    });
-  }
-
-  // --- 事件监听 ---
-
-  // 点击输入框，显示下拉
-  input.addEventListener('focus', () => {
-    renderDropdown(input.value);
-  });
-
-  // 输入框文字变化，过滤下拉
-  input.addEventListener('input', () => {
-    renderDropdown(input.value);
-  });
-
-  // 按回车：如果输入框有内容，添加为标签
-  input.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' && input.value.trim() !== '') {
-      e.preventDefault();
-      addTag(input.value.trim());
-    }
-    // 按 Backspace 且输入框为空，删除最后一个标签
-    if (e.key === 'Backspace' && input.value === '' && selectedTags.length > 0) {
-      removeTag(selectedTags[selectedTags.length - 1]);
-    }
-  });
-
-  // 点击外部关闭下拉
-  document.addEventListener('click', (e) => {
-    if (!document.getElementById('app').contains(e.target)) {
-      dropdown.classList.remove('show');
-    }
-  });
-
-  // 阻止点击下拉选项时关闭容器（由于冒泡，点击下拉项会触发关闭逻辑，这里不处理也可以，因为onclick会先执行）
-</script>
-
+    <script>
+        // 使用 fetch 加载 ./test/test.html 的内容
+        fetch('./test/test.html')
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('文件加载失败，状态码：' + response.status);
+                }
+                return response.text();
+            })
+            .then(html => {
+                document.getElementById('content').innerHTML = html;
+            })
+            .catch(error => {
+                document.getElementById('content').innerHTML = 
+                    '<div class="error">❌ ' + error.message + '</div>';
+            });
+    </script>
 </body>
 </html>
