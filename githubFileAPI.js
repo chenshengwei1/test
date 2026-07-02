@@ -29,9 +29,6 @@ function createRepHub(config) {
      * 获取请求头
      */
     function getHeaders(extra = {}) {
-        if (isPublicUrl){
-            return {}
-        }
         return {
             'Authorization': `Bearer ${ghToken}`,
             'Accept': 'application/vnd.github.v3+json',
@@ -90,7 +87,7 @@ function createRepHub(config) {
         const url = buildUrl('', fullPath);
 
         const response = await fetch(url, {
-            headers: getHeaders()
+            headers: isPublicUrl ? {} : getHeaders()
         });
 
         if (response.status === 404) {
