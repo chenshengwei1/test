@@ -933,7 +933,7 @@
         const assetService = new AssetService();
 
         // 初始化
-        await assetService.init();
+        assetService.init();
         
         
         // ------------------------------------------------------------
@@ -962,6 +962,8 @@
         // ==================== 批量操作模块 ====================
         let batchMode = false;
         let selectedAssets = new Set(); // 存储选中的资产ID
+
+        console.log('variable end'); 
 
         /**
         * 切换批量选择模式
@@ -2289,6 +2291,8 @@
             });
         }
 
+        console.log('addEventListener'); 
+
         // 页面加载完成后初始化
         document.addEventListener('DOMContentLoaded', async function() {
             // 初始化 Mock 数据以确保首次渲染
@@ -2326,6 +2330,7 @@
 
         // 首次立即渲染空状态
         renderAssets(assetsData);
+        console.log('renderAssets'); 
     </script>
 </body>
 </html>
