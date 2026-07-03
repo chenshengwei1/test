@@ -420,7 +420,7 @@ class AssetService {
             const newAsset = {
                 id: await this._generateAssetId(),
                 title: title,
-                description: formData.description || '',
+                description: formData.get('description') || '',
                 cover_url: uploadResult.downloadUrl,
                 thumbnail_url: uploadResult.downloadUrl,
                 type: type,
@@ -436,6 +436,7 @@ class AssetService {
             };
 
             const data = await this._getAssetsData();
+            data.assets = data.assets ||[];
             data.assets.push(newAsset);
             await this._saveAssetsData(data);
 

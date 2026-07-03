@@ -1265,7 +1265,7 @@
                 </div>
             `;
             
-            document.getElementById('fileInput')?.addEventListener('change', function(e) {
+            document.getElementById('fileInput')?.addEventListener('change', async function(e) {
                 const files = e.target.files;
                 let result = true;
 
@@ -1281,7 +1281,7 @@
                         //result = uploadAsset(file, { title }) && result;
 
                         // ===== 修改：传入标签参数 =====
-                        result = uploadAsset(file, { 
+                        result = await uploadAsset(file, { 
                             title: title, 
                             tags: tagsString  // 新增标签
                         }) && result;
