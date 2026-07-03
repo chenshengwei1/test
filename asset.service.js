@@ -348,11 +348,11 @@ class AssetService {
     _generateAssetId() {
         this.logger.debug('_generateAssetId 生成新ID');
         //const data = await this._getAssetsData();
-        //const id = data.nextId;
+        const id = uuidv4();
         //data.nextId = uuidv4();
         //await this._saveAssetsData(data);
         this.logger.debug(`_generateAssetId 生成ID: ${id}`);
-        return uuidv4();
+        return id;
     }
 
     async _loadDefaultAssets() {
