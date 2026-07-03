@@ -144,15 +144,21 @@ class AssetService {
     // 数据读写辅助方法
     // ============================================
     async _getAssetsData() {
+        if (this._assetDataCache){
+            return this._assetDataCache;
+        }
         const result = await this.fsUtils.readJSON(this.PATHS.ASSETS_JSON);
         if (!result.success) {
             // 如果读取失败，返回默认结构
             return { assets: [], nextId: 1001 };
         }
+
+        this._assetDataCache = result.data;
         return result.data;
     }
 
     async _saveAssetsData(data) {
+        this._assetDataCache = result.data;
         await this.fsUtils.update(this.PATHS.ASSETS_JSON, JSON.stringify(data));
     }
 
