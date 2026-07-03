@@ -282,7 +282,7 @@ class AssetService {
     async _saveAssetsData(data) {
         this.logger.debug(`_saveAssetsData 开始保存，资产数量: ${data.assets?.length || 0}`);
         this._assetDataCache = data;
-        await this.fsUtils.update(this.PATHS.ASSETS_JSON, JSON.stringify(data));
+        await this.fsUtils.update(this.PATHS.ASSETS_JSON, JSON.stringify(data, null, '\t'));
         this.logger.debug('_saveAssetsData 保存完成');
     }
 
