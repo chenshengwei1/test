@@ -344,12 +344,12 @@ class AssetService {
         return asset;
     }
 
-    async _generateAssetId() {
+    _generateAssetId() {
         this.logger.debug('_generateAssetId 生成新ID');
-        const data = await this._getAssetsData();
+        //const data = await this._getAssetsData();
         const id = data.nextId;
-        data.nextId += 1;
-        await this._saveAssetsData(data);
+        data.nextId = uuidv4();
+        //await this._saveAssetsData(data);
         this.logger.debug(`_generateAssetId 生成ID: ${id}`);
         return id;
     }
@@ -381,18 +381,18 @@ class AssetService {
             let imageTypes = allowedTypes.map(e => e.replace('image/',''));
             if (imageTypes.includes(ext)) {
                 this.logger.debug(`_loadDefaultAssets 文件 ${name} 是图片，获取信息`);
-                const infoResult = await this.fsUtils.getInfo(name, this.PATHS.IMAGES_DIR);
+                //const infoResult = await this.fsUtils.getInfo(name, this.PATHS.IMAGES_DIR);
                 defaultAssets.push({
-                    id: await this._generateAssetId(),
+                    id:  this._generateAssetId(),
                     title: name,
                     description: '',
-                    cover_url: infoResult.downloadUrl || `images/${name}`,
-                    thumbnail_url: infoResult.downloadUrl || `images/${name}`,
+                    cover_url: file.html_url || `images/${name}`,
+                    thumbnail_url: file.html_url || `images/${name}`,
                     type: 'character',
                     source_type: 'upload',
                     created_at: new Date().toISOString(),
                     file_type: `image/${ext === 'jpg' ? 'jpeg' : ext}`,
-                    file_size: infoResult.data?.size || 0,
+                    file_size:  file.size || 0,
                     file_path: `images/${name}`,
                     owner_id: 1001,
                     visibility: 'public'
@@ -621,7 +621,7 @@ class AssetService {
             const uploadResult = await this._uploadFile(file);
             
             const newAsset = {
-                id: await this._generateAssetId(),
+                id: this._generateAssetId(),
                 title: title,
                 description: formData.get('description') || '',
                 cover_url: uploadResult.downloadUrl,
@@ -1033,7 +1033,7 @@ class AssetService {
         }
 
         const newAsset = {
-            id: await this._generateAssetId(),
+            id: this._generateAssetId(),
             title: title || 'AI生成素材',
             description: description || '',
             cover_url: image_url,
@@ -1119,7 +1119,7 @@ class AssetService {
             this.logger.debug('generateImage 图片上传成功', { downloadUrl: uploadResult.downloadUrl });
 
             const newAsset = {
-                id: await this._generateAssetId(),
+                id: this._generateAssetId(),
                 title: prompt.slice(0, 20) + (prompt.length > 20 ? '...' : ''),
                 description: prompt,
                 cover_url: uploadResult.downloadUrl,
@@ -1242,7 +1242,7 @@ class AssetService {
             }
 
             const newAsset = {
-                id: await this._generateAssetId(),
+                id: this._generateAssetId(),
                 title: prompt ? prompt.slice(0, 20) + (prompt.length > 20 ? '...' : '') : '视频生成',
                 description: prompt || '图生视频',
                 cover_url: localVideoUrl || videoUrl,
@@ -1421,7 +1421,7 @@ class AssetService {
         if (!asset) {
             this.logger.debug('_createOrUpdateVideoAsset 创建新资产');
             asset = {
-                id: await this._generateAssetId(),
+                id: this._generateAssetId(),
                 task_id: apiData.id || apiData.task_id,
             };
             data.assets.push(asset);
