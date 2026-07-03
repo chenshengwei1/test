@@ -2331,6 +2331,25 @@
         // 首次立即渲染空状态
         renderAssets(assetsData);
         console.log('renderAssets'); 
+
+        // 将模块内部函数暴露到全局作用域
+        window.showView = showView;
+        window.openModal = openModal;
+        window.closeModal = closeModal;
+        window.closeDetail = closeDetail;
+        window.toggleEdit = toggleEdit;
+        window.saveDetail = saveDetail;
+        window.deleteCurrentAsset = deleteCurrentAsset;
+        window.useCurrentAsset = useCurrentAsset;
+        window.toggleBatchMode = toggleBatchMode;
+        window.openBatchTagDialog = openBatchTagDialog;
+        window.closeBatchTagDialog = closeBatchTagDialog;
+        window.applyBatchTags = applyBatchTags;
+        window.openCanvasCreateDialog = openCanvasCreateDialog;
+        window.closeCanvasCreateDialog = closeCanvasCreateDialog;
+        window.createCanvas = createCanvas;
+        window.openCanvasPage = openCanvasPage;
+        window.deleteCanvasFromMenu = deleteCanvasFromMenu;
     </script>
 </body>
 </html>
