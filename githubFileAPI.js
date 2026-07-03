@@ -534,11 +534,17 @@ class GitHubFileAPI {
             const info = await this.getInfo(fileName, subfolder);
             if (!info.success) return info;
 
-            const response = await fetch(info.downloadUrl);
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            let content = null;
+            if (info.data.content){
+                content = decodeURIComponent(escape(atob(info.data.content)));
+            }else{
+                const response = await fetch(info.downloadUrl);
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                content = await response.text();
             }
-            const content = await response.text();
+
 
             console.log('✅ 读取文本成功:', fileName);
             return {
