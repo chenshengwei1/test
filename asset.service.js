@@ -13,7 +13,7 @@ class Logger {
     }
 
     _format(level, message, data) {
-        const timestamp = new Date().toISOString();
+        const timestamp = new Date().toJSON();
         const prefix = `[${timestamp}] [${this.module}] [${level.toUpperCase()}]`;
         if (data !== undefined) {
             return `${prefix} ${message}`;
@@ -387,14 +387,14 @@ class AssetService {
                     id:  this._generateAssetId(),
                     title: name,
                     description: '',
-                    cover_url: file.html_url || `images/${name}`,
-                    thumbnail_url: file.html_url || `images/${name}`,
+                    cover_url: file.downloadUrl || `images/${name}`,
+                    thumbnail_url: file.downloadUrl || `images/${name}`,
                     type: 'character',
                     source_type: 'upload',
-                    created_at: new Date().toISOString(),
+                    created_at: new Date().toJSON(),
                     file_type: `image/${ext === 'jpg' ? 'jpeg' : ext}`,
                     file_size:  file.size || 0,
-                    file_path: `images/${name}`,
+                    file_path: file.path || `images/${name}`,
                     owner_id: 1001,
                     visibility: 'public'
                 });
@@ -630,8 +630,8 @@ class AssetService {
                 type: type,
                 source_type: sourceType,
                 tags: typeof tags === 'string' ? tags.split(',').filter(Boolean) : tags,
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString(),
+                created_at: new Date().toJSON(),
+                updated_at: new Date().toJSON(),
                 file_type: file.type,
                 file_size: file.size,
                 file_path: uploadResult.downloadUrl,
@@ -678,7 +678,7 @@ class AssetService {
                 : tags;
         }
         if (visibility) data.assets[assetIndex].visibility = visibility;
-        data.assets[assetIndex].updated_at = new Date().toISOString();
+        data.assets[assetIndex].updated_at = new Date().toJSON();
 
         await this._saveAssetsData(data);
 
@@ -786,7 +786,7 @@ class AssetService {
         return {
             code: 200,
             message: `资产 "${asset.title}" 已使用`,
-            data: { used_at: new Date().toISOString() }
+            data: { used_at: new Date().toJSON() }
         };
     }
 
@@ -879,7 +879,7 @@ class AssetService {
                     this.logger.debug(`batchUpdateAssets 修改资产 ${id} 类型为: ${value}`);
                     updatedIds.push(id);
                 }
-                asset.updated_at = new Date().toISOString();
+                asset.updated_at = new Date().toJSON();
             }
         });
 
@@ -1042,8 +1042,8 @@ class AssetService {
             type: 'material',
             source_type: 'ai',
             tags: tags ? (typeof tags === 'string' ? tags.split(',').filter(Boolean) : tags) : [],
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
+            created_at: new Date().toJSON(),
+            updated_at: new Date().toJSON(),
             file_type: 'image/webp',
             file_path: image_url,
             owner_id: 1001,
@@ -1128,8 +1128,8 @@ class AssetService {
                 type: 'material',
                 source_type: 'ai',
                 tags: ['ai-generated'],
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString(),
+                created_at: new Date().toJSON(),
+                updated_at: new Date().toJSON(),
                 file_type: 'image/png',
                 file_path: uploadResult.downloadUrl,
                 file_size: blob.size,
@@ -1251,8 +1251,8 @@ class AssetService {
                 type: 'video',
                 source_type: 'ai',
                 tags: ['ai-generated', 'video'],
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString(),
+                created_at: new Date().toJSON(),
+                updated_at: new Date().toJSON(),
                 file_type: 'video/mp4',
                 file_path: localVideoUrl || videoUrl,
                 file_size: null,
@@ -1437,7 +1437,7 @@ class AssetService {
             prompt: apiData.prompt || asset.ai_prompt,
             type: 'video',
             source_type: 'ai',
-            updated_at: new Date().toISOString(),
+            updated_at: new Date().toJSON(),
             file_type: 'video/mp4',
             visibility: 'public',
             status: apiData.status
