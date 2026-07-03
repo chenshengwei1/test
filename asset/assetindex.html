@@ -922,18 +922,110 @@
     <!-- ==================== 3. 脚本逻辑模块 (Scripts) ==================== -->
     <script type="module">
 
-        console.log('init'); 
+        // ============================================================
+        // 0. 日志系统模块 (Logging System)
+        // ============================================================
+        const UI_LOGGER = {
+            enabled: true,
+            logLevel: 'debug', // debug, info, warn, error
+            module: 'UI',
 
-         // 从上级目录导入
+            _format(level, message, data) {
+                const timestamp = new Date().toISOString();
+                const prefix = `[${timestamp}] [${this.module}] [${level.toUpperCase()}]`;
+                if (data !== undefined) {
+                    return { prefix, message, data };
+                }
+                return { prefix, message };
+            },
+
+            debug(message, data) {
+                if (!this.enabled || !['debug', 'info', 'warn', 'error'].includes(this.logLevel)) return;
+                const formatted = this._format('debug', message, data);
+                if (data !== undefined) {
+                    console.debug(formatted.prefix, formatted.message, data);
+                } else {
+                    console.debug(formatted.prefix, formatted.message);
+                }
+            },
+
+            info(message, data) {
+                if (!this.enabled || !['info', 'warn', 'error'].includes(this.logLevel)) return;
+                const formatted = this._format('info', message, data);
+                if (data !== undefined) {
+                    console.info(formatted.prefix, formatted.message, data);
+                } else {
+                    console.info(formatted.prefix, formatted.message);
+                }
+            },
+
+            warn(message, data) {
+                if (!this.enabled || !['warn', 'error'].includes(this.logLevel)) return;
+                const formatted = this._format('warn', message, data);
+                if (data !== undefined) {
+                    console.warn(formatted.prefix, formatted.message, data);
+                } else {
+                    console.warn(formatted.prefix, formatted.message);
+                }
+            },
+
+            error(message, error) {
+                if (!this.enabled) return;
+                const formatted = this._format('error', message);
+                if (error) {
+                    console.error(formatted.prefix, formatted.message, error);
+                } else {
+                    console.error(formatted.prefix, formatted.message);
+                }
+            },
+
+            group(name, fn) {
+                if (!this.enabled) return fn();
+                console.group(`[${this.module}] ${name}`);
+                try {
+                    fn();
+                } finally {
+                    console.groupEnd();
+                }
+            },
+
+            time(label, fn) {
+                if (!this.enabled) return fn();
+                console.time(`[${this.module}] ${label}`);
+                try {
+                    return fn();
+                } finally {
+                    console.timeEnd(`[${this.module}] ${label}`);
+                }
+            },
+
+            async timeAsync(label, fn) {
+                if (!this.enabled) return await fn();
+                console.time(`[${this.module}] ${label}`);
+                try {
+                    return await fn();
+                } finally {
+                    console.timeEnd(`[${this.module}] ${label}`);
+                }
+            }
+        };
+
+        console.log('[UI] 日志系统已初始化');
+
+        // 从上级目录导入
         import { AssetService } from '../asset.service.js';
         import {TagSelect} from './TagSelect.js'
+
+        UI_LOGGER.info('AssetService 导入完成');
 
         // 自动从根目录加载 config.json
         // 注意：在子目录中，/config.json 依然指向根目录
         const assetService = new AssetService();
+        UI_LOGGER.debug('AssetService 实例已创建');
 
         // 初始化
         assetService.init();
+        UI_LOGGER.info('AssetService 初始化已触发');
         
         
         // ------------------------------------------------------------
@@ -941,6 +1033,7 @@
         // ------------------------------------------------------------
         let assetsData = [];          // 普通资产数据
         let canvasAssetsData = [];    // 画布资产数据
+        UI_LOGGER.debug('全局状态已初始化', { assetsData: assetsData.length, canvasAssetsData: canvasAssetsData.length });
         
         // 筛选与分页状态
         let currentFilter = {
@@ -950,50 +1043,60 @@
             page: 1,
             pageSize: 20
         };
+        UI_LOGGER.debug('当前筛选条件', currentFilter);
 
         // API 基础路径
         const API_BASE = 'https://chenshengwei1.github.io/';
         let isEditing = false; // 是否处于编辑状态
+        UI_LOGGER.debug('编辑状态初始化', { isEditing });
 
         let tagSelect = null;
         let searchTagSelect = null;
         let currentSearchedTags = [];
+        UI_LOGGER.debug('标签组件引用已初始化');
 
         // ==================== 批量操作模块 ====================
         let batchMode = false;
         let selectedAssets = new Set(); // 存储选中的资产ID
-
-        console.log('variable end'); 
+        UI_LOGGER.debug('批量模式初始化', { batchMode, selectedAssets: selectedAssets.size });
 
         /**
         * 切换批量选择模式
         */
         function toggleBatchMode() {
+            UI_LOGGER.info('toggleBatchMode 被调用', { currentBatchMode: batchMode });
             batchMode = !batchMode;
             selectedAssets.clear();
+            UI_LOGGER.debug('批量模式切换后', { batchMode, selectedAssets: selectedAssets.size });
             
             const batchBtn = document.querySelector('.controls .btn-add:nth-child(2)');
             const tagBtn = document.getElementById('batchTagBtn');
             
             if (batchMode) {
+                UI_LOGGER.debug('进入批量模式');
                 batchBtn.textContent = '退出批量';
                 batchBtn.style.background = '#ef4444';
                 tagBtn.style.display = 'inline-block';
                 // 添加批量模式类到所有卡片
-                document.querySelectorAll('.asset-card:not(.add-card)').forEach(card => {
+                const cards = document.querySelectorAll('.asset-card:not(.add-card)');
+                UI_LOGGER.debug(`找到 ${cards.length} 个卡片需要添加批量模式`);
+                cards.forEach(card => {
                     card.classList.add('batch-mode');
                     addCheckboxToCard(card);
                 });
 
                 // ===== 新增：关闭可能打开的详情面板 =====
                 closeDetail();
-                // ===== 新增结束 =====
+                UI_LOGGER.debug('已关闭详情面板');
             } else {
+                UI_LOGGER.debug('退出批量模式');
                 batchBtn.textContent = '批量';
                 batchBtn.style.background = '#6366f1';
                 tagBtn.style.display = 'none';
                 // 移除批量模式类
-                document.querySelectorAll('.asset-card.batch-mode').forEach(card => {
+                const cards = document.querySelectorAll('.asset-card.batch-mode');
+                UI_LOGGER.debug(`移除 ${cards.length} 个卡片的批量模式`);
+                cards.forEach(card => {
                     card.classList.remove('batch-mode');
                     const checkbox = card.querySelector('.batch-checkbox');
                     if (checkbox) checkbox.remove();
@@ -1003,10 +1106,11 @@
                 document.querySelectorAll('.asset-card.selected').forEach(card => {
                     card.classList.remove('selected');
                 });
-                // ===== 新增结束 =====
-
-                updateSelectedCount();
+                UI_LOGGER.debug('已移除所有选中样式');
             }
+
+            updateSelectedCount();
+            UI_LOGGER.debug('toggleBatchMode 完成');
         }
 
         /**
@@ -1019,10 +1123,12 @@
             const checkbox = document.createElement('div');
             checkbox.className = 'batch-checkbox';
             checkbox.dataset.id = card.dataset.assetId;
+            UI_LOGGER.debug(`为卡片添加复选框: ${card.dataset.assetId}`);
             
             // 点击复选框切换选中状态
             checkbox.addEventListener('click', function(e) {
                 e.stopPropagation();
+                UI_LOGGER.debug(`复选框点击: ${this.dataset.id}`);
                 toggleAssetSelection(this.dataset.id);
             });
             
@@ -1031,7 +1137,10 @@
                 // 如果点击的是复选框本身，已经在上面的监听中处理了
                 if (e.target.closest('.batch-checkbox')) return;
                 const id = this.dataset.assetId;
-                if (id) toggleAssetSelection(id);
+                if (id) {
+                    UI_LOGGER.debug(`卡片点击: ${id}`);
+                    toggleAssetSelection(id);
+                }
             });
             
             card.appendChild(checkbox);
@@ -1040,20 +1149,30 @@
             if (selectedAssets.has(card.dataset.assetId)) {
                 checkbox.classList.add('checked');
                 card.classList.add('selected');
+                UI_LOGGER.debug(`恢复卡片选中状态: ${card.dataset.assetId}`);
             }
-            // ===== 新增结束 =====
         }
 
         /**
         * 切换资产选中状态
         */
         function toggleAssetSelection(assetId) {
-            if (!assetId) return;
+            if (!assetId) {
+                UI_LOGGER.warn('toggleAssetSelection 收到空ID');
+                return;
+            }
+            
+            UI_LOGGER.debug(`切换资产选中状态: ${assetId}`, { 
+                currentlySelected: selectedAssets.has(assetId),
+                totalSelected: selectedAssets.size 
+            });
             
             if (selectedAssets.has(assetId)) {
                 selectedAssets.delete(assetId);
+                UI_LOGGER.debug(`取消选中: ${assetId}`);
             } else {
                 selectedAssets.add(assetId);
+                UI_LOGGER.debug(`选中: ${assetId}`);
             }
             
             // 更新复选框UI
@@ -1069,6 +1188,8 @@
                         card.classList.remove('selected');
                     }
                 }
+            } else {
+                UI_LOGGER.warn(`未找到资产卡片: ${assetId}`);
             }
             
             updateSelectedCount();
@@ -1079,6 +1200,7 @@
         */
         function updateSelectedCount() {
             const count = selectedAssets.size;
+            UI_LOGGER.debug(`更新选中数量: ${count}`);
             const countDisplay = document.getElementById('selectedCount');
             if (countDisplay) {
                 countDisplay.textContent = count;
@@ -1095,25 +1217,31 @@
         * 打开批量设置标签对话框
         */
         function openBatchTagDialog() {
+            UI_LOGGER.info('openBatchTagDialog 被调用', { selectedCount: selectedAssets.size });
             if (selectedAssets.size === 0) {
+                UI_LOGGER.warn('没有选中的资产，无法打开批量标签对话框');
                 alert('请先选择要操作的资产');
                 return;
             }
             
             document.getElementById('batchTagModal').classList.add('show');
             updateSelectedCount();
+            UI_LOGGER.debug('批量标签对话框已打开');
             
             // 初始化或重置标签选择组件
             if (!window.batchTagSelect) {
+                UI_LOGGER.debug('初始化批量标签选择组件');
                 window.batchTagSelect = new TagSelect('#batchTagInput', {
                     placeholder: '请选择或输入标签'
                 });
                 // 获取所有可用标签
                 fetchAllTags().then(tags => {
+                    UI_LOGGER.debug(`获取到 ${tags.length} 个标签用于批量选择`);
                     window.batchTagSelect.setItems(tags);
                 });
             } else {
                 window.batchTagSelect.setSelected([]);
+                UI_LOGGER.debug('重置批量标签选择组件');
             }
         }
 
@@ -1121,6 +1249,7 @@
         * 关闭批量标签对话框
         */
         function closeBatchTagDialog() {
+            UI_LOGGER.debug('关闭批量标签对话框');
             document.getElementById('batchTagModal').classList.remove('show');
         }
 
@@ -1128,37 +1257,36 @@
         * 应用批量标签
         */
         async function applyBatchTags() {
-            if (!window.batchTagSelect) return;
+            UI_LOGGER.info('applyBatchTags 被调用');
+            if (!window.batchTagSelect) {
+                UI_LOGGER.error('批量标签选择组件未初始化');
+                return;
+            }
             
             const tags = window.batchTagSelect.getSelected();
+            UI_LOGGER.debug('选中的标签', { tags });
             if (tags.length === 0) {
+                UI_LOGGER.warn('未选择标签');
                 alert('请选择至少一个标签');
                 return;
             }
             
             const assetIds = Array.from(selectedAssets);
+            UI_LOGGER.debug(`将为 ${assetIds.length} 个资产设置标签`, { assetIds, tags });
             if (assetIds.length === 0) {
+                UI_LOGGER.warn('没有选中的资产');
                 alert('没有选中的资产');
                 return;
             }
             
             try {
+                UI_LOGGER.info('开始批量设置标签');
                 showLoading(true);
                 const result = await assetService.batchSetTags(assetIds, tags);
-                // const response = await fetch('/api/assets/batch-tags', {
-                //     method: 'POST',
-                //     headers: {
-                //         'Content-Type': 'application/json'
-                //     },
-                //     body: JSON.stringify({
-                //         asset_ids: assetIds,
-                //         tags: tags
-                //     })
-                // });
-                
-                // const result = await response.json();
+                UI_LOGGER.debug('批量标签API响应', { result });
                 
                 if (result.code === 200) {
+                    UI_LOGGER.info(`成功为 ${assetIds.length} 个资产设置标签`);
                     alert(`成功为 ${assetIds.length} 个资产设置标签`);
                     closeBatchTagDialog();
                     
@@ -1172,13 +1300,15 @@
                     // 退出批量模式
                     toggleBatchMode();
                 } else {
+                    UI_LOGGER.error('批量设置失败', { message: result.message });
                     alert('批量设置失败: ' + (result.message || '未知错误'));
                 }
             } catch (error) {
-                console.error('批量设置标签失败:', error);
+                UI_LOGGER.error('批量设置标签失败', error);
                 alert('批量设置失败，请重试');
             } finally {
                 showLoading(false);
+                UI_LOGGER.debug('applyBatchTags 完成');
             }
         }
 
@@ -1186,15 +1316,16 @@
         * 获取所有可用标签
         */
         async function fetchAllTags() {
+            UI_LOGGER.debug('fetchAllTags 被调用');
             try {
                 const result = await assetService.getTags();
-                //const response = await fetch(`${API_BASE}/assets/tags`);
-                // const result = await response.json();
                 if (result.code === 200) {
-                    return result.data.map(tag => tag.name || tag);
+                    const tags = result.data.map(tag => tag.name || tag);
+                    UI_LOGGER.debug(`获取到 ${tags.length} 个标签`);
+                    return tags;
                 }
             } catch (error) {
-                console.error('获取标签失败:', error);
+                UI_LOGGER.error('获取标签失败', error);
             }
             return [];
         }
@@ -1208,6 +1339,7 @@
          * 防抖函数，用于优化搜索输入等高频操作
          */
         function debounce(func, wait) {
+            UI_LOGGER.debug('创建防抖函数', { wait });
             let timeout;
             return function executedFunction(...args) {
                 const later = () => {
@@ -1223,7 +1355,9 @@
          * 显示或隐藏全局加载状态
          */
         function showLoading(show) {
+            UI_LOGGER.debug(`设置加载状态: ${show}`);
             const loader = document.getElementById('loadingIndicator') || (() => {
+                UI_LOGGER.debug('创建加载指示器');
                 const div = document.createElement('div');
                 div.id = 'loadingIndicator';
                 div.style.cssText = 'position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.7); color: white; padding: 20px; border-radius: 8px; z-index: 1000;';
@@ -1240,17 +1374,20 @@
         // ------------------------------------------------------------
         
         function showView(viewName) {
+            UI_LOGGER.info('showView 被调用', { viewName });
             console.log('Switching to', viewName);
         }
 
         function openModal() {
+            UI_LOGGER.info('openModal 被调用');
             document.getElementById('createModal').classList.add('show');
+            UI_LOGGER.debug('创建弹窗已打开');
 
             // ===== 新增：重置标签选择 =====
             if (window.createTagSelect) {
                 window.createTagSelect.setSelected([]);
+                UI_LOGGER.debug('创建弹窗标签选择器已重置');
             }
-            // ===== 新增结束 =====
             
             const modalOptions = document.querySelector('.modal-options');
             modalOptions.innerHTML = `
@@ -1269,70 +1406,79 @@
             
             document.getElementById('fileInput')?.addEventListener('change', async function(e) {
                 const files = e.target.files;
+                UI_LOGGER.info(`文件上传: ${files.length} 个文件`);
                 let result = true;
 
-                // ===== 新增：获取选中的标签 =====
                 const selectedTags = window.createTagSelect ? window.createTagSelect.getSelected() : [];
                 const tagsString = selectedTags.join(',');
-                // ===== 新增结束 =====
+                UI_LOGGER.debug('上传文件标签', { tags: tagsString, selectedTags });
 
                 for (const file of files) {
                     let fileName = file.name;
                     const title = fileName.substring(0, fileName.lastIndexOf('.')) || fileName;
+                    UI_LOGGER.debug(`上传文件: ${fileName}, 标题: ${title}`);
                     if (title !== null) {
-                        //result = uploadAsset(file, { title }) && result;
-
-                        // ===== 修改：传入标签参数 =====
                         result = await uploadAsset(file, { 
                             title: title, 
-                            tags: tagsString  // 新增标签
+                            tags: tagsString
                         }) && result;
-                        // ===== 修改结束 =====
+                        UI_LOGGER.debug(`上传结果: ${result}`);
                     }
                 }
                 closeModal();
                 if (result) {
+                    UI_LOGGER.info('所有文件上传成功');
                     alert('上传成功！');
+                } else {
+                    UI_LOGGER.warn('部分文件上传失败');
                 }
             });
         }
 
         function closeModal() {
+            UI_LOGGER.debug('closeModal 被调用');
             document.getElementById('createModal').classList.remove('show');
 
-            // ===== 新增：关闭时重置标签 =====
             if (window.createTagSelect) {
                 window.createTagSelect.setSelected([]);
+                UI_LOGGER.debug('创建弹窗标签已清空');
             }
-            // ===== 新增结束 =====
         }
 
         // 打开新建画布对话框
         function openCanvasCreateDialog() {
+            UI_LOGGER.info('openCanvasCreateDialog 被调用');
             document.getElementById('canvasCreateModal').classList.add('show');
             // 清空输入框
             document.getElementById('canvasName').value = '';
             document.getElementById('canvasDescription').value = '';
             document.getElementById('canvasVisibility').value = '所有人';
+            UI_LOGGER.debug('画布创建对话框已打开并清空输入');
         }
 
         // 关闭新建画布对话框
         function closeCanvasCreateDialog() {
+            UI_LOGGER.debug('closeCanvasCreateDialog 被调用');
             document.getElementById('canvasCreateModal').classList.remove('show');
         }
 
         // 创建画布
         async function createCanvas() {
+            UI_LOGGER.info('createCanvas 被调用');
             const name = document.getElementById('canvasName').value.trim();
             const description = document.getElementById('canvasDescription').value.trim();
             const visibility = document.getElementById('canvasVisibility').value;
             
+            UI_LOGGER.debug('画布创建参数', { name, description, visibility });
+            
             if (!name) {
+                UI_LOGGER.warn('画布名称为空');
                 alert('请输入画布名称');
                 return;
             }
             
             try {
+                UI_LOGGER.info('开始创建画布');
                 showLoading(true);
                 const result = await assetService.saveCanvas({
                         title: name,
@@ -1340,57 +1486,57 @@
                         visibility: visibility,
                         type: 'canvas'
                      })
-                // const response = await fetch('/api/assets/save-canvas', {
-                //     method: 'POST',
-                //     headers: {
-                //         'Content-Type': 'application/json'
-                //     },
-                //     body: JSON.stringify({
-                //         title: name,
-                //         description: description,
-                //         visibility: visibility,
-                //         type: 'canvas'
-                //     })
-                // });
-                
-                // const result = await response.json();
+                UI_LOGGER.debug('画布创建API响应', { result });
                 
                 if (result.code === 200) {
+                    UI_LOGGER.info(`画布创建成功: ${name}`);
                     closeCanvasCreateDialog();
                     await fetchCanvasAssets(); // 刷新画布列表
                     alert('画布创建成功！');
                 } else {
+                    UI_LOGGER.error('画布创建失败', { message: result.message });
                     alert('创建失败: ' + (result.message || '未知错误'));
                 }
             } catch (error) {
-                console.error('创建画布失败:', error);
+                UI_LOGGER.error('创建画布失败', error);
                 alert('创建失败，请重试');
             } finally {
                 showLoading(false);
+                UI_LOGGER.debug('createCanvas 完成');
             }
         }
 
         function openAIGeneration() {
+            UI_LOGGER.info('openAIGeneration 被调用');
             const prompt = prompt('请输入角色描述:', '一位穿着古装的美少女');
             if (prompt) {
+                UI_LOGGER.debug('AI生成提示词', { prompt });
                 const style = prompt('请输入风格 (default/anime/realistic):', 'default');
+                UI_LOGGER.debug('AI生成风格', { style });
                 showLoading(true);
                 generateCharacter(prompt, style)
                     .then(result => {
                         showLoading(false);
                         if (result) {
+                            UI_LOGGER.info('AI生成成功');
                             closeModal();
                             alert('AI生成完成并已保存到资产库！');
+                        } else {
+                            UI_LOGGER.warn('AI生成返回空结果');
                         }
                     })
                     .catch(error => {
+                        UI_LOGGER.error('AI生成失败', error);
                         showLoading(false);
                         alert('生成失败: ' + error.message);
                     });
+            } else {
+                UI_LOGGER.debug('用户取消了AI生成');
             }
         }
 
         function closeDetail() {
+            UI_LOGGER.debug('closeDetail 被调用');
             document.getElementById('detailPanel').classList.remove('open');
         }
 
@@ -1402,13 +1548,16 @@
          * 渲染普通资产卡片列表
          */
         function renderAssets(data) {
+            UI_LOGGER.info('renderAssets 被调用', { dataLength: data?.length || 0 });
             if (Array.isArray(data)) {
                 console.log('Rendering assets:', data);
             } else {
+                UI_LOGGER.warn('期望资产数组，但收到', { dataType: typeof data });
                 console.warn('Expected an array of assets, but got:', data);
             }
             const gridContainer = document.getElementById('asset-grid');
             gridContainer.innerHTML = '';
+            UI_LOGGER.debug('清空资产网格');
             
             // 新增卡片按钮
             const addCard = document.createElement('div');
@@ -1420,8 +1569,10 @@
                 <div style="font-size:12px;">真人出镜或上传 / AI 生成</div>
             `;
             gridContainer.appendChild(addCard);
+            UI_LOGGER.debug('新增卡片已添加');
 
             if (!data || data.length === 0) {
+                UI_LOGGER.debug('无资产数据，显示空状态');
                 const emptyCard = document.createElement('div');
                 emptyCard.style.cssText = 'grid-column: 1/-1; text-align: center; padding: 40px; color: #888;';
                 emptyCard.innerHTML = '暂无资产，点击"新增"添加';
@@ -1430,21 +1581,20 @@
             }
 
             let allTags = new Set();
-            data.forEach(item => {
+            data.forEach((item, index) => {
                 const card = document.createElement('div');
                 card.className = 'asset-card';
                 card.dataset.assetId = item.id;
-                 // ===== 修改：添加批量模式判断 =====
+                
                 card.onclick = function(e) {
                     if (batchMode) {
-                        // 批量模式下，切换选中状态
+                        UI_LOGGER.debug(`卡片点击(批量模式): ${this.dataset.assetId}`);
                         toggleAssetSelection(this.dataset.assetId);
                         return;
                     }
-                    // 非批量模式下，打开详情
+                    UI_LOGGER.debug(`卡片点击(详情): ${this.dataset.assetId}`);
                     openDetail(item.id);
                 };
-                // ===== 修改结束 =====
                 
                 const imageUrl = item.cover_url || '/assets/default-cover.png';
                 
@@ -1458,39 +1608,48 @@
                     </div>
                 `;
                 gridContainer.appendChild(card);
+                UI_LOGGER.debug(`卡片 ${index + 1}/${data.length} 已添加: ${item.id}`);
 
                 if (item.tags && item.tags.length){
-                    item.tags.forEach(e =>allTags.add(e))
-                    
+                    item.tags.forEach(e => allTags.add(e));
                 }
             });
-            tagSelect.setItems(Array.from(allTags));
+            
+            const tagArray = Array.from(allTags);
+            UI_LOGGER.debug(`收集到 ${tagArray.length} 个标签`);
+            tagSelect.setItems(tagArray);
+            UI_LOGGER.debug('renderAssets 完成');
         }
 
         /**
          * 渲染画布资产卡片列表
          */
         function renderCanvasAssets(data) {
+            UI_LOGGER.info('renderCanvasAssets 被调用', { dataLength: data?.length || 0 });
             if (Array.isArray(data)) {
                 console.log('Rendering canvas assets:', data);
             } else {
+                UI_LOGGER.warn('期望画布资产数组，但收到', { dataType: typeof data });
                 console.warn('Expected an array of canvas assets, but got:', data);
             }
             const gridContainer = document.getElementById('asset-grid');
             gridContainer.innerHTML = '';
+            UI_LOGGER.debug('清空资产网格');
             
             // 修改：点击时调用新建画布的函数，而不是 openModal
             const addCard = document.createElement('div');
             addCard.className = 'asset-card add-card';
-            addCard.onclick = openCanvasCreateDialog;  // 改为调用新建画布对话框
+            addCard.onclick = openCanvasCreateDialog;
             addCard.innerHTML = `
                 <div class="add-icon">+</div>
                 <div style="font-weight:500; font-size:14px;">新增画布</div>
                 <div style="font-size:12px;"></div>
             `;
             gridContainer.appendChild(addCard);
+            UI_LOGGER.debug('新增画布卡片已添加');
 
             if (!data || data.length === 0) {
+                UI_LOGGER.debug('无画布数据，显示空状态');
                 const emptyCard = document.createElement('div');
                 emptyCard.style.cssText = 'grid-column: 1/-1; text-align: center; padding: 40px; color: #888;';
                 emptyCard.innerHTML = '暂无画布，点击"新增"添加';
@@ -1498,36 +1657,34 @@
                 return;
             }
 
-            data.forEach(item => {
+            data.forEach((item, index) => {
                 const card = document.createElement('div');
                 card.className = 'asset-card';
-                card.dataset.assetId = item.id; // ===== 新增 =====
+                card.dataset.assetId = item.id;
 
-                // ===== 修改：添加批量模式判断 =====
                 card.onclick = function(e) {
                     if (batchMode) {
-                        // 批量模式下，切换选中状态
+                        UI_LOGGER.debug(`画布卡片点击(批量模式): ${this.dataset.assetId}`);
                         toggleAssetSelection(this.dataset.assetId);
                         return;
                     }
-                    // 非批量模式下，打开详情
+                    UI_LOGGER.debug(`画布卡片点击(详情): ${this.dataset.assetId}`);
                     openCanvasDetail(item.id);
                 };
-                // ===== 修改结束 =====
                 
                 // 添加右键事件
                 card.addEventListener('contextmenu', function(e) {
-                    e.preventDefault();  // 阻止默认右键菜单
-                    e.stopPropagation(); // 阻止事件冒泡
+                    UI_LOGGER.debug(`画布卡片右键菜单: ${item.id}`);
+                    e.preventDefault();
+                    e.stopPropagation();
                     
-                    // 存储当前选中的画布ID
                     document.getElementById('contextMenu').dataset.canvasId = item.id;
                     
-                    // 设置菜单位置
                     const menu = document.getElementById('contextMenu');
                     menu.style.display = 'block';
                     menu.style.left = e.pageX + 'px';
                     menu.style.top = e.pageY + 'px';
+                    UI_LOGGER.debug('右键菜单已显示', { x: e.pageX, y: e.pageY });
                 });
                 
                 const imageUrl = item.cover_url || '/assets/default-cover.png';
@@ -1542,7 +1699,9 @@
                     </div>
                 `;
                 gridContainer.appendChild(card);
+                UI_LOGGER.debug(`画布卡片 ${index + 1}/${data.length} 已添加: ${item.id}`);
             });
+            UI_LOGGER.debug('renderCanvasAssets 完成');
         }
 
         // ------------------------------------------------------------
@@ -1550,15 +1709,20 @@
         // ------------------------------------------------------------
         
         async function openDetail(id) {
+            UI_LOGGER.info('openDetail 被调用', { id });
             if (batchMode){
+                UI_LOGGER.debug('批量模式下阻止打开详情');
                 return;
             }
             try {
                 const detailData = await fetchAssetDetail(id);
                 if (!detailData) {
+                    UI_LOGGER.warn('获取资产详情失败', { id });
                     alert('获取详情失败');
                     return;
                 }
+                
+                UI_LOGGER.debug('获取到资产详情', { title: detailData.title, type: detailData.type });
                 
                 isEditing = false;
                 setEditMode(false);
@@ -1573,28 +1737,35 @@
                 document.getElementById('detailVisibility').value = detailData.visibility || '所有人';
                 
                 document.getElementById('detailPanel').dataset.assetId = id;
-                document.getElementById('detailPanel').dataset.assetType = 'normal'; // 添加类型标记
+                document.getElementById('detailPanel').dataset.assetType = 'normal';
+                UI_LOGGER.debug('详情面板已更新并打开', { assetId: id, assetType: 'normal' });
 
                 let tags = detailData.tags || [];
                 tagSelect.setSelected(tags);
+                UI_LOGGER.debug('标签已设置', { tags });
                 
             } catch (error) {
-                console.error('打开详情失败:', error);
+                UI_LOGGER.error('打开详情失败', error);
                 alert('无法加载资产详情');
             }
         }
 
         async function openCanvasDetail(id) {
+            UI_LOGGER.info('openCanvasDetail 被调用', { id });
             if (batchMode){
+                UI_LOGGER.debug('批量模式下阻止打开画布详情');
                 return;
             }
             try {
                 // 从画布数据中查找
                 const detailData = canvasAssetsData.find(item => item.id === id);
                 if (!detailData) {
+                    UI_LOGGER.warn('未找到画布数据', { id });
                     alert('获取详情失败');
                     return;
                 }
+                
+                UI_LOGGER.debug('找到画布数据', { title: detailData.title });
                 
                 // 退出编辑状态
                 isEditing = false;
@@ -1603,31 +1774,33 @@
                 document.getElementById('detailPanel').classList.add('open');
                 document.getElementById('detailImg').src = detailData.main_image || detailData.cover_url || '/assets/default-cover.png';
                 
-                // 填充输入框（与 openDetail 保持一致）
                 document.getElementById('detailName').value = detailData.title || '未命名';
                 document.getElementById('detailDate').innerText = detailData.created_at || '';
                 document.getElementById('detailSource').innerText = detailData.source_display || detailData.source_type || '未知';
                 document.getElementById('detailDescription').value = detailData.description || '';
                 document.getElementById('detailVisibility').value = detailData.visibility || '所有人';
                 
-                // 存储当前查看的资产ID，标记为画布类型
                 document.getElementById('detailPanel').dataset.assetId = id;
-                document.getElementById('detailPanel').dataset.assetType = 'canvas'; // 添加类型标记
+                document.getElementById('detailPanel').dataset.assetType = 'canvas';
+                UI_LOGGER.debug('画布详情面板已更新并打开', { assetId: id, assetType: 'canvas' });
                 
             } catch (error) {
-                console.error('打开详情失败:', error);
+                UI_LOGGER.error('打开画布详情失败', error);
                 alert('无法加载资产详情');
             }
         }
 
         // 切换编辑/查看模式
         function toggleEdit() {
+            UI_LOGGER.info('toggleEdit 被调用', { currentIsEditing: isEditing });
             isEditing = !isEditing;
             setEditMode(isEditing);
+            UI_LOGGER.debug('编辑模式已切换', { isEditing });
         }
 
         // 设置编辑模式
         function setEditMode(editing) {
+            UI_LOGGER.debug('setEditMode 被调用', { editing });
             const inputs = [
                 document.getElementById('detailName'),
                 document.getElementById('detailVisibility'),
@@ -1649,21 +1822,27 @@
                 saveBtn.style.display = 'inline-block';
                 headerTitle.innerText = '编辑详情';
                 tagSelect.enable();
+                UI_LOGGER.debug('进入编辑模式');
             } else {
                 editBtn.style.display = 'inline-block';
                 saveBtn.style.display = 'none';
                 headerTitle.innerText = '角色详情';
                 tagSelect.disable();
+                UI_LOGGER.debug('退出编辑模式');
             }
         }
 
         // 保存详情修改
         async function saveDetail() {
+            UI_LOGGER.info('saveDetail 被调用');
             const panel = document.getElementById('detailPanel');
             const id = panel.dataset.assetId;
             const assetType = panel.dataset.assetType || 'normal';
             
+            UI_LOGGER.debug('保存参数', { id, assetType });
+            
             if (!id && assetType !== 'canvas') {
+                UI_LOGGER.warn('未找到资产ID');
                 alert('未找到资产ID');
                 return;
             }
@@ -1672,48 +1851,34 @@
                 title: document.getElementById('detailName').value,
                 visibility: document.getElementById('detailVisibility').value,
                 description: document.getElementById('detailDescription').value,
-                tags:Array.from(tagSelect.getSelected()).join(',')
+                tags: Array.from(tagSelect.getSelected()).join(',')
             };
+            UI_LOGGER.debug('更新的数据', updatedData);
             
             try {
+                UI_LOGGER.info('开始保存修改');
                 showLoading(true);
                 
-                let response, result;
+                let result;
                 
                 // 根据资产类型调用不同的 API
                 if (assetType === 'canvas') {
-                    // 画布资产使用 save-canvas 接口
+                    UI_LOGGER.debug('保存画布资产');
                     result = await assetService.saveCanvas({
-                        id: id,           // 传入画布ID用于更新
-                            ...updatedData    // 合并修改的数据
-                     })
-                    // response = await fetch('/api/assets/save-canvas', {
-                    //     method: 'POST',
-                    //     headers: {
-                    //         'Content-Type': 'application/json'
-                    //     },
-                    //     body: JSON.stringify({
-                    //         id: id,           // 传入画布ID用于更新
-                    //         ...updatedData    // 合并修改的数据
-                    //     })
-                    // });
+                        id: id,
+                        ...updatedData
+                    });
                 } else {
-                    // 普通资产使用原来的 API
+                    UI_LOGGER.debug('保存普通资产');
                     result = await assetService.updateAsset(id, updatedData);
-                    // response = await fetch(`${API_BASE}/assets/${id}`, {
-                    //     method: 'PUT',
-                    //     headers: {
-                    //         'Content-Type': 'application/json'
-                    //     },
-                    //     body: JSON.stringify(updatedData)
-                    // });
                 }
                 
-                //result = await response.json();
+                UI_LOGGER.debug('保存API响应', { result });
                 
                 if (result.code === 200) {
                     isEditing = false;
                     setEditMode(false);
+                    UI_LOGGER.info('保存成功');
                     
                     // 刷新对应的资产列表
                     if (assetType === 'canvas') {
@@ -1724,13 +1889,15 @@
                     
                     alert('保存成功！');
                 } else {
+                    UI_LOGGER.error('保存失败', { message: result.message });
                     alert('保存失败: ' + (result.message || '未知错误'));
                 }
             } catch (error) {
-                console.error('保存错误:', error);
+                UI_LOGGER.error('保存错误', error);
                 alert('保存失败，请重试');
             } finally {
                 showLoading(false);
+                UI_LOGGER.debug('saveDetail 完成');
             }
         }
 
@@ -1739,6 +1906,7 @@
         // ------------------------------------------------------------
         
         async function fetchAssets(params = {}) {
+            UI_LOGGER.info('fetchAssets 被调用', { params, currentFilter });
             try {
                 const queryParams = { ...currentFilter, ...params };
                 queryParams.pageSize = 200;
@@ -1746,75 +1914,70 @@
                     .filter(([key, value]) => value !== undefined && value !== '')
                     .map(([key, value]) => `${key}=${encodeURIComponent(value)}`)
                     .join('&');
+                UI_LOGGER.debug('查询参数', { queryString });
 
                 console.log('getAssets call');
                 const newResult = await assetService.getAssets(queryParams);
-                
-                const url = `${API_BASE}/assets?${queryString}`;
-                //const response = await fetch(url);
-                //const result = await response.json();
+                UI_LOGGER.debug('API响应', { code: newResult.code, total: newResult.data?.total });
                 
                 if (newResult.code === 200) {
                     assetsData = newResult.data.list;
                     currentFilter = { ...currentFilter, ...params };
+                    UI_LOGGER.debug(`获取到 ${assetsData.length} 个资产`);
                     renderAssets(assetsData);
                     return assetsData;
                 } else {
-                    console.error('获取资产失败:', newResult.message);
+                    UI_LOGGER.error('获取资产失败', { message: newResult.message });
                     return [];
                 }
             } catch (error) {
-                console.error('API请求错误:', error);
+                UI_LOGGER.error('API请求错误', error);
                 return [];
             }
         }
 
         async function fetchCanvasAssets(params = {}) {
+            UI_LOGGER.info('fetchCanvasAssets 被调用', { params });
             try {
-                // const response = await fetch('/api/assets/canvas', {
-                //     method: 'POST',
-                //     headers: { 'Content-Type': 'application/json' }
-                // });
-                // const result = await response.json();
-
                 const result = await assetService.getCanvasList();
-
+                UI_LOGGER.debug('API响应', { code: result.code, dataLength: result.data?.length });
                 
                 if (result.code === 200) {
                     canvasAssetsData = result.data;
                     currentFilter = { ...currentFilter, ...params };
+                    UI_LOGGER.debug(`获取到 ${canvasAssetsData.length} 个画布资产`);
                     renderCanvasAssets(canvasAssetsData);
                     return canvasAssetsData;
                 } else {
-                    console.error('获取资产失败:', result.message);
+                    UI_LOGGER.error('获取画布资产失败', { message: result.message });
                     return [];
                 }
             } catch (error) {
-                console.error('API请求错误:', error);
+                UI_LOGGER.error('API请求错误', error);
                 return [];
             }
         }
 
         async function fetchAssetDetail(id) {
+            UI_LOGGER.debug('fetchAssetDetail 被调用', { id });
             try {
-                // const response = await fetch(`${API_BASE}/assets/${id}`);
-                // const result = await response.json();
-
                 const result = await assetService.getAssetById(id);
+                UI_LOGGER.debug('API响应', { code: result.code, hasData: !!result.data });
                 
                 if (result.code === 200) {
                     return result.data;
                 } else {
-                    console.error('获取详情失败:', result.message);
+                    UI_LOGGER.error('获取详情失败', { message: result.message });
                     return null;
                 }
             } catch (error) {
-                console.error('API请求错误:', error);
+                UI_LOGGER.error('API请求错误', error);
                 return null;
             }
         }
 
         async function uploadAsset(file, metadata = {}) {
+            UI_LOGGER.info('uploadAsset 被调用', { fileName: file?.name, fileSize: file?.size, metadata });
             try {
                 const formData = new FormData();
                 formData.append('file', file);
@@ -1823,122 +1986,120 @@
                 formData.append('source_type', metadata.source_type || 'upload');
                 if (metadata.tags) formData.append('tags', metadata.tags);
                 if (metadata.description) formData.append('description', metadata.description);
+                UI_LOGGER.debug('FormData 已构建', { title: metadata.title });
 
                 const result = await assetService.createAsset(formData);
-                // const response = await fetch(`${API_BASE}/assets`, {
-                //     method: 'POST',
-                //     body: formData
-                // });
+                UI_LOGGER.debug('API响应', { code: result.code, assetId: result.data?.id });
                 
-                //const result = await response.json();
                 if (result.code === 200) {
+                    UI_LOGGER.info(`上传成功: ${result.data?.id}`);
                     await fetchAssets();
                     return result.data;
                 } else {
-                    console.error('上传失败:', result.message);
+                    UI_LOGGER.error('上传失败', { message: result.message });
                     return null;
                 }
             } catch (error) {
-                console.error('上传错误:', error);
+                UI_LOGGER.error('上传错误', error);
                 return null;
             }
         }
 
         async function deleteAsset(id) {
+            UI_LOGGER.info('deleteAsset 被调用', { id });
             try {
-                if (!confirm('确定要删除这个资产吗？')) return false;
+                if (!confirm('确定要删除这个资产吗？')) {
+                    UI_LOGGER.debug('用户取消删除');
+                    return false;
+                }
                 
-                const response = await assetService.deleteAsset(id);
-
-                // const response = await fetch(`${API_BASE}/assets/${id}`, { method: 'DELETE' });
-                const result =  response;
+                const result = await assetService.deleteAsset(id);
+                UI_LOGGER.debug('API响应', { code: result.code });
+                
                 if (result.code === 200) {
+                    UI_LOGGER.info(`删除成功: ${id}`);
                     await fetchAssets();
                     return true;
                 } else {
-                    console.error('删除失败:', result.message);
+                    UI_LOGGER.error('删除失败', { message: result.message });
                     return false;
                 }
             } catch (error) {
-                console.error('删除错误:', error);
+                UI_LOGGER.error('删除错误', error);
                 return false;
             }
         }
 
         async function useAsset(id) {
+            UI_LOGGER.info('useAsset 被调用', { id });
             try {
-                const response = await assetService.useAsset(id);
-                //const response = await fetch(`${API_BASE}/assets/${id}/use`, { method: 'POST' });
-                const result =  response;
+                const result = await assetService.useAsset(id);
+                UI_LOGGER.debug('API响应', { code: result.code });
+                
                 if (result.code === 200) {
+                    UI_LOGGER.info(`资产使用成功: ${id}`);
                     alert(`资产使用成功: ${result.message}`);
                     return true;
                 } else {
-                    console.error('使用失败:', result.message);
+                    UI_LOGGER.error('使用失败', { message: result.message });
                     return false;
                 }
             } catch (error) {
-                console.error('使用错误:', error);
+                UI_LOGGER.error('使用错误', error);
                 return false;
             }
         }
 
         async function fetchRecentActivities() {
+            UI_LOGGER.debug('fetchRecentActivities 被调用');
             try {
                 const result = await assetService.getRecentActivity();
-
-                // const response = await fetch(`${API_BASE}/activity/recent`);
-                // const result = await response.json();
+                UI_LOGGER.debug('API响应', { code: result.code, count: result.data?.length });
                 if (result.code === 200) return result.data;
             } catch (error) {
-                console.error('获取历史记录失败:', error);
+                UI_LOGGER.error('获取历史记录失败', error);
             }
         }
 
         async function fetchTags() {
+            UI_LOGGER.debug('fetchTags 被调用');
             try {
                 const result = await assetService.getTags();
-
-                // const response = await fetch(`${API_BASE}/assets/tags`);
-                // const result = await response.json();
+                UI_LOGGER.debug('API响应', { code: result.code, count: result.data?.length });
                 if (result.code === 200) return result.data;
             } catch (error) {
-                console.error('获取标签失败:', error);
+                UI_LOGGER.error('获取标签失败', error);
             }
             return [];
         }
 
         async function generateCharacter(prompt, style = 'default') {
+            UI_LOGGER.info('generateCharacter 被调用', { prompt, style });
             try {
                 const result = await assetService.generateCharacter({ prompt, style });
-                // const response1 = await fetch(`${API_BASE}/generate/character`, {
-                //     method: 'POST',
-                //     headers: { 'Content-Type': 'application/json' },
-                //     body: JSON.stringify({ prompt, style })
-                // });
+                UI_LOGGER.debug('API响应', { code: result.code, taskId: result.data?.task_id });
                 
-                // const result = await response.json();
                 if (result.code === 200) {
                     return pollGenerationStatus(result.data.task_id);
                 } else {
-                    console.error('生成失败:', result.message);
+                    UI_LOGGER.error('生成失败', { message: result.message });
                     return null;
                 }
             } catch (error) {
-                console.error('生成错误:', error);
+                UI_LOGGER.error('生成错误', error);
                 return null;
             }
         }
 
         async function pollGenerationStatus(taskId, interval = 2000, maxAttempts = 30) {
+            UI_LOGGER.info('pollGenerationStatus 开始轮询', { taskId, interval, maxAttempts });
             let attempts = 0;
             
             return new Promise((resolve, reject) => {
                 const checkStatus = async () => {
                     try {
                         const result = await assetService.getGenerateTaskStatus(taskId);
-                        // const response = await fetch(`${API_BASE}/generate/task/${taskId}`);
-                        // const result = await response.json();
+                        UI_LOGGER.debug(`轮询第 ${attempts + 1} 次`, { status: result.data?.status, progress: result.data?.progress });
                         
                         if (result.code === 200) {
                             const status = result.data.status;
@@ -1947,24 +2108,29 @@
                             console.log(`生成进度: ${progress}%`);
                             
                             if (status === 'completed' && result.data.result) {
+                                UI_LOGGER.info('AI生成完成', { taskId });
                                 const saveResult = await saveAIGenerated(result.data.result.image_url, prompt);
                                 resolve(saveResult);
                                 return;
                             }
                             
                             if (status === 'failed') {
+                                UI_LOGGER.error('AI生成失败', { taskId });
                                 reject(new Error('AI生成失败'));
                                 return;
                             }
                             
                             attempts++;
                             if (attempts < maxAttempts) {
+                                UI_LOGGER.debug(`继续轮询，进度: ${progress}%`);
                                 setTimeout(checkStatus, interval);
                             } else {
+                                UI_LOGGER.error('生成超时', { taskId, attempts });
                                 reject(new Error('生成超时'));
                             }
                         }
                     } catch (error) {
+                        UI_LOGGER.error('轮询错误', error);
                         reject(error);
                     }
                 };
@@ -1974,6 +2140,7 @@
         }
 
         async function saveAIGenerated(imageUrl, prompt) {
+            UI_LOGGER.info('saveAIGenerated 被调用', { imageUrl, prompt: prompt?.slice(0, 30) });
             try {
                 const result = await assetService.saveAIResult({
                         title: `AI生成 - ${prompt.slice(0, 20)}`,
@@ -1981,67 +2148,58 @@
                         tags: 'ai,generated',
                         description: prompt
                     });
-                // const response1 = await fetch(`${API_BASE}/assets/save-ai-result`, {
-                //     method: 'POST',
-                //     headers: { 'Content-Type': 'application/json' },
-                //     body: JSON.stringify({
-                //         title: `AI生成 - ${prompt.slice(0, 20)}`,
-                //         image_url: imageUrl,
-                //         tags: 'ai,generated',
-                //         description: prompt
-                //     })
-                // });
+                UI_LOGGER.debug('API响应', { code: result.code, assetId: result.data?.id });
                 
-                // const result = await response.json();
                 if (result.code === 200) {
+                    UI_LOGGER.info('AI生成结果已保存', { assetId: result.data.id });
                     await fetchAssets();
                     return result.data;
                 }
             } catch (error) {
-                console.error('保存AI生成结果失败:', error);
+                UI_LOGGER.error('保存AI生成结果失败', error);
             }
             return null;
         }
 
         // 删除当前查看的资产
         async function deleteCurrentAsset() {
+            UI_LOGGER.info('deleteCurrentAsset 被调用');
             const panel = document.getElementById('detailPanel');
             const id = parseInt(panel.dataset.assetId);
             const assetType = panel.dataset.assetType || 'normal';
             
-            if (!id) return;
+            UI_LOGGER.debug('删除参数', { id, assetType });
             
-            if (!confirm('确定要删除这个资产吗？')) return;
+            if (!id) {
+                UI_LOGGER.warn('未找到资产ID');
+                return;
+            }
+            
+            if (!confirm('确定要删除这个资产吗？')) {
+                UI_LOGGER.debug('用户取消删除');
+                return;
+            }
             
             try {
+                UI_LOGGER.info('开始删除资产');
                 showLoading(true);
                 
-                let response, result;
+                let result;
                 
                 if (assetType === 'canvas') {
-                    // 画布资产使用 delete-canvas 接口
+                    UI_LOGGER.debug('删除画布资产');
                     result = await assetService.deleteCanvas(id);
-                    // response = await fetch('/api/assets/delete-canvas', {
-                    //     method: 'POST',
-                    //     headers: {
-                    //         'Content-Type': 'application/json'
-                    //     },
-                    //     body: JSON.stringify({ id: id })
-                    // });
                 } else {
-                    // 普通资产使用原来的接口
+                    UI_LOGGER.debug('删除普通资产');
                     result = await assetService.deleteAsset(id);
-                    // response = await fetch(`${API_BASE}/assets/${id}`, {
-                    //     method: 'DELETE'
-                    // });
                 }
                 
-                // result = await response.json();
+                UI_LOGGER.debug('删除API响应', { code: result.code });
                 
                 if (result.code === 200) {
+                    UI_LOGGER.info(`删除成功: ${id}`);
                     closeDetail();
                     
-                    // 刷新对应的列表
                     if (assetType === 'canvas') {
                         await fetchCanvasAssets();
                     } else {
@@ -2050,22 +2208,27 @@
                     
                     alert('删除成功！');
                 } else {
+                    UI_LOGGER.error('删除失败', { message: result.message });
                     alert('删除失败: ' + (result.message || '未知错误'));
                 }
             } catch (error) {
-                console.error('删除错误:', error);
+                UI_LOGGER.error('删除错误', error);
                 alert('删除失败，请重试');
             } finally {
                 showLoading(false);
+                UI_LOGGER.debug('deleteCurrentAsset 完成');
             }
         }
 
         // 使用当前查看的资产
         async function useCurrentAsset() {
+            UI_LOGGER.info('useCurrentAsset 被调用');
             const panel = document.getElementById('detailPanel');
             const id = parseInt(panel.dataset.assetId);
             if (id) {
                 await useAsset(id);
+            } else {
+                UI_LOGGER.warn('未找到资产ID');
             }
         }
 
@@ -2075,8 +2238,12 @@
         // 打开画布页面
         function openCanvasPage() {
             const canvasId = document.getElementById('contextMenu').dataset.canvasId;
+            UI_LOGGER.info('openCanvasPage 被调用', { canvasId });
             if (canvasId) {
                 window.open(`canvas.html?id=${canvasId}`, '_blank');
+                UI_LOGGER.debug('已打开画布页面');
+            } else {
+                UI_LOGGER.warn('未找到画布ID');
             }
             hideContextMenu();
         }
@@ -2084,62 +2251,60 @@
         // 从右键菜单删除画布
         async function deleteCanvasFromMenu() {
             const canvasId = document.getElementById('contextMenu').dataset.canvasId;
+            UI_LOGGER.info('deleteCanvasFromMenu 被调用', { canvasId });
             
             if (!canvasId) {
+                UI_LOGGER.warn('未找到画布ID');
                 alert('未找到画布ID');
                 hideContextMenu();
                 return;
             }
             
             if (!confirm('确定要删除这个画布吗？')) {
+                UI_LOGGER.debug('用户取消删除画布');
                 hideContextMenu();
                 return;
             }
             
             try {
+                UI_LOGGER.info('开始删除画布', { canvasId });
                 showLoading(true);
                 
                 const result = await assetService.deleteCanvas(canvasId);
-                // const response = await fetch('/api/assets/delete-canvas', {
-                //     method: 'POST',
-                //     headers: {
-                //         'Content-Type': 'application/json'
-                //     },
-                //     body: JSON.stringify({
-                //         id: canvasId
-                //     })
-                // });
-                
-                // const result = await response.json();
+                UI_LOGGER.debug('API响应', { code: result.code });
                 
                 if (result.code === 200) {
-                    // 如果详情面板打开且显示的是被删除的画布，则关闭详情面板
+                    UI_LOGGER.info(`画布删除成功: ${canvasId}`);
                     const panel = document.getElementById('detailPanel');
                     if (panel.classList.contains('open') && panel.dataset.assetId === canvasId) {
                         closeDetail();
+                        UI_LOGGER.debug('已关闭详情面板');
                     }
                     
-                    // 刷新画布列表
                     await fetchCanvasAssets();
                     alert('画布删除成功！');
                 } else {
+                    UI_LOGGER.error('删除画布失败', { message: result.message });
                     alert('删除失败: ' + (result.message || '未知错误'));
                 }
             } catch (error) {
-                console.error('删除画布失败:', error);
+                UI_LOGGER.error('删除画布失败', error);
                 alert('删除失败，请重试');
             } finally {
                 showLoading(false);
                 hideContextMenu();
+                UI_LOGGER.debug('deleteCanvasFromMenu 完成');
             }
         }
 
         // 隐藏右键菜单
         function hideContextMenu() {
+            UI_LOGGER.debug('隐藏右键菜单');
             document.getElementById('contextMenu').style.display = 'none';
         }
 
         function iniCompoments(){
+            UI_LOGGER.info('iniCompoments 开始初始化组件');
             // 1. 准备数据
             const data = [
                 "1.0.0.0", "2023.12.FH", "2024.01.FH", "2024.01.SH", 
@@ -2148,14 +2313,17 @@
                 "2024.04.FH", "2024.04.W3", "2024.05.FH", 
                 "2024.05.SH", "2024.06.FH", "2024.06.SH"
             ];
+            UI_LOGGER.debug('标签数据已准备', { count: data.length });
 
             // 2. 初始化组件
             tagSelect = new TagSelect('#detailTags', {
                 placeholder: '请选择标签'
             });
+            UI_LOGGER.debug('详情标签组件已初始化');
 
             // 3. 设置数据源
             tagSelect.setItems(data);
+            UI_LOGGER.debug('详情标签数据已设置');
 
             // 4. 设置默认选中
             tagSelect.setSelected([]);
@@ -2163,28 +2331,27 @@
             // 5. 绑定事件监听
             tagSelect
                 .onChange((selected) => {
+                    UI_LOGGER.debug('标签选择变化', { selected });
                     console.log('当前选中:', selected);
                 })
                 .onSelect((item) => {
+                    UI_LOGGER.debug('标签被选中', { item });
                     console.log('新选中:', item);
                 })
                 .onRemove((item) => {
+                    UI_LOGGER.debug('标签被移除', { item });
                     console.log('移除了:', item);
                 });
 
-            // 6. 后续更新数据源
-            // tagSelect.updateItems(['2025.01.FH', '2025.02.FH']);
-
-            // 7. 获取当前选中
-            // console.log(tagSelect.getSelected());
-
-             // 2. 初始化组件
+            // 2. 初始化组件
             searchTagSelect = new TagSelect('#searchTag', {
                 placeholder: '请选择标签'
             });
+            UI_LOGGER.debug('搜索标签组件已初始化');
 
             // 3. 设置数据源
             searchTagSelect.setItems(data);
+            UI_LOGGER.debug('搜索标签数据已设置');
 
             // 4. 设置默认选中
             searchTagSelect.setSelected([]);
@@ -2192,13 +2359,16 @@
             // 5. 绑定事件监听
             searchTagSelect
                 .onChange((selected) => {
+                    UI_LOGGER.info('搜索标签变化', { selected });
                     console.log('当前选中:', selected);
                     fetchAssets({tags:selected});
                 })
                 .onSelect((item) => {
+                    UI_LOGGER.debug('搜索标签被选中', { item });
                     console.log('新选中:', item);
                 })
                 .onRemove((item) => {
+                    UI_LOGGER.debug('搜索标签被移除', { item });
                     console.log('移除了:', item);
                 });
 
@@ -2208,8 +2378,9 @@
             });
             window.createTagSelect.setItems([]);
             window.createTagSelect.setSelected([]);
-            // ===== 新增结束 =====
+            UI_LOGGER.debug('创建弹窗标签组件已初始化');
             
+            UI_LOGGER.info('iniCompoments 完成');
         }
 
         // ------------------------------------------------------------
@@ -2217,29 +2388,38 @@
         // ------------------------------------------------------------
         
         function addDocumentListeners() {
+            UI_LOGGER.info('addDocumentListeners 开始绑定事件');
             // 关闭弹窗（点击遮罩层）
             document.getElementById('createModal').addEventListener('click', function(e) {
-                if (e.target === this) closeModal();
+                if (e.target === this) {
+                    UI_LOGGER.debug('点击遮罩层关闭创建弹窗');
+                    closeModal();
+                }
             });
 
 
             // 搜索输入
-            document.querySelector('.search-box input')?.addEventListener('input', debounce(function(e) {
-                const keyword = e.target.value;
-                currentFilter.keyword = keyword;
-                currentFilter.page = 1;
-                fetchAssets();
-            }, 500));
+            const searchInput = document.querySelector('.search-box input');
+            if (searchInput) {
+                UI_LOGGER.debug('搜索输入事件已绑定');
+                searchInput.addEventListener('input', debounce(function(e) {
+                    const keyword = e.target.value;
+                    UI_LOGGER.info('搜索输入', { keyword });
+                    currentFilter.keyword = keyword;
+                    currentFilter.page = 1;
+                    fetchAssets();
+                }, 500));
+            }
 
             // Tab 切换
-            document.querySelectorAll('.tabs .tab').forEach(tab => {
+            document.querySelectorAll('.tabs .tab').forEach((tab, index) => {
                 tab.addEventListener('click', function() {
+                    UI_LOGGER.info(`Tab切换: ${this.textContent.trim()}`);
 
-                     // ===== 新增：切换视图时退出批量模式 =====
                     if (batchMode) {
+                        UI_LOGGER.debug('切换视图时退出批量模式');
                         toggleBatchMode();
                     }
-                    // ===== 新增结束 =====
 
                     document.querySelectorAll('.tabs .tab').forEach(t => t.classList.remove('active'));
                     this.classList.add('active');
@@ -2254,6 +2434,7 @@
                     const typeName = this.textContent.trim();
                     currentFilter.type = typeMap[typeName] || 'all';
                     currentFilter.page = 1;
+                    UI_LOGGER.debug('Tab切换后筛选条件', { type: currentFilter.type });
                     
                     if (currentFilter.type === 'canvas') {
                         fetchCanvasAssets();
@@ -2264,73 +2445,99 @@
             });
 
             // 排序切换
-            document.querySelector('.controls span:first-child')?.addEventListener('click', function() {
-                currentFilter.sort = currentFilter.sort === 'time_desc' ? 'time_asc' : 'time_desc';
-                this.innerHTML = currentFilter.sort === 'time_desc' ? 
-                    '<i class="fas fa-clock"></i> 按时间倒序' : 
-                    '<i class="fas fa-clock"></i> 按时间正序';
-                fetchAssets();
-            });
+            const sortSpan = document.querySelector('.controls span:first-child');
+            if (sortSpan) {
+                UI_LOGGER.debug('排序事件已绑定');
+                sortSpan.addEventListener('click', function() {
+                    currentFilter.sort = currentFilter.sort === 'time_desc' ? 'time_asc' : 'time_desc';
+                    UI_LOGGER.info('排序切换', { sort: currentFilter.sort });
+                    this.innerHTML = currentFilter.sort === 'time_desc' ? 
+                        '<i class="fas fa-clock"></i> 按时间倒序' : 
+                        '<i class="fas fa-clock"></i> 按时间正序';
+                    fetchAssets();
+                });
+            }
 
             // 关闭画布创建对话框（点击遮罩层）
             document.getElementById('canvasCreateModal').addEventListener('click', function(e) {
-                if (e.target === this) closeCanvasCreateDialog();
+                if (e.target === this) {
+                    UI_LOGGER.debug('点击遮罩层关闭画布创建弹窗');
+                    closeCanvasCreateDialog();
+                }
             });
 
-             // 点击其他地方隐藏右键菜单
+            // 点击其他地方隐藏右键菜单
             document.addEventListener('click', function(e) {
                 const menu = document.getElementById('contextMenu');
                 if (menu.style.display === 'block' && !menu.contains(e.target)) {
+                    UI_LOGGER.debug('点击外部隐藏右键菜单');
                     hideContextMenu();
                 }
             });
             
             // 滚动时隐藏右键菜单
             document.addEventListener('scroll', function() {
-                hideContextMenu();
+                if (document.getElementById('contextMenu').style.display === 'block') {
+                    UI_LOGGER.debug('滚动时隐藏右键菜单');
+                    hideContextMenu();
+                }
             });
+            
+            UI_LOGGER.info('addDocumentListeners 完成');
         }
 
         console.log('addEventListener'); 
 
         // 页面加载完成后初始化
         document.addEventListener('DOMContentLoaded', async function() {
+            UI_LOGGER.info('=== DOMContentLoaded 页面初始化开始 ===');
             // 初始化 Mock 数据以确保首次渲染
             renderAssets([]);
+            UI_LOGGER.debug('初始空状态渲染完成');
 
             iniCompoments();
+            UI_LOGGER.debug('组件初始化完成');
             
             // 绑定事件
             addDocumentListeners();
+            UI_LOGGER.debug('事件绑定完成');
             
             // 加载数据
+            UI_LOGGER.info('开始加载数据');
             await fetchAssets();
+            UI_LOGGER.info('资产数据加载完成');
             await fetchRecentActivities();
+            UI_LOGGER.debug('历史活动加载完成');
             
             const tags = await fetchTags();
+            UI_LOGGER.info(`标签数据加载完成: ${tags.length} 个标签`);
             console.log('可用标签:', tags);
             console.log('系统初始化完成');
             let existingTags = tags.map(e => e.name);
             if (tagSelect){
                 tagSelect.setItems(existingTags);
+                UI_LOGGER.debug('详情标签更新');
             }
             if (searchTagSelect){
                 searchTagSelect.setItems(existingTags);
+                UI_LOGGER.debug('搜索标签更新');
             }
             if (window.createTagSelect){
                 window.createTagSelect.setItems(existingTags);
+                UI_LOGGER.debug('创建弹窗标签更新');
             }
 
-             // ===== 新增：批量标签选择器预加载 =====
-            // 等用户打开对话框时再初始化
-            // 但可以先获取标签数据缓存起来
+            // ===== 新增：批量标签选择器预加载 =====
             window._cachedTags = existingTags;
-            // ===== 新增结束 =====
+            UI_LOGGER.debug('标签已缓存', { count: existingTags.length });
+            
+            UI_LOGGER.info('=== 页面初始化完成 ===');
         });
 
         // 首次立即渲染空状态
         renderAssets(assetsData);
         console.log('renderAssets'); 
+        UI_LOGGER.info('初始空状态已渲染');
 
         // 将模块内部函数暴露到全局作用域
         window.showView = showView;
@@ -2350,6 +2557,8 @@
         window.createCanvas = createCanvas;
         window.openCanvasPage = openCanvasPage;
         window.deleteCanvasFromMenu = deleteCanvasFromMenu;
+        
+        UI_LOGGER.info('全局函数已暴露到 window 对象');
     </script>
 </body>
 </html>
