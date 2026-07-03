@@ -2165,7 +2165,7 @@
         async function deleteCurrentAsset() {
             UI_LOGGER.info('deleteCurrentAsset 被调用');
             const panel = document.getElementById('detailPanel');
-            const id = parseInt(panel.dataset.assetId);
+            const id = panel.dataset.assetId;
             const assetType = panel.dataset.assetType || 'normal';
             
             UI_LOGGER.debug('删除参数', { id, assetType });
@@ -2224,7 +2224,7 @@
         async function useCurrentAsset() {
             UI_LOGGER.info('useCurrentAsset 被调用');
             const panel = document.getElementById('detailPanel');
-            const id = parseInt(panel.dataset.assetId);
+            const id = panel.dataset.assetId;
             if (id) {
                 await useAsset(id);
             } else {
