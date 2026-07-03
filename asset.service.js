@@ -142,6 +142,18 @@ const AGNES_API_URL = 'https://apihub.agnes-ai.com/v1/videos';
 const AGNES_API_KEY = AGENT_AI_API_KEY;
 const AGNES_MODEL = 'agnes-video-v2.0';
 
+// 验证文件类型
+const allowedTypes = [
+    'image/jpeg',
+    'image/png', 
+    'image/gif',
+    'image/webp',
+    'image/svg+xml',
+    'image/bmp',
+    'image/tiff',
+    'image/avif'
+    ];
+
 // ============================================
 // UUID 生成（前端兼容版本）
 // ============================================
@@ -366,7 +378,8 @@ class AssetService {
             const name = typeof file === 'string' ? file : file.name || file.fileName;
             const ext = name.split('.').pop()?.toLowerCase();
             this.logger.debug(`_loadDefaultAssets 处理文件: ${name}, 扩展名: ${ext}`);
-            if (['png', 'jpg', 'jpeg', 'gif', 'webp'].includes(ext)) {
+            let imageTypes = allowedTypes.map(e => e.replace('image/',''));
+            if (imageTypes.includes(ext)) {
                 this.logger.debug(`_loadDefaultAssets 文件 ${name} 是图片，获取信息`);
                 const infoResult = await this.fsUtils.getInfo(name, this.PATHS.IMAGES_DIR);
                 defaultAssets.push({
@@ -403,17 +416,7 @@ class AssetService {
     async _uploadFile(file, subfolder = this.PATHS.IMAGES_DIR) {
         this.logger.info(`_uploadFile 开始上传文件: ${file.name}, 大小: ${file.size}字节, 类型: ${file.type}, 目标目录: ${subfolder}`);
 
-        // 验证文件类型
-        const allowedTypes = [
-            'image/jpeg',
-            'image/png', 
-            'image/gif',
-            'image/webp',
-            'image/svg+xml',
-            'image/bmp',
-            'image/tiff',
-            'image/avif'
-            ];
+        
         
         if (!allowedTypes.includes(file.type)) {
             const error = `只支持图片文件 (JPEG, PNG, GIF, WebP),实际格式=${file.type}`;
