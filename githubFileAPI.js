@@ -439,7 +439,7 @@ class GitHubFileAPI {
 
             const url = this._buildApiUrl(fullPath);
             const body = {
-                message: commitMessage || `Upload ${fileName}`,
+                message: commitMessage || `Upload ${fileName} ${new Date().toJSON().replace('T',' ').replace('Z','')}`,
                 content: base64Content,
                 branch: this.config.branch
             };
@@ -476,7 +476,7 @@ class GitHubFileAPI {
     async uploadJSON(fileName, jsonData, subfolder = '', commitMessage = '') {
         try {
             const jsonString = JSON.stringify(jsonData, null, 2);
-            return this.uploadText(fileName, jsonString, subfolder, commitMessage || `Update ${fileName}`);
+            return this.uploadText(fileName, jsonString, subfolder, commitMessage || `Update ${fileName}  ${new Date().toJSON().replace('T',' ').replace('Z','')}`);
         } catch (error) {
             console.error('❌ JSON 写入失败:', error);
             return { success: false, error: error.message };
@@ -618,7 +618,7 @@ class GitHubFileAPI {
             const url = this._buildApiUrl(fullPath);
 
             const body = {
-                message: commitMessage || `Update ${fileName}`,
+                message: commitMessage || `Update ${fileName}  ${new Date().toJSON().replace('T',' ').replace('Z','')}`,
                 content: base64Content,
                 sha: info.sha,
                 branch: this.config.branch
