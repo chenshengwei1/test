@@ -145,6 +145,7 @@ const AGNES_MODEL = 'agnes-video-v2.0';
 // 验证文件类型
 const allowedTypes = [
     'image/jpeg',
+    'image/jpg',
     'image/png', 
     'image/gif',
     'image/webp',
