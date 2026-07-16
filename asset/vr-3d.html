@@ -467,10 +467,20 @@
                             side: THREE.BackSide,
                         });
                         const mesh = new THREE.Mesh(geometry, material);
+
+                         // 确保纹理已更新
+                        texture.needsUpdate = true;
+
                         resolve(mesh);
                     },
-                    undefined,
-                    (err) => reject(err)
+                    (xhr) => {
+                        // 加载进度（可选）
+                        console.log(`加载进度: ${(xhr.loaded / xhr.total * 100)}%`);
+                    },
+                    (err) => {
+                        console.error('纹理加载失败:', err);
+                        reject(err);
+                    }
                 );
             });
         }
@@ -529,6 +539,11 @@
                 currentSceneIndex = index;
                 indicator.textContent = `📍 ${sceneData.icon} ${sceneData.name}`;
                 badge.textContent = `● ${sceneData.name}`;
+
+                // 在 switchScene 函数中添加调试
+                console.log('球体已添加:', sphereMesh);
+                console.log('球体位置:', sphereMesh.position);
+                console.log('场景中的对象数量:', scene.children.length);
                 
                 // 隐藏加载
                 setTimeout(() => {
