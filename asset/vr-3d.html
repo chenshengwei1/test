@@ -461,17 +461,18 @@
                 loader.load(
                     [images.right, images.left, images.up, images.down, images.front, images.back],
                     (texture) => {
+                        // 关键：CubeTexture 不需要设置这些，但需要确保它们被正确应用
+                        // 尝试移除所有额外设置，只保留最基本的
+                        texture.needsUpdate = true;
+                        
                         const geometry = new THREE.SphereGeometry(100, 64, 64);
                         const material = new THREE.MeshBasicMaterial({
                             map: texture,
                             side: THREE.BackSide,
                         });
                         const mesh = new THREE.Mesh(geometry, material);
-
-                         // 确保纹理已更新
-                        texture.needsUpdate = true;
-
                         resolve(mesh);
+
                     },
                     (xhr) => {
                         // 加载进度（可选）
@@ -529,6 +530,7 @@
                 // 添加新球体
                 sphereMesh = newSphere;
                 scene.add(sphereMesh);
+                window.sphereMesh = sphereMesh;
                 
                 // 重置视角
                 controls.target.set(0, 0, 0);
