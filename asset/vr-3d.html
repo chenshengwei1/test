@@ -215,6 +215,24 @@
             .controls button { font-size: 17px; }
             .scene-indicator { bottom: 135px; font-size: 11px; padding: 2px 14px; }
         }
+
+        /* 导航按钮中的缩略图样式 */
+        .scene-nav button img {
+            width: 24px;
+            height: 24px;
+            border-radius: 4px;
+            object-fit: cover;
+            vertical-align: middle;
+            margin-right: 8px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        /* 加载中的预览图样式 */
+        #previewImage {
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+            border: 1px solid rgba(255,255,255,0.1);
+        }
     </style>
 </head>
 <body>
@@ -222,6 +240,7 @@
     <!-- ===== 加载遮罩 ===== -->
     <div id="loadingOverlay">
         <div class="spinner"></div>
+        <img id="previewImage" src="" style="max-width:80%;max-height:40%;border-radius:12px;margin-bottom:16px;object-fit:cover;display:none;">
         <p>🌐 全景加载中...</p>
         <div class="sub" id="loadingSceneName">准备就绪</div>
     </div>
@@ -266,44 +285,133 @@
         // ============================================================
         // 每个场景：id(唯一), name(显示名), icon(图标), url(全景图地址)
         // 提示：如果你没有自己的全景图，可以使用测试图，但建议替换为真实图片
+        const BASE_PATH = 'https://raw.githubusercontent.com/chenshengwei1/learning/master/asset/';
+
+    
         const SCENES = [
             {
                 id: 'livingroom',
                 name: '客厅',
                 icon: '🛋️',
-                url: 'https://threejs.org/examples/textures/2294472375_24a3b8ef46_o.jpg'
+                url: 'https://threejs.org/examples/textures/2294472375_24a3b8ef46_o.jpg',
+                key : '4c895662f3be47b7a1901a17848babf2',
+                no:'8743cae1100147ab865d501c35e14257'
             },
             {
                 id: 'masterbed',
                 name: '主卧',
                 icon: '🛏️',
-                url: 'https://threejs.org/examples/textures/2294472375_24a3b8ef46_o.jpg'
+                url: 'https://threejs.org/examples/textures/2294472375_24a3b8ef46_o.jpg',
+                key : '4d32301308dd40a392cf60f97f25ffc9',
+                no:'1d4e46dddd294cd08e9324b66d083ebf'
             },
             {
                 id: 'kitchen',
                 name: '厨房',
                 icon: '🍳',
-                url: 'https://threejs.org/examples/textures/2294472375_24a3b8ef46_o.jpg'
+                url: 'https://threejs.org/examples/textures/2294472375_24a3b8ef46_o.jpg',
+                key : '7ea7707649e544aaa08b2ba68f7f32f1',
+                no:'bb17b282479741e4b32f7e564bf7f962'
             },
             {
                 id: 'bathroom',
                 name: '卫生间',
                 icon: '🚿',
-                url: 'https://threejs.org/examples/textures/2294472375_24a3b8ef46_o.jpg'
+                url: 'https://threejs.org/examples/textures/2294472375_24a3b8ef46_o.jpg',
+                key : '040be3a45f31412b90f7b95e3abd1f65',
+                no:'df42367fb0b1462da2446e8dcb0828f9'
             },
             {
                 id: 'balcony',
                 name: '阳台',
                 icon: '🌿',
-                url: 'https://threejs.org/examples/textures/2294472375_24a3b8ef46_o.jpg'
+                url: 'https://threejs.org/examples/textures/2294472375_24a3b8ef46_o.jpg',
+                key : '488ea89d632e4d329ef2a7bb58b73569',
+                no : 'e68ee5ccfd4f4ff68bb5e097cabbe305'
             },
             {
                 id: 'study',
                 name: '书房',
                 icon: '📚',
-                url: 'https://threejs.org/examples/textures/2294472375_24a3b8ef46_o.jpg'
+                url: 'https://threejs.org/examples/textures/2294472375_24a3b8ef46_o.jpg',
+                key : '1093ab457a234399a6c1088e64cd6cf6'
+            }
+            ,
+            {
+                id: 'study',
+                name: '书房',
+                icon: '📚',
+                url: 'https://threejs.org/examples/textures/2294472375_24a3b8ef46_o.jpg',
+                key : '32049ea6eee44cfbbfba6c190becd398',
+                no:'3a623310f676470288958308226cfeb4'
+            }
+            ,
+            {
+                id: 'study',
+                name: '书房',
+                icon: '📚',
+                url: 'https://threejs.org/examples/textures/2294472375_24a3b8ef46_o.jpg',
+                key : '43146292ee6448beb737389629bf8732',
+                no:'9cfa976ea11040a488aa32cdaaf8667c'
+            }
+            ,
+            {
+                id: 'study',
+                name: '书房',
+                icon: '📚',
+                url: 'https://threejs.org/examples/textures/2294472375_24a3b8ef46_o.jpg',
+                key : 'a110761a045f491cba4c0ff3a7ebe7ea'
+            }
+            ,
+            {
+                id: 'study',
+                name: '书房',
+                icon: '📚',
+                url: 'https://threejs.org/examples/textures/2294472375_24a3b8ef46_o.jpg',
+                key : 'ad2809394e684f758d982fc1737c12b1'
+            }
+            ,
+            {
+                id: 'study',
+                name: '书房',
+                icon: '📚',
+                url: 'https://threejs.org/examples/textures/2294472375_24a3b8ef46_o.jpg',
+                key : 'b1f197b7598c4c73adb52ae516b64227'
+            }
+            ,
+            {
+                id: 'study',
+                name: '书房',
+                icon: '📚',
+                url: 'https://threejs.org/examples/textures/2294472375_24a3b8ef46_o.jpg',
+                key : 'cdbc30f7e6044679b162067400b4a988'
+            }
+            ,
+            {
+                id: 'study',
+                name: '书房',
+                icon: '📚',
+                url: 'https://threejs.org/examples/textures/2294472375_24a3b8ef46_o.jpg',
+                key : 'ea79739deac94e02bd4ad736c9afb555'
             }
         ];
+
+        // 根据场景配置生成所有图片路径
+        function getSceneImages(scene) {
+            const base = `${BASE_PATH}${scene.key}/panos/${scene.no}.tiles/`;
+            return {
+                right: `${base}pano_r.jpg`,
+                left: `${base}pano_l.jpg`,
+                up: `${base}pano_u.jpg`,
+                down: `${base}pano_d.jpg`,
+                front: `${base}pano_f.jpg`,
+                back: `${base}pano_b.jpg`,
+                thumb: `${base}thumb.jpg`,
+                preview: `${base}pano_preview.jpg`,
+                name: scene.name,
+                icon: scene.icon
+            };
+        }
 
         // 当前场景索引
         let currentSceneIndex = 0;
@@ -343,10 +451,11 @@
         let sphereMesh = null;
         const textureLoader = new THREE.TextureLoader();
 
-        function createPanorama(url) {
+        function createPanorama(images) {
             return new Promise((resolve, reject) => {
-                textureLoader.load(
-                    url,
+                const loader = new THREE.CubeTextureLoader();
+                loader.load(
+                    [images.right, images.left, images.up, images.down, images.front, images.back],
                     (texture) => {
                         const geometry = new THREE.SphereGeometry(100, 64, 64);
                         const material = new THREE.MeshBasicMaterial({
@@ -367,6 +476,7 @@
             if (isTransitioning) return;
             const sceneData = SCENES[index];
             if (!sceneData) return;
+            const images = getSceneImages(sceneData);
 
             isTransitioning = true;
             const overlay = document.getElementById('loadingOverlay');
@@ -375,8 +485,16 @@
             const badge = document.getElementById('sceneBadge');
 
             // 显示加载
+            // 显示加载
             overlay.classList.remove('hidden');
-            loadingName.textContent = `📸 ${sceneData.icon} ${sceneData.name}`;
+            const previewImg = document.getElementById('previewImage');
+            if (images.preview) {
+                previewImg.src = images.preview;
+                previewImg.style.display = 'block';
+            } else {
+                previewImg.style.display = 'none';
+            }
+            loadingName.textContent = `📸 ${images.icon} ${images.name}`;
             
             // 更新按钮状态
             document.querySelectorAll('.scene-nav button').forEach((btn, i) => {
@@ -385,7 +503,7 @@
 
             try {
                 // 加载新全景图
-                const newSphere = await createPanorama(sceneData.url);
+                const newSphere = await createPanorama(images);
                 
                 // 移除旧球体
                 if (sphereMesh) {
@@ -431,7 +549,12 @@
         const navContainer = document.getElementById('sceneNav');
         SCENES.forEach((s, i) => {
             const btn = document.createElement('button');
-            btn.innerHTML = `<span class="icon">${s.icon}</span> ${s.name}`;
+            // 如果有缩略图，显示图片+文字，否则只显示图标+文字
+            if (s.thumb) {
+                btn.innerHTML = `<img src="${s.thumb}" style="width:20px;height:20px;border-radius:4px;object-fit:cover;vertical-align:middle;margin-right:6px;"> ${s.name}`;
+            } else {
+                btn.innerHTML = `<span class="icon">${s.icon}</span> ${s.name}`;
+            }
             btn.dataset.index = i;
             if (i === 0) btn.classList.add('active');
             btn.addEventListener('click', () => {
