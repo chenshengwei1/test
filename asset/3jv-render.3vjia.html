@@ -314,7 +314,7 @@
     function getSceneImages(scene) {
         const base = `${BASE_PATH}${scene.key}/`;
         // 🔥 修复: 尝试多种可能的预览图文件名
-        const previewCandidates = ['show_preview.jpg', 'preview.jpg', 'thumb.jpg'];
+        const previewCandidates = ['show_preview.jpg', 'show_r.jpg'];
         return {
             right: `${base}show_r.jpg`,
             left: `${base}show_l.jpg`,
@@ -322,7 +322,7 @@
             down: `${base}show_d.jpg`,
             front: `${base}show_f.jpg`,
             back: `${base}show_b.jpg`,
-            thumb: `${base}show_preview.jpg`,
+            thumb: `${base}show_r.jpg`,
             preview: `${base}show_preview.jpg`,
             previewCandidates: previewCandidates.map(name => `${base}${name}`),
             name: scene.name,
@@ -534,7 +534,7 @@
 
         // 显示遮罩
         overlay.classList.remove('hidden');
-        previewImg.src = images.thumb;
+        previewImg.src = images.right;
         previewImg.style.display = 'block';
         loadingSceneName.textContent = `📸 ${sceneData.icon} ${sceneData.name} 加载中...`;
         sceneIndicator.textContent = `📍 ${sceneData.icon} ${sceneData.name}（预览画质）`;
@@ -616,7 +616,7 @@
             // 尝试备用预览图
             log(`🔄 尝试加载备用预览图...`);
             try {
-                const fallbackUrl = images.previewCandidates[1] || images.thumb;
+                const fallbackUrl = images.preview;
                 log(`  📥 尝试: ${fallbackUrl}`);
                 const fallbackTex = await splitPreviewToCubeTex(fallbackUrl);
                 const fallbackMesh = createCubeSphereMesh(fallbackTex);
@@ -713,6 +713,36 @@
     renderThumbs();
     log(`🚀 启动加载第一个场景...`);
     switchScene(0);
+
+    // ============================================================
+    //  星空背景装饰
+    // ============================================================
+    function addStars() {
+        const vertices = [];
+        for (let i = 0; i < 1500; i++) {
+            const theta = Math.random() * Math.PI * 2;
+            const phi = Math.acos(2 * Math.random() - 1);
+            const r = 80 + Math.random() * 18;
+            vertices.push(
+                r * Math.sin(phi) * Math.cos(theta),
+                r * Math.sin(phi) * Math.sin(theta),
+                r * Math.cos(phi)
+            );
+        }
+        const geometry = new THREE.BufferGeometry();
+        geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+        const material = new THREE.PointsMaterial({
+            color: 0x88bbff,
+            size: 0.25,
+            transparent: true,
+            opacity: 0.5,
+            blending: THREE.AdditiveBlending
+        });
+        const stars = new THREE.Points(geometry, material);
+        scene.add(stars);
+    }
+    addStars();
+
 
     // 额外: 5秒后如果还处于加载状态，显示错误提示
     setTimeout(() => {
