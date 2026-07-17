@@ -500,51 +500,52 @@
 
         function createPanorama(images) {
             return new Promise((resolve, reject) => {
-                const loader = new THREE.TextureLoader();
+                const loader = new THREE.ImageLoader();
                 const urls = [images.right, images.left, images.up, images.down, images.front, images.back];
-                const textures = [];
+                const imgList = [];
                 let loadedCount = 0;
-                
+                console.log('待加载六面图地址列表：', urls);
+
                 urls.forEach((url, index) => {
                     loader.load(
                         url,
-                        (texture) => {
-                            // 关键校验：图像必须解码完成、宽高大于0
-                            const img = texture.image;
-                            if (!img || img.width <= 0 || img.height <= 0) {
-                                return reject(new Error(`第 ${index+1} 张图片解码异常，尺寸为0`));
+                        (img) => {
+                            // 校验单张图片，打印关键信息
+                            console.log(`第${index}面加载完成`, {url, width: img.width, height: img.height, complete: img.complete});
+                            if (!img.complete || img.width <= 0 || img.height <= 0) {
+                                return reject(new Error(`第${index}面图片解码异常，宽高非法，url:${url}`));
                             }
-                            textures[index] = texture;
+                            imgList[index] = img;
                             loadedCount++;
-                            
+
                             if (loadedCount === 6) {
-                                const cubeTexture = new THREE.CubeTexture();
-                                cubeTexture.images = textures.map(t => t.image);
+                                console.log('6张图片全部加载完毕，图像数组详情：', imgList);
+                                const cubeTexture = new THREE.CubeTexture(imgList);
                                 cubeTexture.colorSpace = THREE.SRGBColorSpace;
-                                // 不使用mipmap，彻底规避mipmap相关报错
                                 cubeTexture.generateMipmaps = false;
-                                cubeTexture.magFilter = THREE.LinearFilter;
                                 cubeTexture.minFilter = THREE.LinearFilter;
-                                // 删除手动指定format、type，避免和实际图像格式冲突
+                                cubeTexture.magFilter = THREE.LinearFilter;
+                                console.log('即将触发纹理上传，CubeTexture实例：', cubeTexture);
                                 cubeTexture.needsUpdate = true;
-                                
+
                                 const geometry = new THREE.SphereGeometry(100, 64, 64);
                                 const material = new THREE.MeshBasicMaterial({
                                     map: cubeTexture,
-                                    side: THREE.BackSide,
+                                    side: THREE.BackSide
                                 });
                                 const mesh = new THREE.Mesh(geometry, material);
+                                console.log('全景网格创建完成，准备resolve返回');
                                 resolve(mesh);
                             }
                         },
                         undefined,
                         (err) => {
-                            console.error(`第 ${index+1} 张图片加载失败:`, err);
+                            console.error(`第${index}面加载失败`, {url, err});
                             reject(err);
                         }
-                    );
-                });
-            });
+                    )
+                })
+            })
         }
 
         // 切换场景
