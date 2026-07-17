@@ -701,16 +701,24 @@
                 let loadedCount = 0;
                 const totalFaces = 6;
 
-                // 存储已加载的高清图（按 targetOrderIndex 索引）
-                const loadedImages = new Array(6).fill(null);
+                // 🎯 明确每个面对应 preview.jpg 中的第几块
+                // 根据你的 splitPreviewToCubeTex 中的 targetOrderIndex = [2,0,4,5,1,3]
+                // 即：imgArr[0]=原图第2块 → right, imgArr[1]=原图第0块 → left, ...
+                const faceToBlockIndex = {
+                    right: 2,
+                    left: 0,
+                    up: 4,
+                    down: 5,
+                    front: 1,
+                    back: 3
+                };
 
-                // 先复制当前预览图的6个面作为初始值
+                // 从当前纹理复制预览图作为基底
                 const currentCubeTex = sphereMesh.material.uniforms.cubeMap.value;
-                for (let i = 0; i < 6; i++) {
-                    loadedImages[i] = currentCubeTex.image[i];
-                }
+                const baseImages = currentCubeTex.image.map(img => img);
+                const loadedImages = baseImages.slice();
 
-                const loadPromises = faceNames.map((faceName, i) => {
+                const loadPromises = faceNames.map((faceName) => {
                     const highResUrl = images[faceName];
                     if (!highResUrl) {
                         loadedCount++;
@@ -725,10 +733,11 @@
                         loader.load(
                             highResUrl,
                             (highTex) => {
-                                const targetIdx = targetOrderIndex[i];
-                                loadedImages[targetIdx] = highTex.image;
+                                // 🎯 用明确的映射关系
+                                const blockIndex = faceToBlockIndex[faceName];
+                                loadedImages[blockIndex] = highTex.image;
                                 
-                                // 🎯 重建 CubeTexture
+                                // 重建 CubeTexture
                                 const newCubeTex = new THREE.CubeTexture(loadedImages);
                                 newCubeTex.colorSpace = THREE.SRGBColorSpace;
                                 newCubeTex.generateMipmaps = false;
@@ -736,12 +745,11 @@
                                 newCubeTex.magFilter = THREE.LinearFilter;
                                 newCubeTex.needsUpdate = true;
                                 
-                                // 替换材质中的纹理
                                 sphereMesh.material.uniforms.cubeMap.value = newCubeTex;
                                 
                                 loadedCount++;
                                 updateProgress(loadedCount, totalFaces, progressEl);
-                                console.log(`✅ ${faceName} 面已升级为高清 (${loadedCount}/${totalFaces})`);
+                                console.log(`✅ ${faceName} 面 (preview第${blockIndex}块) 已升级为高清 (${loadedCount}/${totalFaces})`);
                                 resolve();
                             },
                             undefined,
