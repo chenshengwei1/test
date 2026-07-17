@@ -700,7 +700,15 @@
                 const faceNames = ['right', 'left', 'up', 'down', 'front', 'back'];
                 let loadedCount = 0;
                 const totalFaces = 6;
-                const cubeImages = sphereMesh.material.uniforms.cubeMap.value.image;
+
+                // 存储已加载的高清图（按 targetOrderIndex 索引）
+                const loadedImages = new Array(6).fill(null);
+
+                // 先复制当前预览图的6个面作为初始值
+                const currentCubeTex = sphereMesh.material.uniforms.cubeMap.value;
+                for (let i = 0; i < 6; i++) {
+                    loadedImages[i] = currentCubeTex.image[i];
+                }
 
                 const loadPromises = faceNames.map((faceName, i) => {
                     const highResUrl = images[faceName];
@@ -718,8 +726,18 @@
                             highResUrl,
                             (highTex) => {
                                 const targetIdx = targetOrderIndex[i];
-                                cubeImages[targetIdx] = highTex.image;
-                                sphereMesh.material.uniforms.cubeMap.value.needsUpdate = true;
+                                loadedImages[targetIdx] = highTex.image;
+                                
+                                // 🎯 重建 CubeTexture
+                                const newCubeTex = new THREE.CubeTexture(loadedImages);
+                                newCubeTex.colorSpace = THREE.SRGBColorSpace;
+                                newCubeTex.generateMipmaps = false;
+                                newCubeTex.minFilter = THREE.LinearFilter;
+                                newCubeTex.magFilter = THREE.LinearFilter;
+                                newCubeTex.needsUpdate = true;
+                                
+                                // 替换材质中的纹理
+                                sphereMesh.material.uniforms.cubeMap.value = newCubeTex;
                                 
                                 loadedCount++;
                                 updateProgress(loadedCount, totalFaces, progressEl);
