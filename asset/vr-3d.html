@@ -279,6 +279,8 @@
     <script type="module">
         import * as THREE from 'three';
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { Sky } from 'three/addons/objects/Sky.js';
+
         window.THREE = THREE;
 
         // ============================================================
@@ -510,12 +512,10 @@
                         cubeTexture.generateMipmaps = false;
                         cubeTexture.minFilter = THREE.LinearFilter;
                         cubeTexture.magFilter = THREE.LinearFilter;
-                        const geometry = new THREE.SphereGeometry(100, 64, 64);
-                        const material = new THREE.MeshBasicMaterial({
-                            map: cubeTexture,
-                            side: THREE.BackSide
-                        });
-                        resolve(new THREE.Mesh(geometry, material));
+                        const sky = new Sky();
+                        sky.scale.setScalar(100);
+                        sky.material.map = cubeTexture;
+                        resolve(sky);
                     },
                     undefined,
                     reject
