@@ -499,6 +499,9 @@
         // 缓存所有切割画布，供调试面板读取
         window.debugCutCanvasList = [];
 
+        // 原图从上到下 i0:right, i1:left, i2:up, i3:down, i4:front, i5:back
+        window.targetOrderIndex = [1, 4, 0, 5, 2, 3];
+
         /**
          * 切割宽高比1:6的纵向拼接预览图，拆分为6张正方形立方体面
          * @param {string} previewUrl preview.jpg地址
@@ -511,8 +514,7 @@
                 img.onload = () => {
                     const pieceSize = img.height / 6; // 1:6，高度均分6份，宽=pieceSize天然正方形
                     // 目标输出数组顺序：[left, front, right, back, up, down]
-                    // 原图从上到下 i0:right, i1:left, i2:up, i3:down, i4:front, i5:back
-                    const targetOrderIndex = [1, 4, 0, 5, 2, 3];
+                    
                     const imgArr = [];
                     for (const i of targetOrderIndex) {
                         const canvas = document.createElement("canvas");
@@ -547,7 +549,6 @@
 
         // 调试：渲染选中的切面到对比面板
         function renderDebugFace(faceIdx) {
-            const targetOrderIndex = [1, 4, 0, 5, 2, 3];
             renderDebugFace2('left', targetOrderIndex[0]);
             renderDebugFace2('front', targetOrderIndex[1]);
             renderDebugFace2('right', targetOrderIndex[2]);
