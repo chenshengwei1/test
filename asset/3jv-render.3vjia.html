@@ -322,37 +322,79 @@
             opacity: 1;
         }
 
-        /* ===== 加载提示 ===== */
-        .loading-tip {
+        /* ===== 加载遮罩 (全屏过渡) ===== */
+        .loading-overlay {
             position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: rgba(0,0,0,0.7);
-            backdrop-filter: blur(8px);
-            padding: 16px 30px;
-            border-radius: 50px;
-            z-index: 40;
+            inset: 0;
+            z-index: 50;
+            background: rgba(0, 0, 0, 0.75);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
             display: flex;
+            flex-direction: column;
             align-items: center;
-            gap: 16px;
-            font-size: 15px;
-            color: #ccc;
-            border: 1px solid rgba(255,255,255,0.04);
-            transition: opacity 0.5s;
+            justify-content: center;
+            gap: 20px;
+            transition: opacity 0.5s ease;
             pointer-events: none;
         }
-        .loading-tip .spinner {
-            width: 22px;
-            height: 22px;
-            border: 2px solid rgba(255,255,255,0.08);
-            border-top: 2px solid #f7b731;
+        .loading-overlay.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+        .loading-overlay .preview-wrap {
+            width: 80%;
+            max-width: 360px;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.8);
+            border: 1px solid rgba(255,255,255,0.06);
+        }
+        .loading-overlay .preview-wrap img {
+            display: block;
+            width: 100%;
+            aspect-ratio: 2 / 1;
+            object-fit: cover;
+        }
+        .loading-overlay .loading-text {
+            font-size: 16px;
+            color: #eee;
+            letter-spacing: 0.5px;
+            background: rgba(255,255,255,0.04);
+            padding: 8px 24px;
+            border-radius: 40px;
+            border: 1px solid rgba(255,255,255,0.04);
+        }
+        .loading-overlay .spinner {
+            width: 32px;
+            height: 32px;
+            border: 3px solid rgba(255,255,255,0.06);
+            border-top: 3px solid #f7b731;
             border-radius: 50%;
             animation: spin 0.9s linear infinite;
         }
         @keyframes spin {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
+        }
+
+        /* ===== 场景状态指示器 ===== */
+        .scene-indicator {
+            position: absolute;
+            bottom: 110px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 25;
+            background: rgba(0,0,0,0.5);
+            backdrop-filter: blur(6px);
+            padding: 6px 18px;
+            border-radius: 40px;
+            font-size: 13px;
+            color: rgba(255,255,255,0.6);
+            border: 1px solid rgba(255,255,255,0.04);
+            pointer-events: none;
+            transition: opacity 0.4s;
+            white-space: nowrap;
         }
 
         /* ===== 响应式 ===== */
@@ -419,6 +461,11 @@
             .scene-strip .thumb-item .icon {
                 font-size: 16px;
             }
+            .scene-indicator {
+                bottom: 100px;
+                font-size: 11px;
+                padding: 4px 14px;
+            }
         }
     </style>
 </head>
@@ -427,17 +474,23 @@
 <div id="pano-container">
     <!-- Three.js 画布将自动插入 -->
 
-    <!-- ===== 加载提示 ===== -->
-    <div class="loading-tip" id="loadingTip">
-        <span class="spinner"></span>
-        <span id="loadingText">全景加载中...</span>
+    <!-- ===== 加载遮罩 ===== -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="spinner"></div>
+        <div class="preview-wrap">
+            <img id="previewImage" src="" alt="场景预览">
+        </div>
+        <div class="loading-text" id="loadingSceneName">加载全景中...</div>
     </div>
+
+    <!-- ===== 场景指示器 ===== -->
+    <div class="scene-indicator" id="sceneIndicator">📍 主卧</div>
 
     <!-- ===== 顶部品牌栏 ===== -->
     <div class="brand-bar">
         <div class="brand-left">
             <span class="logo"><i class="fas fa-cube"></i> Sunvega</span>
-            <span class="badge"><i class="fas fa-fire" style="margin-right:4px;"></i>三维家</span>
+            <span class="badge" id="sceneBadge"><i class="fas fa-fire" style="margin-right:4px;"></i>三维家</span>
         </div>
         <div class="brand-right">
             <button id="fullscreenBtn" title="全屏"><i class="fas fa-expand"></i></button>
@@ -446,9 +499,8 @@
         </div>
     </div>
 
-    <!-- ===== 底部信息卡 (仿截图) ===== -->
+    <!-- ===== 底部信息卡 ===== -->
     <div class="bottom-card">
-        <!-- 主信息卡 -->
         <div class="info-card">
             <div class="info-row">
                 <div class="title-area">
@@ -469,10 +521,8 @@
             </div>
         </div>
 
-        <!-- 场景缩略图 (横向滚动) -->
-        <div class="scene-strip" id="thumbStrip">
-            <!-- 由 JavaScript 动态生成 -->
-        </div>
+        <!-- 场景缩略图 -->
+        <div class="scene-strip" id="thumbStrip"></div>
     </div>
 </div>
 
@@ -494,28 +544,29 @@
     import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
     // ============================================================
-    // 1. 场景数据 (与您提供一致)
+    // 1. 场景数据
     // ============================================================
     const BASE_PATH = 'https://raw.githubusercontent.com/chenshengwei1/learning/master/asset/157481626/';
-    // https://github.com/chenshengwei1/learning/blob/master/asset/157481626/1f1a93a3107942daa2481620bac2e9cf/show_preview.jpg
     const SCENES = [
         { id: 'livingroom', name: '主卧', icon: '🛏️', key: '21a288c8cfe64f698ed8ca431d1ac8c6' },
-        { id: 'masterbed', name: '客房', icon: '🌿', key: '1f1a93a3107942daa2481620bac2e9cf'},
+        { id: 'masterbed', name: '客房', icon: '🌿', key: '1f1a93a3107942daa2481620bac2e9cf' },
         { id: 'kitchen', name: '女童房', icon: '🍳', key: '4537117ed3ea40f39bb74154688e79ae' },
-        { id: 'bathroom', name: '电视柜', icon: '🚿', key: '3a49c7521bc648e189fd8470ea10737d'},
-        { id: 'balcony', name: '男童房', icon: '🛋️', key: 'cb47bb65c35b45b1b0bfa7fe92ab9031'},
-        { id: 'study', name: '入户', icon: '📚', key: '5df322435d904de8a1f702cb8bb61209'}
+        { id: 'bathroom', name: '电视柜', icon: '🚿', key: '3a49c7521bc648e189fd8470ea10737d' },
+        { id: 'balcony', name: '男童房', icon: '🛋️', key: 'cb47bb65c35b45b1b0bfa7fe92ab9031' },
+        { id: 'study', name: '入户', icon: '📚', key: '5df322435d904de8a1f702cb8bb61209' }
     ];
 
     function getSceneImages(scene) {
         const base = `${BASE_PATH}${scene.key}/`;
         return {
-            right: `${base}pano_r.jpg`,
-            left: `${base}pano_l.jpg`,
-            up: `${base}pano_u.jpg`,
-            down: `${base}pano_d.jpg`,
-            front: `${base}pano_f.jpg`,
-            back: `${base}pano_b.jpg`,
+            right: `${base}show_r.jpg`,
+            left: `${base}show_l.jpg`,
+            up: `${base}show_u.jpg`,
+            down: `${base}show_d.jpg`,
+            front: `${base}show_f.jpg`,
+            back: `${base}show_b.jpg`,
+            thumb: `${base}show_preview.jpg`,
+            preview: `${base}show_preview.jpg`,
             name: scene.name,
             icon: scene.icon
         };
@@ -526,8 +577,11 @@
     // ============================================================
     const container = document.getElementById('pano-container');
     const thumbStrip = document.getElementById('thumbStrip');
-    const loadingTip = document.getElementById('loadingTip');
-    const loadingText = document.getElementById('loadingText');
+    const overlay = document.getElementById('loadingOverlay');
+    const previewImg = document.getElementById('previewImage');
+    const loadingSceneName = document.getElementById('loadingSceneName');
+    const sceneIndicator = document.getElementById('sceneIndicator');
+    const sceneBadge = document.getElementById('sceneBadge');
 
     const fullscreenBtn = document.getElementById('fullscreenBtn');
     const resetViewBtn = document.getElementById('resetViewBtn');
@@ -537,108 +591,198 @@
     // ============================================================
     // 3. Three.js 核心
     // ============================================================
-    const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x111122);
+    let currentSceneIndex = 0;
+    let isTransitioning = false;
+    let sphereMesh = null;
+    let isAutoRotate = false;
 
-    const camera = new THREE.PerspectiveCamera(75, container.clientWidth / container.clientHeight, 0.1, 1000);
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x0a0a1a);
+
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
     camera.position.set(0, 0, 0.1);
 
     const renderer = new THREE.WebGLRenderer({ antialias: true });
-    renderer.setSize(container.clientWidth, container.clientHeight);
+    renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    container.appendChild(renderer.domElement);
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.0;
+    container.prepend(renderer.domElement);
 
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableZoom = true;
-    controls.zoomSpeed = 0.6;
-    controls.rotateSpeed = 0.7;
+    controls.zoomSpeed = 0.4;
+    controls.rotateSpeed = 0.6;
     controls.enablePan = false;
-    controls.minDistance = 0.1;
-    controls.maxDistance = 0.5;
     controls.target.set(0, 0, 0);
-    controls.update();
+    controls.minDistance = 0.1;
+    controls.maxDistance = 0.2;
+    controls.autoRotate = false;
+    controls.autoRotateSpeed = 1.0;
 
-    let currentMesh = null;
-    let currentIndex = 0;
-    let isLoading = false;
+    // ============================================================
+    // 4. 全景加载核心 (preview切图 + 高清异步升级)
+    // ============================================================
+    const targetOrderIndex = [2, 0, 4, 5, 1, 3]; // 对应CubeLoader顺序: right,left,up,down,front,back
 
-    // ---- 加载全景 ----
-    function createPanorama(imageUrls) {
+    function splitPreviewToCubeTex(previewUrl) {
         return new Promise((resolve, reject) => {
-            const loader = new THREE.CubeTextureLoader();
-            const urls = [
-                imageUrls.right, imageUrls.left,
-                imageUrls.up, imageUrls.down,
-                imageUrls.front, imageUrls.back
-            ];
-            loader.load(urls,
-                (cubeTexture) => {
-                    const geometry = new THREE.SphereGeometry(100, 64, 64);
-                    const material = new THREE.MeshBasicMaterial({
-                        map: cubeTexture,
-                        side: THREE.BackSide
-                    });
-                    resolve(new THREE.Mesh(geometry, material));
-                },
-                undefined,
-                (err) => reject(err)
-            );
+            const img = new Image();
+            img.crossOrigin = "anonymous";
+            img.onload = () => {
+                const pieceSize = img.height / 6;
+                const canvases = [];
+                for (const i of targetOrderIndex) {
+                    const canvas = document.createElement("canvas");
+                    canvas.width = pieceSize;
+                    canvas.height = pieceSize;
+                    const ctx = canvas.getContext("2d");
+                    ctx.drawImage(img, 0, i * pieceSize, pieceSize, pieceSize, 0, 0, pieceSize, pieceSize);
+                    canvases.push(canvas);
+                }
+                const cubeTex = new THREE.CubeTexture(canvases);
+                cubeTex.colorSpace = THREE.SRGBColorSpace;
+                cubeTex.generateMipmaps = false;
+                cubeTex.minFilter = THREE.LinearFilter;
+                cubeTex.magFilter = THREE.LinearFilter;
+                cubeTex.needsUpdate = true;
+                resolve(cubeTex);
+            };
+            img.onerror = reject;
+            img.src = previewUrl;
         });
     }
 
-    async function loadScene(index) {
-        if (isLoading || index === currentIndex) return;
-        isLoading = true;
-        loadingTip.style.display = 'flex';
-        loadingTip.style.opacity = '1';
-        loadingText.textContent = `加载 ${SCENES[index].name}...`;
+    function createCubeSphereMesh(cubeTex) {
+        const vertexShader = `
+            varying vec3 vDir;
+            void main() {
+                vDir = position;
+                gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+            }
+        `;
+        const fragmentShader = `
+            uniform samplerCube cubeMap;
+            varying vec3 vDir;
+            void main() {
+                vec3 dir = normalize(-vDir);
+                dir.y = -dir.y;
+                dir.z = -dir.z;
+                gl_FragColor = textureCube(cubeMap, dir);
+            }
+        `;
+        const mat = new THREE.ShaderMaterial({
+            uniforms: { cubeMap: { value: cubeTex } },
+            vertexShader,
+            fragmentShader,
+            side: THREE.BackSide
+        });
+        return new THREE.Mesh(new THREE.SphereGeometry(100, 64, 64), mat);
+    }
+
+    function loadHighResCubeTex(images) {
+        return new Promise((resolve, reject) => {
+            const loader = new THREE.CubeTextureLoader();
+            loader.setCrossOrigin("anonymous");
+            const urls = [images.right, images.left, images.up, images.down, images.front, images.back];
+            loader.load(urls, (tex) => {
+                tex.colorSpace = THREE.SRGBColorSpace;
+                tex.generateMipmaps = false;
+                tex.minFilter = THREE.LinearFilter;
+                tex.magFilter = THREE.LinearFilter;
+                resolve(tex);
+            }, undefined, reject);
+        });
+    }
+
+    async function switchScene(index) {
+        if (isTransitioning || index === currentSceneIndex) return;
+        const sceneData = SCENES[index];
+        if (!sceneData) return;
+        const images = getSceneImages(sceneData);
+
+        isTransitioning = true;
+        overlay.classList.remove('hidden');
+        previewImg.src = images.thumb;
+        previewImg.style.display = 'block';
+        loadingSceneName.textContent = `📸 ${sceneData.icon} ${sceneData.name} 加载中...`;
+        sceneIndicator.textContent = `📍 ${sceneData.icon} ${sceneData.name}（预览画质）`;
+        sceneBadge.textContent = `● ${sceneData.name} 预览`;
+
+        // 更新缩略图高亮
+        document.querySelectorAll('.thumb-item').forEach((btn, i) => {
+            btn.classList.toggle('active', i === index);
+        });
 
         try {
-            const images = getSceneImages(SCENES[index]);
-            const mesh = await createPanorama(images);
-            if (currentMesh) {
-                scene.remove(currentMesh);
-                currentMesh.geometry.dispose();
-                if (Array.isArray(currentMesh.material)) {
-                    currentMesh.material.forEach(m => m.dispose());
-                } else {
-                    currentMesh.material.dispose();
+            // 步骤A: 低清preview快速渲染
+            const lowResCubeTex = await splitPreviewToCubeTex(images.preview);
+            const lowResMesh = createCubeSphereMesh(lowResCubeTex);
+
+            if (sphereMesh) {
+                scene.remove(sphereMesh);
+                if (sphereMesh.material.uniforms?.cubeMap?.value) {
+                    sphereMesh.material.uniforms.cubeMap.value.dispose();
                 }
+                sphereMesh.geometry.dispose();
+                sphereMesh.material.dispose();
             }
-            scene.add(mesh);
-            currentMesh = mesh;
-            currentIndex = index;
+            sphereMesh = lowResMesh;
+            scene.add(sphereMesh);
+
             controls.target.set(0, 0, 0);
             camera.position.set(0, 0, 0.1);
             controls.update();
-            updateThumbActive(index);
-        } catch (e) {
-            console.error('加载失败', e);
-            loadingText.textContent = '加载失败，请重试';
-            setTimeout(() => { loadingTip.style.display = 'none'; }, 1500);
+            currentSceneIndex = index;
+
+            // 延迟隐藏遮罩
+            setTimeout(() => overlay.classList.add('hidden'), 300);
+
+            // 步骤B: 后台加载高清图
+            loadHighResCubeTex(images).then((highResTex) => {
+                if (currentSceneIndex !== index) return;
+                const highResMesh = createCubeSphereMesh(highResTex);
+                scene.remove(sphereMesh);
+                if (sphereMesh.material.uniforms?.cubeMap?.value) {
+                    sphereMesh.material.uniforms.cubeMap.value.dispose();
+                }
+                sphereMesh.geometry.dispose();
+                sphereMesh.material.dispose();
+                sphereMesh = highResMesh;
+                scene.add(sphereMesh);
+                sceneIndicator.textContent = `📍 ${sceneData.icon} ${sceneData.name}`;
+                sceneBadge.textContent = `● ${sceneData.name}`;
+                console.log(`✅ 场景 ${sceneData.name} 已升级为高清画质`);
+            }).catch(err => {
+                console.warn(`⚠️ 高清图加载失败，保持预览画质`, err);
+            });
+
+        } catch (err) {
+            console.error('❌ 全景加载失败', err);
+            loadingSceneName.textContent = '❌ 资源加载失败，请重试';
+            setTimeout(() => overlay.classList.add('hidden'), 1500);
         }
-        isLoading = false;
-        loadingTip.style.display = 'none';
+
+        isTransitioning = false;
     }
 
-    // ---- 缩略图 ----
+    // ============================================================
+    // 5. 缩略图渲染
+    // ============================================================
     function renderThumbs() {
         thumbStrip.innerHTML = '';
         SCENES.forEach((s, idx) => {
             const btn = document.createElement('div');
             btn.className = 'thumb-item' + (idx === 0 ? ' active' : '');
             btn.innerHTML = `<span class="icon">${s.icon}</span><span class="label">${s.name}</span>`;
-            btn.addEventListener('click', () => loadScene(idx));
+            btn.addEventListener('click', () => switchScene(idx));
             thumbStrip.appendChild(btn);
         });
     }
 
-    function updateThumbActive(index) {
-        const items = thumbStrip.querySelectorAll('.thumb-item');
-        items.forEach((el, i) => el.classList.toggle('active', i === index));
-    }
-
-    // ---- 窗口自适应 ----
+    // ============================================================
+    // 6. 窗口自适应
+    // ============================================================
     function onResize() {
         const w = container.clientWidth;
         const h = container.clientHeight;
@@ -648,18 +792,17 @@
     }
     window.addEventListener('resize', onResize);
 
-    // ---- 动画循环 ----
+    // ============================================================
+    // 7. 动画循环
+    // ============================================================
     function animate() {
         requestAnimationFrame(animate);
-        if (autoRotateBtn.classList.contains('active') && currentMesh) {
-            currentMesh.rotation.y += 0.002;
-        }
         controls.update();
         renderer.render(scene, camera);
     }
 
     // ============================================================
-    // 4. 交互绑定
+    // 8. 交互绑定
     // ============================================================
     fullscreenBtn.addEventListener('click', () => {
         document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen();
@@ -672,8 +815,10 @@
     });
 
     autoRotateBtn.addEventListener('click', function() {
+        isAutoRotate = !isAutoRotate;
         this.classList.toggle('active');
-        this.style.color = this.classList.contains('active') ? '#f7b731' : '#eee';
+        this.style.color = isAutoRotate ? '#f7b731' : '#eee';
+        controls.autoRotate = isAutoRotate;
     });
 
     reserveBtn.addEventListener('click', () => {
@@ -681,16 +826,11 @@
     });
 
     // ============================================================
-    // 5. 启动
+    // 9. 启动
     // ============================================================
     renderThumbs();
-    loadScene(0);
+    switchScene(0);
     animate();
-
-    // 隐藏加载提示 (后备)
-    setTimeout(() => {
-        loadingTip.style.display = 'none';
-    }, 5000);
 
     console.log('✅ 三维家 · 全景沉浸 已启动');
 </script>
