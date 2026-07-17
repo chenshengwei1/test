@@ -270,12 +270,22 @@
     <h4 style="margin:0 0 8px 0;">切片预览 vs 高清原图</h4>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
         <div>
-        <p style="margin:2px 0 4px 0;">preview切片</p>
-        <canvas id="debugCutCanvas" width="256" height="256" style="width:128px;height:128px;border:1px solid #666;"></canvas>
+            <p style="margin:2px 0 4px 0;">preview切片</p>
+            <canvas id="debugCutCanvas-left" width="256" height="256" style="width:128px;height:128px;border:1px solid #666;"></canvas>
+            <canvas id="debugCutCanvas-front" width="256" height="256" style="width:128px;height:128px;border:1px solid #666;"></canvas>
+            <canvas id="debugCutCanvas-right" width="256" height="256" style="width:128px;height:128px;border:1px solid #666;"></canvas>
+            <canvas id="debugCutCanvas-back" width="256" height="256" style="width:128px;height:128px;border:1px solid #666;"></canvas>
+            <canvas id="debugCutCanvas-up" width="256" height="256" style="width:128px;height:128px;border:1px solid #666;"></canvas>
+            <canvas id="debugCutCanvas-down" width="256" height="256" style="width:128px;height:128px;border:1px solid #666;"></canvas>
         </div>
         <div>
-        <p style="margin:2px 0 4px 0;">高清原图</p>
-        <img id="debugHighImg" width="128" height="128" style="border:1px solid #666;object-fit:cover;">
+            <p style="margin:2px 0 4px 0;">高清原图</p>
+            <img id="debugHighImg-left" width="128" height="128" style="border:1px solid #666;object-fit:cover;">
+            <img id="debugHighImg-front" width="128" height="128" style="border:1px solid #666;object-fit:cover;">
+            <img id="debugHighImg-right" width="128" height="128" style="border:1px solid #666;object-fit:cover;">
+            <img id="debugHighImg-back" width="128" height="128" style="border:1px solid #666;object-fit:cover;">
+            <img id="debugHighImg-up" width="128" height="128" style="border:1px solid #666;object-fit:cover;">
+            <img id="debugHighImg-down" width="128" height="128" style="border:1px solid #666;object-fit:cover;">
         </div>
     </div>
     <div style="margin-top:8px;">
@@ -537,23 +547,37 @@
 
         // 调试：渲染选中的切面到对比面板
         function renderDebugFace(faceIdx) {
-        const cutCanvasList = window.debugCutCanvasList;
-        if (!cutCanvasList || !cutCanvasList[faceIdx]) return;
-        const showCanvas = document.getElementById('debugCutCanvas');
-        const sCtx = showCanvas.getContext('2d');
-        const sourceCanvas = cutCanvasList[faceIdx];
-        sCtx.clearRect(0,0,256,256);
-        sCtx.drawImage(sourceCanvas,0,0,256,256);
+            const targetOrderIndex = [1, 4, 0, 5, 2, 3];
+            renderDebugFace2('left', targetOrderIndex[0]);
+            renderDebugFace2('front', targetOrderIndex[1]);
+            renderDebugFace2('right', targetOrderIndex[2]);
+            renderDebugFace2('back', targetOrderIndex[3]);
+            renderDebugFace2('up', targetOrderIndex[4]);
+            renderDebugFace2('down', targetOrderIndex[5]);
+        }
+
+        function renderDebugFace2(id, faceIdx) {
+            const cutCanvasList = window.debugCutCanvasList;
+            if (!cutCanvasList || !cutCanvasList[faceIdx]) return;
+            const showCanvas = document.getElementById('debugCutCanvas-'+id);
+            const sCtx = showCanvas.getContext('2d');
+            const sourceCanvas = cutCanvasList[faceIdx];
+            sCtx.clearRect(0,0,256,256);
+            sCtx.drawImage(sourceCanvas,0,0,256,256);
         }
 
         // 切换下拉框事件
         document.getElementById('debugFaceSelect').addEventListener('change', e=>{
             const idx = Number(e.target.value);
-            renderDebugFace(idx);
+            // renderDebugFace(idx);
             // 同步加载对应高清图
             const images = window.currentSceneImages;
-            const faceUrlMap = [images.left, images.front, images.right, images.back, images.up, images.down];
-            document.getElementById('debugHighImg').src = faceUrlMap[idx];
+            document.getElementById('debugHighImg-left').src = images.left;
+            document.getElementById('debugHighImg-front').src = images.front;
+            document.getElementById('debugHighImg-right').src = images.right;
+            document.getElementById('debugHighImg-back').src = images.back;
+            document.getElementById('debugHighImg-up').src = images.up;
+            document.getElementById('debugHighImg-down').src = images.down;
         });
 
         /**
