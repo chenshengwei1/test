@@ -525,8 +525,9 @@
                             uniform samplerCube cubeMap;
                             varying vec3 vDir;
                             void main() {
-                                // 取反方向，适配球体内部观察
-                                gl_FragColor = textureCube(cubeMap, normalize(-vDir));
+                                vec3 dir = normalize(-vDir);
+                                dir.y = -dir.y;
+                                gl_FragColor = textureCube(cubeMap, dir);
                             }
                         `;
 
@@ -534,7 +535,7 @@
                             uniforms: { cubeMap: { value: cubeTexture } },
                             vertexShader,
                             fragmentShader,
-                            side: THREE.BackSide // 渲染球体背面，相机在内侧可观测
+                            side: THREE.BackSide
                         });
 
                         const geometry = new THREE.SphereGeometry(100, 64, 64);
