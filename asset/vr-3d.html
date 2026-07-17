@@ -704,13 +704,21 @@
                 // 🎯 明确每个面对应 preview.jpg 中的第几块
                 // 根据你的 splitPreviewToCubeTex 中的 targetOrderIndex = [2,0,4,5,1,3]
                 // 即：imgArr[0]=原图第2块 → right, imgArr[1]=原图第0块 → left, ...
-                const faceToBlockIndex = {
+                const faceToBlockIndex1 = {
                     right: 2,
                     left: 0,
                     up: 4,
                     down: 5,
                     front: 1,
                     back: 3
+                };
+                const faceToBlockIndex = {
+                    left: 0,    // preview第0块
+                    front: 1,   // preview第1块
+                    right: 2,   // preview第2块
+                    back: 3,    // preview第3块
+                    up: 4,      // preview第4块
+                    down: 5     // preview第5块
                 };
 
                 // 从当前纹理复制预览图作为基底
