@@ -669,7 +669,7 @@
             });
 
             try {
-                // 2. 先用预览图快速渲染低清全景（用户秒见画面）
+                // 2. 先用预览图快速渲染低清全景
                 const lowResCubeTex = await splitPreviewToCubeTex(images.preview || images.thumb);
                 const lowResMesh = createCubeSphereMesh(lowResCubeTex);
 
@@ -691,64 +691,54 @@
                 indicator.textContent = `📍 ${sceneData.icon} ${sceneData.name}`;
                 badge.textContent = `● ${sceneData.name}`;
 
-                // 3. 隐藏遮罩，让用户看到预览画面
+                // 3. 隐藏遮罩
                 setTimeout(() => overlay.classList.add('hidden'), 300);
 
-                // 4. 🆕 逐片加载高清图（一片片替换）
-                progressEl.textContent = '🔄 正在逐片升级高清画质...';
-                
-                // 加载6个面的高清图
+                // 4. 并发加载所有高清面，谁先完成谁替换
+                progressEl.textContent = '🔄 正在升级高清画质...';
+
                 const faceNames = ['right', 'left', 'up', 'down', 'front', 'back'];
                 let loadedCount = 0;
                 const totalFaces = 6;
+                const cubeImages = sphereMesh.material.uniforms.cubeMap.value.image;
 
-                // 先为每一面创建独立的纹理占位（基于预览图）
-                const currentCubeTex = sphereMesh.material.uniforms.cubeMap.value;
-                const faceTextures = currentCubeTex.image; // 6个canvas
-
-                // 逐面加载高清图
-                for (let i = 0; i < faceNames.length; i++) {
-                    const faceName = faceNames[i];
+                const loadPromises = faceNames.map((faceName, i) => {
                     const highResUrl = images[faceName];
-                    
                     if (!highResUrl) {
                         loadedCount++;
                         updateProgress(loadedCount, totalFaces, progressEl);
-                        continue;
+                        return Promise.resolve();
                     }
 
-                    // 加载单个面的高清图
-                    const loader = new THREE.TextureLoader();
-                    loader.setCrossOrigin('anonymous');
-                    
-                    try {
-                        const highTex = await new Promise((resolve, reject) => {
-                            loader.load(highResUrl, resolve, undefined, reject);
-                        });
+                    return new Promise((resolve) => {
+                        const loader = new THREE.TextureLoader();
+                        loader.setCrossOrigin('anonymous');
                         
-                        // 🎯 关键：替换立方体贴图中对应的面
-                        // CubeTexture的image数组顺序：[right, left, up, down, front, back]
-                        // 但你的targetOrderIndex映射了不同顺序
-                        const cubeImages = sphereMesh.material.uniforms.cubeMap.value.image;
-                        // 找到正确的索引位置
-                        const targetIdx = targetOrderIndex[i]; // 使用你已有的映射
-                        cubeImages[targetIdx] = highTex.image; // 替换为高清图
-                        
-                        // 标记纹理需要更新
-                        sphereMesh.material.uniforms.cubeMap.value.needsUpdate = true;
-                        
-                        loadedCount++;
-                        updateProgress(loadedCount, totalFaces, progressEl);
-                        console.log(`✅ ${faceName} 面已升级为高清 (${loadedCount}/${totalFaces})`);
-                        
-                    } catch (err) {
-                        console.warn(`⚠️ ${faceName} 面加载失败，保持预览`, err);
-                        loadedCount++;
-                        updateProgress(loadedCount, totalFaces, progressEl);
-                    }
-                }
+                        loader.load(
+                            highResUrl,
+                            (highTex) => {
+                                const targetIdx = targetOrderIndex[i];
+                                cubeImages[targetIdx] = highTex.image;
+                                sphereMesh.material.uniforms.cubeMap.value.needsUpdate = true;
+                                
+                                loadedCount++;
+                                updateProgress(loadedCount, totalFaces, progressEl);
+                                console.log(`✅ ${faceName} 面已升级为高清 (${loadedCount}/${totalFaces})`);
+                                resolve();
+                            },
+                            undefined,
+                            (err) => {
+                                console.warn(`⚠️ ${faceName} 面加载失败`, err);
+                                loadedCount++;
+                                updateProgress(loadedCount, totalFaces, progressEl);
+                                resolve();
+                            }
+                        );
+                    });
+                });
 
-                // 全部加载完成
+                await Promise.allSettled(loadPromises);
+
                 progressEl.textContent = '✅ 全部高清加载完成！';
                 setTimeout(() => {
                     progressEl.textContent = '';
