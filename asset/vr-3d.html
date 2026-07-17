@@ -471,6 +471,11 @@
                         if (!allImgReady) {
                             return reject(new Error("存在未正常解码的贴图"));
                         }
+
+                        // 适配WebGL，解决texSubImage2D报错
+                        texture.generateMipmaps = false;
+                        texture.minFilter = THREE.LinearFilter;
+                        texture.magFilter = THREE.LinearFilter;
                         
                         const geometry = new THREE.SphereGeometry(100, 64, 64);
                         const material = new THREE.MeshBasicMaterial({
