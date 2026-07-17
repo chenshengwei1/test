@@ -4,477 +4,211 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>三维家 · 全景沉浸</title>
-    <!-- Font Awesome (免费图标库) -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <style>
         /* ===== 全局重置 ===== */
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-        }
-        body {
-            background: #0b0b0b;
-            overflow: hidden;
-            height: 100vh;
-            width: 100vw;
-            touch-action: none;
-            color: #fff;
-        }
-        /* ===== 全景容器 ===== */
-        #pano-container {
-            position: relative;
-            width: 100vw;
-            height: 100vh;
-            background: #12121a;
-        }
-        #pano-container canvas {
-            display: block;
-            width: 100% !important;
-            height: 100% !important;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
+        body { background: #0b0b0b; overflow: hidden; height: 100vh; width: 100vw; touch-action: none; color: #fff; }
+        #pano-container { position: relative; width: 100vw; height: 100vh; background: #12121a; }
+        #pano-container canvas { display: block; width: 100% !important; height: 100% !important; }
 
-        /* ===== 顶部品牌栏 (仿三维家) ===== */
+        /* ===== 顶部品牌栏 ===== */
         .brand-bar {
-            position: absolute;
-            top: 18px;
-            left: 18px;
-            right: 18px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            z-index: 30;
-            pointer-events: none;
+            position: absolute; top: 18px; left: 18px; right: 18px;
+            display: flex; justify-content: space-between; align-items: center;
+            z-index: 30; pointer-events: none;
         }
-        .brand-bar > * {
-            pointer-events: auto;
-        }
+        .brand-bar > * { pointer-events: auto; }
         .brand-left {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            background: rgba(0, 0, 0, 0.55);
-            backdrop-filter: blur(8px);
-            -webkit-backdrop-filter: blur(8px);
-            padding: 8px 18px 8px 16px;
-            border-radius: 40px;
+            display: flex; align-items: center; gap: 12px;
+            background: rgba(0, 0, 0, 0.55); backdrop-filter: blur(8px);
+            padding: 8px 18px 8px 16px; border-radius: 40px;
             border: 1px solid rgba(255, 255, 255, 0.06);
             box-shadow: 0 6px 20px rgba(0,0,0,0.6);
         }
         .brand-left .logo {
-            font-weight: 700;
-            font-size: 18px;
-            letter-spacing: 0.5px;
+            font-weight: 700; font-size: 18px;
             background: linear-gradient(135deg, #f0b34b, #f7d875);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
             background-clip: text;
         }
-        .brand-left .logo i {
-            margin-right: 6px;
-            font-size: 16px;
-            -webkit-text-fill-color: #f7d875;
-        }
+        .brand-left .logo i { margin-right: 6px; -webkit-text-fill-color: #f7d875; }
         .brand-left .badge {
             background: rgba(255, 215, 0, 0.15);
             border: 1px solid rgba(255, 215, 0, 0.2);
-            padding: 2px 12px;
-            border-radius: 30px;
-            font-size: 11px;
-            color: #f7d875;
-            font-weight: 500;
-            letter-spacing: 0.3px;
+            padding: 2px 12px; border-radius: 30px;
+            font-size: 11px; color: #f7d875; font-weight: 500;
         }
-        .brand-right {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
+        .brand-right { display: flex; align-items: center; gap: 8px; }
         .brand-right button {
-            background: rgba(0, 0, 0, 0.55);
-            backdrop-filter: blur(8px);
-            -webkit-backdrop-filter: blur(8px);
+            background: rgba(0, 0, 0, 0.55); backdrop-filter: blur(8px);
             border: 1px solid rgba(255, 255, 255, 0.06);
-            color: #eee;
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            font-size: 16px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: 0.2s;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+            color: #eee; width: 40px; height: 40px; border-radius: 50%;
+            font-size: 16px; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            transition: 0.2s; box-shadow: 0 4px 12px rgba(0,0,0,0.4);
         }
-        .brand-right button:hover {
-            background: rgba(255, 255, 255, 0.1);
-        }
-        .brand-right button:active {
-            transform: scale(0.92);
-        }
+        .brand-right button:hover { background: rgba(255, 255, 255, 0.1); }
+        .brand-right button:active { transform: scale(0.92); }
 
-        /* ===== 底部信息卡 (仿截图) ===== */
+        /* ===== 底部信息卡 ===== */
         .bottom-card {
-            position: absolute;
-            bottom: 24px;
-            left: 18px;
-            right: 18px;
-            z-index: 30;
-            pointer-events: none;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 12px;
+            position: absolute; bottom: 24px; left: 18px; right: 18px;
+            z-index: 30; pointer-events: none;
+            display: flex; flex-direction: column; align-items: center; gap: 12px;
         }
-        .bottom-card > * {
-            pointer-events: auto;
-        }
-
-        /* 主信息卡 */
+        .bottom-card > * { pointer-events: auto; }
         .info-card {
-            width: 100%;
-            max-width: 480px;
-            background: rgba(18, 18, 28, 0.82);
-            backdrop-filter: blur(14px);
-            -webkit-backdrop-filter: blur(14px);
-            border-radius: 24px;
-            padding: 16px 20px 18px;
+            width: 100%; max-width: 480px;
+            background: rgba(18, 18, 28, 0.82); backdrop-filter: blur(14px);
+            border-radius: 24px; padding: 16px 20px 18px;
             border: 1px solid rgba(255, 255, 255, 0.06);
             box-shadow: 0 10px 40px rgba(0,0,0,0.7);
-            transition: 0.3s;
         }
-        .info-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 10px;
-        }
-        .info-row .title-area {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-        .info-row .title-area .company {
-            font-weight: 600;
-            font-size: 18px;
-            letter-spacing: 0.3px;
-            color: #fff;
-        }
+        .info-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        .info-row .title-area { display: flex; align-items: center; gap: 12px; }
+        .info-row .title-area .company { font-weight: 600; font-size: 18px; color: #fff; }
         .info-row .title-area .popularity {
-            font-size: 13px;
-            color: #aaa;
-            background: rgba(255,255,255,0.06);
-            padding: 2px 12px;
-            border-radius: 30px;
-            display: flex;
-            align-items: center;
-            gap: 4px;
+            font-size: 13px; color: #aaa; background: rgba(255,255,255,0.06);
+            padding: 2px 12px; border-radius: 30px; display: flex; align-items: center; gap: 4px;
         }
-        .info-row .title-area .popularity i {
-            color: #f7b731;
-            font-size: 12px;
-        }
-        .info-row .action-btns {
-            display: flex;
-            gap: 6px;
-        }
+        .info-row .title-area .popularity i { color: #f7b731; font-size: 12px; }
+        .info-row .action-btns { display: flex; gap: 6px; }
         .info-row .action-btns button {
-            background: rgba(255,255,255,0.04);
-            border: 1px solid rgba(255,255,255,0.06);
-            color: #ccc;
-            width: 34px;
-            height: 34px;
-            border-radius: 50%;
-            font-size: 14px;
-            cursor: pointer;
-            transition: 0.2s;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.06);
+            color: #ccc; width: 34px; height: 34px; border-radius: 50%;
+            font-size: 14px; cursor: pointer; transition: 0.2s;
+            display: flex; align-items: center; justify-content: center;
         }
-        .info-row .action-btns button:hover {
-            background: rgba(255,255,255,0.1);
-            color: #fff;
-        }
+        .info-row .action-btns button:hover { background: rgba(255,255,255,0.1); color: #fff; }
 
-        /* 联系 & 预约行 */
         .contact-row {
-            display: flex;
-            flex-wrap: wrap;
-            align-items: center;
-            gap: 10px 16px;
-            margin-top: 4px;
-            padding-top: 12px;
+            display: flex; flex-wrap: wrap; align-items: center;
+            gap: 10px 16px; margin-top: 4px; padding-top: 12px;
             border-top: 1px solid rgba(255, 255, 255, 0.04);
         }
         .contact-row .phone {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-size: 14px;
-            color: #ddd;
-            background: rgba(255,255,255,0.03);
-            padding: 4px 14px 4px 10px;
-            border-radius: 30px;
+            display: flex; align-items: center; gap: 8px;
+            font-size: 14px; color: #ddd; background: rgba(255,255,255,0.03);
+            padding: 4px 14px 4px 10px; border-radius: 30px;
             border: 1px solid rgba(255,255,255,0.03);
         }
-        .contact-row .phone i {
-            color: #4fc3f7;
-            font-size: 13px;
-        }
+        .contact-row .phone i { color: #4fc3f7; font-size: 13px; }
         .contact-row .badge-safe {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            background: rgba(76, 175, 80, 0.12);
-            border: 1px solid rgba(76, 175, 80, 0.15);
-            color: #81c784;
-            font-size: 12px;
-            padding: 3px 14px 3px 10px;
-            border-radius: 30px;
-        }
-        .contact-row .badge-safe i {
-            font-size: 12px;
+            display: flex; align-items: center; gap: 6px;
+            background: rgba(76, 175, 80, 0.12); border: 1px solid rgba(76, 175, 80, 0.15);
+            color: #81c784; font-size: 12px; padding: 3px 14px 3px 10px; border-radius: 30px;
         }
         .contact-row .btn-reserve {
             margin-left: auto;
             background: linear-gradient(135deg, #f7b731, #f5a623);
-            border: none;
-            color: #1a1a1a;
-            font-weight: 600;
-            padding: 8px 22px;
-            border-radius: 40px;
-            font-size: 14px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            transition: 0.2s;
-            box-shadow: 0 4px 16px rgba(247, 183, 49, 0.25);
+            border: none; color: #1a1a1a; font-weight: 600;
+            padding: 8px 22px; border-radius: 40px; font-size: 14px;
+            cursor: pointer; display: flex; align-items: center; gap: 8px;
+            transition: 0.2s; box-shadow: 0 4px 16px rgba(247, 183, 49, 0.25);
         }
-        .contact-row .btn-reserve:hover {
-            transform: scale(1.02);
-            background: linear-gradient(135deg, #fcc451, #f7b731);
-        }
-        .contact-row .btn-reserve:active {
-            transform: scale(0.96);
-        }
-        .contact-row .btn-reserve i {
-            font-size: 14px;
-        }
+        .contact-row .btn-reserve:hover { transform: scale(1.02); background: linear-gradient(135deg, #fcc451, #f7b731); }
+        .contact-row .btn-reserve:active { transform: scale(0.96); }
 
-        /* 底部场景缩略图 (横向滚动) */
+        /* 场景缩略图 */
         .scene-strip {
-            width: 100%;
-            max-width: 520px;
-            display: flex;
-            gap: 10px;
-            overflow-x: auto;
-            padding: 6px 4px 10px 4px;
-            scrollbar-width: none;
-            -ms-overflow-style: none;
+            width: 100%; max-width: 520px;
+            display: flex; gap: 10px; overflow-x: auto;
+            scrollbar-width: none; -ms-overflow-style: none;
             pointer-events: auto;
-            background: rgba(0,0,0,0.2);
-            backdrop-filter: blur(4px);
-            border-radius: 60px;
-            border: 1px solid rgba(255,255,255,0.03);
+            background: rgba(0,0,0,0.2); backdrop-filter: blur(4px);
+            border-radius: 60px; border: 1px solid rgba(255,255,255,0.03);
             padding: 8px 14px;
         }
-        .scene-strip::-webkit-scrollbar {
-            display: none;
-        }
+        .scene-strip::-webkit-scrollbar { display: none; }
         .scene-strip .thumb-item {
-            flex: 0 0 auto;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 2px;
-            background: rgba(255,255,255,0.02);
-            border: 1px solid transparent;
-            padding: 6px 14px;
-            border-radius: 40px;
-            cursor: pointer;
-            transition: 0.2s;
-            color: rgba(255,255,255,0.6);
-            font-size: 12px;
-            white-space: nowrap;
+            flex: 0 0 auto; display: flex; flex-direction: column; align-items: center; gap: 2px;
+            background: rgba(255,255,255,0.02); border: 1px solid transparent;
+            padding: 6px 14px; border-radius: 40px; cursor: pointer; transition: 0.2s;
+            color: rgba(255,255,255,0.6); font-size: 12px; white-space: nowrap;
         }
-        .scene-strip .thumb-item:hover {
-            background: rgba(255,255,255,0.06);
-            color: #fff;
-        }
+        .scene-strip .thumb-item:hover { background: rgba(255,255,255,0.06); color: #fff; }
         .scene-strip .thumb-item.active {
             background: rgba(79, 195, 247, 0.12);
             border-color: rgba(79, 195, 247, 0.2);
             color: #4fc3f7;
         }
-        .scene-strip .thumb-item .icon {
-            font-size: 20px;
-            line-height: 1.2;
-        }
-        .scene-strip .thumb-item .label {
-            font-size: 10px;
-            opacity: 0.7;
-        }
-        .scene-strip .thumb-item.active .label {
-            opacity: 1;
-        }
+        .scene-strip .thumb-item .icon { font-size: 20px; line-height: 1.2; }
+        .scene-strip .thumb-item .label { font-size: 10px; opacity: 0.7; }
+        .scene-strip .thumb-item.active .label { opacity: 1; }
 
-        /* ===== 加载遮罩 (全屏过渡) ===== */
+        /* 加载遮罩 */
         .loading-overlay {
-            position: absolute;
-            inset: 0;
-            z-index: 50;
-            background: rgba(0, 0, 0, 0.75);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            gap: 20px;
-            transition: opacity 0.5s ease;
-            pointer-events: none;
+            position: absolute; inset: 0; z-index: 50;
+            background: rgba(0, 0, 0, 0.85); backdrop-filter: blur(12px);
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            gap: 20px; transition: opacity 0.5s ease; pointer-events: none;
         }
-        .loading-overlay.hidden {
-            opacity: 0;
-            pointer-events: none;
-        }
+        .loading-overlay.hidden { opacity: 0; pointer-events: none; }
         .loading-overlay .preview-wrap {
-            width: 80%;
-            max-width: 360px;
-            border-radius: 20px;
-            overflow: hidden;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.8);
-            border: 1px solid rgba(255,255,255,0.06);
+            width: 80%; max-width: 360px; border-radius: 20px; overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.8); border: 1px solid rgba(255,255,255,0.06);
         }
-        .loading-overlay .preview-wrap img {
-            display: block;
-            width: 100%;
-            aspect-ratio: 2 / 1;
-            object-fit: cover;
-        }
+        .loading-overlay .preview-wrap img { display: block; width: 100%; aspect-ratio: 2 / 1; object-fit: cover; }
         .loading-overlay .loading-text {
-            font-size: 16px;
-            color: #eee;
-            letter-spacing: 0.5px;
-            background: rgba(255,255,255,0.04);
-            padding: 8px 24px;
-            border-radius: 40px;
-            border: 1px solid rgba(255,255,255,0.04);
+            font-size: 16px; color: #eee; letter-spacing: 0.5px;
+            background: rgba(255,255,255,0.04); padding: 8px 24px;
+            border-radius: 40px; border: 1px solid rgba(255,255,255,0.04);
         }
         .loading-overlay .spinner {
-            width: 32px;
-            height: 32px;
-            border: 3px solid rgba(255,255,255,0.06);
-            border-top: 3px solid #f7b731;
-            border-radius: 50%;
-            animation: spin 0.9s linear infinite;
+            width: 32px; height: 32px;
+            border: 3px solid rgba(255,255,255,0.06); border-top: 3px solid #f7b731;
+            border-radius: 50%; animation: spin 0.9s linear infinite;
         }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-        /* ===== 场景状态指示器 ===== */
         .scene-indicator {
-            position: absolute;
-            bottom: 110px;
-            left: 50%;
-            transform: translateX(-50%);
-            z-index: 25;
-            background: rgba(0,0,0,0.5);
-            backdrop-filter: blur(6px);
-            padding: 6px 18px;
-            border-radius: 40px;
-            font-size: 13px;
-            color: rgba(255,255,255,0.6);
-            border: 1px solid rgba(255,255,255,0.04);
-            pointer-events: none;
-            transition: opacity 0.4s;
-            white-space: nowrap;
+            position: absolute; bottom: 110px; left: 50%; transform: translateX(-50%);
+            z-index: 25; background: rgba(0,0,0,0.5); backdrop-filter: blur(6px);
+            padding: 6px 18px; border-radius: 40px; font-size: 13px;
+            color: rgba(255,255,255,0.6); border: 1px solid rgba(255,255,255,0.04);
+            pointer-events: none; transition: opacity 0.4s; white-space: nowrap;
         }
 
-        /* ===== 响应式 ===== */
+        /* 调试日志面板 */
+        #debugLog {
+            position: absolute; bottom: 180px; left: 18px; right: 18px;
+            max-height: 120px; overflow-y: auto; z-index: 60;
+            background: rgba(0,0,0,0.8); backdrop-filter: blur(8px);
+            border-radius: 12px; padding: 10px 14px;
+            font-size: 11px; font-family: monospace; color: #4fc3f7;
+            border: 1px solid rgba(255,255,255,0.05);
+            pointer-events: none; display: none;
+        }
+        #debugLog .log-entry { padding: 2px 0; border-bottom: 1px solid rgba(255,255,255,0.03); }
+        #debugLog .log-entry.error { color: #ff6b6b; }
+        #debugLog .log-entry.success { color: #69db7c; }
+        #debugLog .log-entry.warn { color: #fcc419; }
+
         @media (max-width: 600px) {
-            .brand-bar {
-                top: 12px;
-                left: 12px;
-                right: 12px;
-            }
-            .brand-left {
-                padding: 6px 14px 6px 12px;
-                gap: 8px;
-            }
-            .brand-left .logo {
-                font-size: 15px;
-            }
-            .brand-left .badge {
-                font-size: 9px;
-                padding: 1px 8px;
-            }
-            .brand-right button {
-                width: 34px;
-                height: 34px;
-                font-size: 13px;
-            }
-            .bottom-card {
-                bottom: 16px;
-                left: 12px;
-                right: 12px;
-                gap: 10px;
-            }
-            .info-card {
-                padding: 14px 16px;
-                border-radius: 20px;
-            }
-            .info-row .title-area .company {
-                font-size: 16px;
-            }
-            .info-row .title-area .popularity {
-                font-size: 11px;
-                padding: 1px 10px;
-            }
-            .contact-row .phone {
-                font-size: 12px;
-                padding: 2px 10px 2px 8px;
-            }
-            .contact-row .btn-reserve {
-                font-size: 12px;
-                padding: 6px 16px;
-            }
-            .contact-row .badge-safe {
-                font-size: 10px;
-                padding: 2px 10px 2px 8px;
-            }
-            .scene-strip {
-                padding: 6px 10px;
-                gap: 6px;
-                border-radius: 40px;
-            }
-            .scene-strip .thumb-item {
-                padding: 4px 10px;
-                font-size: 10px;
-            }
-            .scene-strip .thumb-item .icon {
-                font-size: 16px;
-            }
-            .scene-indicator {
-                bottom: 100px;
-                font-size: 11px;
-                padding: 4px 14px;
-            }
+            .brand-bar { top: 12px; left: 12px; right: 12px; }
+            .brand-left { padding: 6px 14px 6px 12px; gap: 8px; }
+            .brand-left .logo { font-size: 15px; }
+            .brand-left .badge { font-size: 9px; padding: 1px 8px; }
+            .brand-right button { width: 34px; height: 34px; font-size: 13px; }
+            .bottom-card { bottom: 16px; left: 12px; right: 12px; gap: 10px; }
+            .info-card { padding: 14px 16px; border-radius: 20px; }
+            .info-row .title-area .company { font-size: 16px; }
+            .info-row .title-area .popularity { font-size: 11px; padding: 1px 10px; }
+            .contact-row .phone { font-size: 12px; padding: 2px 10px 2px 8px; }
+            .contact-row .btn-reserve { font-size: 12px; padding: 6px 16px; }
+            .scene-strip { padding: 6px 10px; gap: 6px; border-radius: 40px; }
+            .scene-strip .thumb-item { padding: 4px 10px; font-size: 10px; }
+            .scene-strip .thumb-item .icon { font-size: 16px; }
+            .scene-indicator { bottom: 100px; font-size: 11px; padding: 4px 14px; }
+            #debugLog { bottom: 160px; font-size: 10px; max-height: 80px; }
         }
     </style>
 </head>
 <body>
 
 <div id="pano-container">
-    <!-- Three.js 画布将自动插入 -->
-
-    <!-- ===== 加载遮罩 ===== -->
+    <!-- 加载遮罩 -->
     <div class="loading-overlay" id="loadingOverlay">
         <div class="spinner"></div>
         <div class="preview-wrap">
@@ -483,10 +217,13 @@
         <div class="loading-text" id="loadingSceneName">加载全景中...</div>
     </div>
 
-    <!-- ===== 场景指示器 ===== -->
-    <div class="scene-indicator" id="sceneIndicator">📍 主卧</div>
+    <!-- 场景指示器 -->
+    <div class="scene-indicator" id="sceneIndicator">📍 初始化...</div>
 
-    <!-- ===== 顶部品牌栏 ===== -->
+    <!-- 调试日志面板 -->
+    <div id="debugLog"></div>
+
+    <!-- 顶部品牌栏 -->
     <div class="brand-bar">
         <div class="brand-left">
             <span class="logo"><i class="fas fa-cube"></i> Sunvega</span>
@@ -499,7 +236,7 @@
         </div>
     </div>
 
-    <!-- ===== 底部信息卡 ===== -->
+    <!-- 底部信息卡 -->
     <div class="bottom-card">
         <div class="info-card">
             <div class="info-row">
@@ -520,13 +257,10 @@
                 </button>
             </div>
         </div>
-
-        <!-- 场景缩略图 -->
         <div class="scene-strip" id="thumbStrip"></div>
     </div>
 </div>
 
-<!-- ===== 引入 Three.js ===== -->
 <script type="importmap">
     {
         "imports": {
@@ -538,6 +272,24 @@
 
 <script type="module">
     // ============================================================
+    // 调试日志工具
+    // ============================================================
+    const debugLog = document.getElementById('debugLog');
+    debugLog.style.display = 'block';
+
+    function log(msg, type = 'info') {
+        const entry = document.createElement('div');
+        entry.className = `log-entry ${type}`;
+        const time = new Date().toLocaleTimeString();
+        entry.textContent = `[${time}] ${msg}`;
+        debugLog.appendChild(entry);
+        debugLog.scrollTop = debugLog.scrollHeight;
+        console.log(`[${type.toUpperCase()}] ${msg}`);
+    }
+
+    log('🚀 全景查看器启动');
+
+    // ============================================================
     // 模块导入
     // ============================================================
     import * as THREE from 'three';
@@ -547,6 +299,8 @@
     // 1. 场景数据
     // ============================================================
     const BASE_PATH = 'https://raw.githubusercontent.com/chenshengwei1/learning/master/asset/157481626/';
+    log(`📁 BASE_PATH: ${BASE_PATH}`);
+
     const SCENES = [
         { id: 'livingroom', name: '主卧', icon: '🛏️', key: '21a288c8cfe64f698ed8ca431d1ac8c6' },
         { id: 'masterbed', name: '客房', icon: '🌿', key: '1f1a93a3107942daa2481620bac2e9cf' },
@@ -555,9 +309,12 @@
         { id: 'balcony', name: '男童房', icon: '🛋️', key: 'cb47bb65c35b45b1b0bfa7fe92ab9031' },
         { id: 'study', name: '入户', icon: '📚', key: '5df322435d904de8a1f702cb8bb61209' }
     ];
+    log(`📋 场景列表: ${SCENES.length} 个`);
 
     function getSceneImages(scene) {
         const base = `${BASE_PATH}${scene.key}/`;
+        // 🔥 修复: 尝试多种可能的预览图文件名
+        const previewCandidates = ['show_preview.jpg', 'preview.jpg', 'thumb.jpg'];
         return {
             right: `${base}show_r.jpg`,
             left: `${base}show_l.jpg`,
@@ -567,10 +324,15 @@
             back: `${base}show_b.jpg`,
             thumb: `${base}show_preview.jpg`,
             preview: `${base}show_preview.jpg`,
+            previewCandidates: previewCandidates.map(name => `${base}${name}`),
             name: scene.name,
             icon: scene.icon
         };
     }
+
+    // 测试第一个场景的图片路径
+    const testImages = getSceneImages(SCENES[0]);
+    log(`🔍 测试路径: ${testImages.right}`);
 
     // ============================================================
     // 2. DOM 引用
@@ -588,6 +350,8 @@
     const autoRotateBtn = document.getElementById('autoRotateBtn');
     const reserveBtn = document.getElementById('reserveBtn');
 
+    log('✅ DOM 引用完成');
+
     // ============================================================
     // 3. Three.js 核心
     // ============================================================
@@ -595,12 +359,15 @@
     let isTransitioning = false;
     let sphereMesh = null;
     let isAutoRotate = false;
+    let highResLoadAttempted = false;
 
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x0a0a1a);
+    log('✅ Three.js Scene 创建完成');
 
     const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
     camera.position.set(0, 0, 0.1);
+    log('✅ Camera 创建完成');
 
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
@@ -608,6 +375,7 @@
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.0;
     container.prepend(renderer.domElement);
+    log('✅ Renderer 创建完成');
 
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableZoom = true;
@@ -619,41 +387,67 @@
     controls.maxDistance = 0.2;
     controls.autoRotate = false;
     controls.autoRotateSpeed = 1.0;
+    log('✅ Controls 创建完成');
 
     // ============================================================
-    // 4. 全景加载核心 (preview切图 + 高清异步升级)
+    // 4. 全景加载核心
     // ============================================================
-    const targetOrderIndex = [2, 0, 4, 5, 1, 3]; // 对应CubeLoader顺序: right,left,up,down,front,back
+    const targetOrderIndex = [2, 0, 4, 5, 1, 3];
+    const faceNames = ['right', 'left', 'up', 'down', 'front', 'back'];
 
     function splitPreviewToCubeTex(previewUrl) {
+        log(`📥 开始切割预览图: ${previewUrl}`);
         return new Promise((resolve, reject) => {
             const img = new Image();
             img.crossOrigin = "anonymous";
+            
             img.onload = () => {
+                log(`✅ 预览图加载成功: ${img.width}x${img.height}`);
                 const pieceSize = img.height / 6;
+                log(`📐 每块尺寸: ${pieceSize}px (总高 ${img.height}px, 1:6比例)`);
+                
+                if (pieceSize <= 0 || isNaN(pieceSize)) {
+                    const err = `无效的图片尺寸: ${img.width}x${img.height}`;
+                    log(`❌ ${err}`, 'error');
+                    reject(new Error(err));
+                    return;
+                }
+
                 const canvases = [];
-                for (const i of targetOrderIndex) {
+                for (let i = 0; i < targetOrderIndex.length; i++) {
+                    const srcIdx = targetOrderIndex[i];
                     const canvas = document.createElement("canvas");
                     canvas.width = pieceSize;
                     canvas.height = pieceSize;
                     const ctx = canvas.getContext("2d");
-                    ctx.drawImage(img, 0, i * pieceSize, pieceSize, pieceSize, 0, 0, pieceSize, pieceSize);
+                    ctx.drawImage(img, 0, srcIdx * pieceSize, pieceSize, pieceSize, 0, 0, pieceSize, pieceSize);
                     canvases.push(canvas);
+                    log(`  ✂️ 切割面 ${faceNames[i]} (原图第${srcIdx}块)`);
                 }
+
                 const cubeTex = new THREE.CubeTexture(canvases);
                 cubeTex.colorSpace = THREE.SRGBColorSpace;
                 cubeTex.generateMipmaps = false;
                 cubeTex.minFilter = THREE.LinearFilter;
                 cubeTex.magFilter = THREE.LinearFilter;
                 cubeTex.needsUpdate = true;
+                log(`✅ CubeTexture 创建完成, 包含 ${canvases.length} 个面`);
                 resolve(cubeTex);
             };
-            img.onerror = reject;
+
+            img.onerror = (err) => {
+                log(`❌ 预览图加载失败: ${previewUrl}`, 'error');
+                log(`  错误详情: ${err}`, 'error');
+                reject(new Error(`图片加载失败: ${previewUrl}`));
+            };
+
+            log(`⏳ 开始加载图片: ${previewUrl}`);
             img.src = previewUrl;
         });
     }
 
     function createCubeSphereMesh(cubeTex) {
+        log(`🔧 创建球体网格 (使用 CubeTexture)`);
         const vertexShader = `
             varying vec3 vDir;
             void main() {
@@ -677,31 +471,68 @@
             fragmentShader,
             side: THREE.BackSide
         });
-        return new THREE.Mesh(new THREE.SphereGeometry(100, 64, 64), mat);
+        const mesh = new THREE.Mesh(new THREE.SphereGeometry(100, 64, 64), mat);
+        log(`✅ 球体网格创建完成`);
+        return mesh;
     }
 
     function loadHighResCubeTex(images) {
+        log(`📥 开始加载高清六面图...`);
         return new Promise((resolve, reject) => {
             const loader = new THREE.CubeTextureLoader();
             loader.setCrossOrigin("anonymous");
             const urls = [images.right, images.left, images.up, images.down, images.front, images.back];
-            loader.load(urls, (tex) => {
-                tex.colorSpace = THREE.SRGBColorSpace;
-                tex.generateMipmaps = false;
-                tex.minFilter = THREE.LinearFilter;
-                tex.magFilter = THREE.LinearFilter;
-                resolve(tex);
-            }, undefined, reject);
+            log(`  📸 高清图路径:`);
+            urls.forEach((url, i) => log(`    ${faceNames[i]}: ${url}`));
+
+            loader.load(
+                urls,
+                (tex) => {
+                    tex.colorSpace = THREE.SRGBColorSpace;
+                    tex.generateMipmaps = false;
+                    tex.minFilter = THREE.LinearFilter;
+                    tex.magFilter = THREE.LinearFilter;
+                    log(`✅ 高清六面图加载成功`, 'success');
+                    resolve(tex);
+                },
+                (xhr) => {
+                    const pct = Math.round((xhr.loaded / xhr.total) * 100);
+                    log(`  ⏳ 高清图加载进度: ${pct}%`);
+                },
+                (err) => {
+                    log(`❌ 高清六面图加载失败: ${err}`, 'error');
+                    reject(err);
+                }
+            );
         });
     }
 
     async function switchScene(index) {
-        if (isTransitioning || index === currentSceneIndex) return;
+        log(`🔄 switchScene(${index}) 被调用, 当前索引: ${currentSceneIndex}, 正在切换: ${isTransitioning}`);
+        
+        if (isTransitioning) {
+            log(`⏳ 正在切换中，跳过`, 'warn');
+            return;
+        }
+        if (index === currentSceneIndex && sphereMesh) {
+            log(`⏳ 场景 ${index} 已加载，跳过`, 'warn');
+            return;
+        }
+
         const sceneData = SCENES[index];
-        if (!sceneData) return;
+        if (!sceneData) {
+            log(`❌ 场景 ${index} 不存在`, 'error');
+            return;
+        }
+
+        log(`📦 切换到场景: ${sceneData.icon} ${sceneData.name} (key: ${sceneData.key})`);
         const images = getSceneImages(sceneData);
+        log(`  📁 图片基础路径: ${BASE_PATH}${sceneData.key}/`);
 
         isTransitioning = true;
+        highResLoadAttempted = false;
+
+        // 显示遮罩
         overlay.classList.remove('hidden');
         previewImg.src = images.thumb;
         previewImg.style.display = 'block';
@@ -715,11 +546,16 @@
         });
 
         try {
-            // 步骤A: 低清preview快速渲染
+            // 步骤A: 加载并切割 preview.jpg
+            log(`⏳ 步骤A: 加载预览图...`);
             const lowResCubeTex = await splitPreviewToCubeTex(images.preview);
+            log(`✅ 预览图切割完成，创建球体...`);
+            
             const lowResMesh = createCubeSphereMesh(lowResCubeTex);
 
+            // 替换球体
             if (sphereMesh) {
+                log(`🗑️ 移除旧球体`);
                 scene.remove(sphereMesh);
                 if (sphereMesh.material.uniforms?.cubeMap?.value) {
                     sphereMesh.material.uniforms.cubeMap.value.dispose();
@@ -727,57 +563,97 @@
                 sphereMesh.geometry.dispose();
                 sphereMesh.material.dispose();
             }
+
             sphereMesh = lowResMesh;
             scene.add(sphereMesh);
+            log(`✅ 低清球体已添加到场景`);
 
             controls.target.set(0, 0, 0);
             camera.position.set(0, 0, 0.1);
             controls.update();
             currentSceneIndex = index;
 
-            // 延迟隐藏遮罩
-            setTimeout(() => overlay.classList.add('hidden'), 300);
+            // 延迟隐藏遮罩 (让用户看到画面)
+            setTimeout(() => {
+                overlay.classList.add('hidden');
+                log(`👁️ 遮罩已隐藏，显示全景`);
+            }, 400);
 
-            // 步骤B: 后台加载高清图
-            loadHighResCubeTex(images).then((highResTex) => {
-                if (currentSceneIndex !== index) return;
+            // 步骤B: 后台加载高清图 (不阻塞)
+            log(`⏳ 步骤B: 后台加载高清六面图...`);
+            highResLoadAttempted = true;
+            
+            try {
+                const highResTex = await loadHighResCubeTex(images);
+                if (currentSceneIndex !== index) {
+                    log(`⚠️ 场景已切换，放弃高清图升级`, 'warn');
+                    return;
+                }
+                log(`🔄 升级为高清画质...`);
                 const highResMesh = createCubeSphereMesh(highResTex);
+                
                 scene.remove(sphereMesh);
                 if (sphereMesh.material.uniforms?.cubeMap?.value) {
                     sphereMesh.material.uniforms.cubeMap.value.dispose();
                 }
                 sphereMesh.geometry.dispose();
                 sphereMesh.material.dispose();
+                
                 sphereMesh = highResMesh;
                 scene.add(sphereMesh);
                 sceneIndicator.textContent = `📍 ${sceneData.icon} ${sceneData.name}`;
                 sceneBadge.textContent = `● ${sceneData.name}`;
-                console.log(`✅ 场景 ${sceneData.name} 已升级为高清画质`);
-            }).catch(err => {
-                console.warn(`⚠️ 高清图加载失败，保持预览画质`, err);
-            });
+                log(`✅ 场景 ${sceneData.name} 已升级为高清画质`, 'success');
+            } catch (highResErr) {
+                log(`⚠️ 高清图加载失败，保持预览画质: ${highResErr.message}`, 'warn');
+            }
 
         } catch (err) {
-            console.error('❌ 全景加载失败', err);
-            loadingSceneName.textContent = '❌ 资源加载失败，请重试';
-            setTimeout(() => overlay.classList.add('hidden'), 1500);
+            log(`❌ 全景加载失败: ${err.message}`, 'error');
+            log(`  堆栈: ${err.stack}`, 'error');
+            loadingSceneName.textContent = '❌ 资源加载失败，请检查网络';
+            
+            // 尝试备用预览图
+            log(`🔄 尝试加载备用预览图...`);
+            try {
+                const fallbackUrl = images.previewCandidates[1] || images.thumb;
+                log(`  📥 尝试: ${fallbackUrl}`);
+                const fallbackTex = await splitPreviewToCubeTex(fallbackUrl);
+                const fallbackMesh = createCubeSphereMesh(fallbackTex);
+                if (sphereMesh) {
+                    scene.remove(sphereMesh);
+                }
+                sphereMesh = fallbackMesh;
+                scene.add(sphereMesh);
+                log(`✅ 使用备用预览图加载成功`, 'success');
+            } catch (fallbackErr) {
+                log(`❌ 备用预览图也失败: ${fallbackErr.message}`, 'error');
+            }
+            
+            setTimeout(() => overlay.classList.add('hidden'), 2000);
         }
 
         isTransitioning = false;
+        log(`🏁 switchScene(${index}) 完成`);
     }
 
     // ============================================================
     // 5. 缩略图渲染
     // ============================================================
     function renderThumbs() {
+        log(`🖼️ 渲染缩略图...`);
         thumbStrip.innerHTML = '';
         SCENES.forEach((s, idx) => {
             const btn = document.createElement('div');
             btn.className = 'thumb-item' + (idx === 0 ? ' active' : '');
             btn.innerHTML = `<span class="icon">${s.icon}</span><span class="label">${s.name}</span>`;
-            btn.addEventListener('click', () => switchScene(idx));
+            btn.addEventListener('click', () => {
+                log(`🖱️ 点击缩略图: ${s.name}`);
+                switchScene(idx);
+            });
             thumbStrip.appendChild(btn);
         });
+        log(`✅ 缩略图渲染完成, 共 ${SCENES.length} 个`);
     }
 
     // ============================================================
@@ -791,6 +667,7 @@
         renderer.setSize(w, h);
     }
     window.addEventListener('resize', onResize);
+    log('✅ 窗口自适应已绑定');
 
     // ============================================================
     // 7. 动画循环
@@ -800,18 +677,21 @@
         controls.update();
         renderer.render(scene, camera);
     }
+    log('✅ 动画循环已启动');
 
     // ============================================================
     // 8. 交互绑定
     // ============================================================
     fullscreenBtn.addEventListener('click', () => {
         document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen();
+        log(`🖱️ 全屏切换`);
     });
 
     resetViewBtn.addEventListener('click', () => {
         controls.target.set(0, 0, 0);
         camera.position.set(0, 0, 0.1);
         controls.update();
+        log(`🖱️ 重置视角`);
     });
 
     autoRotateBtn.addEventListener('click', function() {
@@ -819,20 +699,30 @@
         this.classList.toggle('active');
         this.style.color = isAutoRotate ? '#f7b731' : '#eee';
         controls.autoRotate = isAutoRotate;
+        log(`🖱️ 自动旋转: ${isAutoRotate ? '开启' : '关闭'}`);
     });
 
     reserveBtn.addEventListener('click', () => {
         alert('预约设计功能 (演示): 已为您预约设计师，稍后联系。');
+        log(`🖱️ 预约设计点击`);
     });
 
     // ============================================================
     // 9. 启动
     // ============================================================
     renderThumbs();
+    log(`🚀 启动加载第一个场景...`);
     switchScene(0);
-    animate();
 
-    console.log('✅ 三维家 · 全景沉浸 已启动');
+    // 额外: 5秒后如果还处于加载状态，显示错误提示
+    setTimeout(() => {
+        if (!overlay.classList.contains('hidden')) {
+            log(`⏰ 5秒超时: 加载可能卡住，检查网络或资源路径`, 'warn');
+            loadingSceneName.textContent = '⏳ 加载时间较长，请检查网络...';
+        }
+    }, 5000);
+
+    log('✅ 三维家 · 全景沉浸 已启动完成');
 </script>
 </body>
 </html>
