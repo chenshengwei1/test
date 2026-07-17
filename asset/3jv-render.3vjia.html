@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>三维家 · 全景沉浸</title>
+    <!-- Font Awesome (免费图标库) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        /* ===== 全局重置 ===== */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        }
+        body {
+            background: #0b0b0b;
+            overflow: hidden;
+            height: 100vh;
+            width: 100vw;
+            touch-action: none;
+            color: #fff;
+        }
+        /* ===== 全景容器 ===== */
+        #pano-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            background: #12121a;
+        }
+        #pano-container canvas {
+            display: block;
+            width: 100% !important;
+            height: 100% !important;
+        }
+
+        /* ===== 顶部品牌栏 (仿三维家) ===== */
+        .brand-bar {
+            position: absolute;
+            top: 18px;
+            left: 18px;
+            right: 18px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 30;
+            pointer-events: none;
+        }
+        .brand-bar > * {
+            pointer-events: auto;
+        }
+        .brand-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: rgba(0, 0, 0, 0.55);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            padding: 8px 18px 8px 16px;
+            border-radius: 40px;
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.6);
+        }
+        .brand-left .logo {
+            font-weight: 700;
+            font-size: 18px;
+            letter-spacing: 0.5px;
+            background: linear-gradient(135deg, #f0b34b, #f7d875);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .brand-left .logo i {
+            margin-right: 6px;
+            font-size: 16px;
+            -webkit-text-fill-color: #f7d875;
+        }
+        .brand-left .badge {
+            background: rgba(255, 215, 0, 0.15);
+            border: 1px solid rgba(255, 215, 0, 0.2);
+            padding: 2px 12px;
+            border-radius: 30px;
+            font-size: 11px;
+            color: #f7d875;
+            font-weight: 500;
+            letter-spacing: 0.3px;
+        }
+        .brand-right {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .brand-right button {
+            background: rgba(0, 0, 0, 0.55);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            color: #eee;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            font-size: 16px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: 0.2s;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+        }
+        .brand-right button:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+        .brand-right button:active {
+            transform: scale(0.92);
+        }
+
+        /* ===== 底部信息卡 (仿截图) ===== */
+        .bottom-card {
+            position: absolute;
+            bottom: 24px;
+            left: 18px;
+            right: 18px;
+            z-index: 30;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+        }
+        .bottom-card > * {
+            pointer-events: auto;
+        }
+
+        /* 主信息卡 */
+        .info-card {
+            width: 100%;
+            max-width: 480px;
+            background: rgba(18, 18, 28, 0.82);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            border-radius: 24px;
+            padding: 16px 20px 18px;
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            box-shadow: 0 10px 40px rgba(0,0,0,0.7);
+            transition: 0.3s;
+        }
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .info-row .title-area {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .info-row .title-area .company {
+            font-weight: 600;
+            font-size: 18px;
+            letter-spacing: 0.3px;
+            color: #fff;
+        }
+        .info-row .title-area .popularity {
+            font-size: 13px;
+            color: #aaa;
+            background: rgba(255,255,255,0.06);
+            padding: 2px 12px;
+            border-radius: 30px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .info-row .title-area .popularity i {
+            color: #f7b731;
+            font-size: 12px;
+        }
+        .info-row .action-btns {
+            display: flex;
+            gap: 6px;
+        }
+        .info-row .action-btns button {
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.06);
+            color: #ccc;
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            font-size: 14px;
+            cursor: pointer;
+            transition: 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .info-row .action-btns button:hover {
+            background: rgba(255,255,255,0.1);
+            color: #fff;
+        }
+
+        /* 联系 & 预约行 */
+        .contact-row {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 10px 16px;
+            margin-top: 4px;
+            padding-top: 12px;
+            border-top: 1px solid rgba(255, 255, 255, 0.04);
+        }
+        .contact-row .phone {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+            color: #ddd;
+            background: rgba(255,255,255,0.03);
+            padding: 4px 14px 4px 10px;
+            border-radius: 30px;
+            border: 1px solid rgba(255,255,255,0.03);
+        }
+        .contact-row .phone i {
+            color: #4fc3f7;
+            font-size: 13px;
+        }
+        .contact-row .badge-safe {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(76, 175, 80, 0.12);
+            border: 1px solid rgba(76, 175, 80, 0.15);
+            color: #81c784;
+            font-size: 12px;
+            padding: 3px 14px 3px 10px;
+            border-radius: 30px;
+        }
+        .contact-row .badge-safe i {
+            font-size: 12px;
+        }
+        .contact-row .btn-reserve {
+            margin-left: auto;
+            background: linear-gradient(135deg, #f7b731, #f5a623);
+            border: none;
+            color: #1a1a1a;
+            font-weight: 600;
+            padding: 8px 22px;
+            border-radius: 40px;
+            font-size: 14px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: 0.2s;
+            box-shadow: 0 4px 16px rgba(247, 183, 49, 0.25);
+        }
+        .contact-row .btn-reserve:hover {
+            transform: scale(1.02);
+            background: linear-gradient(135deg, #fcc451, #f7b731);
+        }
+        .contact-row .btn-reserve:active {
+            transform: scale(0.96);
+        }
+        .contact-row .btn-reserve i {
+            font-size: 14px;
+        }
+
+        /* 底部场景缩略图 (横向滚动) */
+        .scene-strip {
+            width: 100%;
+            max-width: 520px;
+            display: flex;
+            gap: 10px;
+            overflow-x: auto;
+            padding: 6px 4px 10px 4px;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+            pointer-events: auto;
+            background: rgba(0,0,0,0.2);
+            backdrop-filter: blur(4px);
+            border-radius: 60px;
+            border: 1px solid rgba(255,255,255,0.03);
+            padding: 8px 14px;
+        }
+        .scene-strip::-webkit-scrollbar {
+            display: none;
+        }
+        .scene-strip .thumb-item {
+            flex: 0 0 auto;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 2px;
+            background: rgba(255,255,255,0.02);
+            border: 1px solid transparent;
+            padding: 6px 14px;
+            border-radius: 40px;
+            cursor: pointer;
+            transition: 0.2s;
+            color: rgba(255,255,255,0.6);
+            font-size: 12px;
+            white-space: nowrap;
+        }
+        .scene-strip .thumb-item:hover {
+            background: rgba(255,255,255,0.06);
+            color: #fff;
+        }
+        .scene-strip .thumb-item.active {
+            background: rgba(79, 195, 247, 0.12);
+            border-color: rgba(79, 195, 247, 0.2);
+            color: #4fc3f7;
+        }
+        .scene-strip .thumb-item .icon {
+            font-size: 20px;
+            line-height: 1.2;
+        }
+        .scene-strip .thumb-item .label {
+            font-size: 10px;
+            opacity: 0.7;
+        }
+        .scene-strip .thumb-item.active .label {
+            opacity: 1;
+        }
+
+        /* ===== 加载提示 ===== */
+        .loading-tip {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.7);
+            backdrop-filter: blur(8px);
+            padding: 16px 30px;
+            border-radius: 50px;
+            z-index: 40;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            font-size: 15px;
+            color: #ccc;
+            border: 1px solid rgba(255,255,255,0.04);
+            transition: opacity 0.5s;
+            pointer-events: none;
+        }
+        .loading-tip .spinner {
+            width: 22px;
+            height: 22px;
+            border: 2px solid rgba(255,255,255,0.08);
+            border-top: 2px solid #f7b731;
+            border-radius: 50%;
+            animation: spin 0.9s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* ===== 响应式 ===== */
+        @media (max-width: 600px) {
+            .brand-bar {
+                top: 12px;
+                left: 12px;
+                right: 12px;
+            }
+            .brand-left {
+                padding: 6px 14px 6px 12px;
+                gap: 8px;
+            }
+            .brand-left .logo {
+                font-size: 15px;
+            }
+            .brand-left .badge {
+                font-size: 9px;
+                padding: 1px 8px;
+            }
+            .brand-right button {
+                width: 34px;
+                height: 34px;
+                font-size: 13px;
+            }
+            .bottom-card {
+                bottom: 16px;
+                left: 12px;
+                right: 12px;
+                gap: 10px;
+            }
+            .info-card {
+                padding: 14px 16px;
+                border-radius: 20px;
+            }
+            .info-row .title-area .company {
+                font-size: 16px;
+            }
+            .info-row .title-area .popularity {
+                font-size: 11px;
+                padding: 1px 10px;
+            }
+            .contact-row .phone {
+                font-size: 12px;
+                padding: 2px 10px 2px 8px;
+            }
+            .contact-row .btn-reserve {
+                font-size: 12px;
+                padding: 6px 16px;
+            }
+            .contact-row .badge-safe {
+                font-size: 10px;
+                padding: 2px 10px 2px 8px;
+            }
+            .scene-strip {
+                padding: 6px 10px;
+                gap: 6px;
+                border-radius: 40px;
+            }
+            .scene-strip .thumb-item {
+                padding: 4px 10px;
+                font-size: 10px;
+            }
+            .scene-strip .thumb-item .icon {
+                font-size: 16px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div id="pano-container">
+    <!-- Three.js 画布将自动插入 -->
+
+    <!-- ===== 加载提示 ===== -->
+    <div class="loading-tip" id="loadingTip">
+        <span class="spinner"></span>
+        <span id="loadingText">全景加载中...</span>
+    </div>
+
+    <!-- ===== 顶部品牌栏 ===== -->
+    <div class="brand-bar">
+        <div class="brand-left">
+            <span class="logo"><i class="fas fa-cube"></i> Sunvega</span>
+            <span class="badge"><i class="fas fa-fire" style="margin-right:4px;"></i>三维家</span>
+        </div>
+        <div class="brand-right">
+            <button id="fullscreenBtn" title="全屏"><i class="fas fa-expand"></i></button>
+            <button id="resetViewBtn" title="重置视角"><i class="fas fa-crosshairs"></i></button>
+            <button id="autoRotateBtn" title="自动旋转"><i class="fas fa-sync-alt"></i></button>
+        </div>
+    </div>
+
+    <!-- ===== 底部信息卡 (仿截图) ===== -->
+    <div class="bottom-card">
+        <!-- 主信息卡 -->
+        <div class="info-card">
+            <div class="info-row">
+                <div class="title-area">
+                    <span class="company">Sunvega</span>
+                    <span class="popularity"><i class="fas fa-heart"></i> 152</span>
+                </div>
+                <div class="action-btns">
+                    <button title="分享"><i class="fas fa-share-alt"></i></button>
+                    <button title="收藏"><i class="fas fa-bookmark"></i></button>
+                </div>
+            </div>
+            <div class="contact-row">
+                <span class="phone"><i class="fas fa-phone-alt"></i> 13682519737</span>
+                <span class="badge-safe"><i class="fas fa-shield-alt"></i> 放心商家</span>
+                <button class="btn-reserve" id="reserveBtn">
+                    <i class="fas fa-calendar-check"></i> 预约设计
+                </button>
+            </div>
+        </div>
+
+        <!-- 场景缩略图 (横向滚动) -->
+        <div class="scene-strip" id="thumbStrip">
+            <!-- 由 JavaScript 动态生成 -->
+        </div>
+    </div>
+</div>
+
+<!-- ===== 引入 Three.js ===== -->
+<script type="importmap">
+    {
+        "imports": {
+            "three": "https://unpkg.com/three@0.128.0/build/three.module.js",
+            "three/addons/": "https://unpkg.com/three@0.128.0/examples/jsm/"
+        }
+    }
+</script>
+
+<script type="module">
+    // ============================================================
+    // 模块导入
+    // ============================================================
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+    // ============================================================
+    // 1. 场景数据 (与您提供一致)
+    // ============================================================
+    const BASE_PATH = 'https://raw.githubusercontent.com/chenshengwei1/learning/master/asset/157481626/';
+    // https://github.com/chenshengwei1/learning/blob/master/asset/157481626/1f1a93a3107942daa2481620bac2e9cf/show_preview.jpg
+    const SCENES = [
+        { id: 'livingroom', name: '主卧', icon: '🛏️', key: '21a288c8cfe64f698ed8ca431d1ac8c6' },
+        { id: 'masterbed', name: '客房', icon: '🌿', key: '1f1a93a3107942daa2481620bac2e9cf'},
+        { id: 'kitchen', name: '女童房', icon: '🍳', key: '4537117ed3ea40f39bb74154688e79ae' },
+        { id: 'bathroom', name: '电视柜', icon: '🚿', key: '3a49c7521bc648e189fd8470ea10737d'},
+        { id: 'balcony', name: '男童房', icon: '🛋️', key: 'cb47bb65c35b45b1b0bfa7fe92ab9031'},
+        { id: 'study', name: '入户', icon: '📚', key: '5df322435d904de8a1f702cb8bb61209'}
+    ];
+
+    function getSceneImages(scene) {
+        const base = `${BASE_PATH}${scene.key}/`;
+        return {
+            right: `${base}pano_r.jpg`,
+            left: `${base}pano_l.jpg`,
+            up: `${base}pano_u.jpg`,
+            down: `${base}pano_d.jpg`,
+            front: `${base}pano_f.jpg`,
+            back: `${base}pano_b.jpg`,
+            name: scene.name,
+            icon: scene.icon
+        };
+    }
+
+    // ============================================================
+    // 2. DOM 引用
+    // ============================================================
+    const container = document.getElementById('pano-container');
+    const thumbStrip = document.getElementById('thumbStrip');
+    const loadingTip = document.getElementById('loadingTip');
+    const loadingText = document.getElementById('loadingText');
+
+    const fullscreenBtn = document.getElementById('fullscreenBtn');
+    const resetViewBtn = document.getElementById('resetViewBtn');
+    const autoRotateBtn = document.getElementById('autoRotateBtn');
+    const reserveBtn = document.getElementById('reserveBtn');
+
+    // ============================================================
+    // 3. Three.js 核心
+    // ============================================================
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x111122);
+
+    const camera = new THREE.PerspectiveCamera(75, container.clientWidth / container.clientHeight, 0.1, 1000);
+    camera.position.set(0, 0, 0.1);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(container.clientWidth, container.clientHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    container.appendChild(renderer.domElement);
+
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableZoom = true;
+    controls.zoomSpeed = 0.6;
+    controls.rotateSpeed = 0.7;
+    controls.enablePan = false;
+    controls.minDistance = 0.1;
+    controls.maxDistance = 0.5;
+    controls.target.set(0, 0, 0);
+    controls.update();
+
+    let currentMesh = null;
+    let currentIndex = 0;
+    let isLoading = false;
+
+    // ---- 加载全景 ----
+    function createPanorama(imageUrls) {
+        return new Promise((resolve, reject) => {
+            const loader = new THREE.CubeTextureLoader();
+            const urls = [
+                imageUrls.right, imageUrls.left,
+                imageUrls.up, imageUrls.down,
+                imageUrls.front, imageUrls.back
+            ];
+            loader.load(urls,
+                (cubeTexture) => {
+                    const geometry = new THREE.SphereGeometry(100, 64, 64);
+                    const material = new THREE.MeshBasicMaterial({
+                        map: cubeTexture,
+                        side: THREE.BackSide
+                    });
+                    resolve(new THREE.Mesh(geometry, material));
+                },
+                undefined,
+                (err) => reject(err)
+            );
+        });
+    }
+
+    async function loadScene(index) {
+        if (isLoading || index === currentIndex) return;
+        isLoading = true;
+        loadingTip.style.display = 'flex';
+        loadingTip.style.opacity = '1';
+        loadingText.textContent = `加载 ${SCENES[index].name}...`;
+
+        try {
+            const images = getSceneImages(SCENES[index]);
+            const mesh = await createPanorama(images);
+            if (currentMesh) {
+                scene.remove(currentMesh);
+                currentMesh.geometry.dispose();
+                if (Array.isArray(currentMesh.material)) {
+                    currentMesh.material.forEach(m => m.dispose());
+                } else {
+                    currentMesh.material.dispose();
+                }
+            }
+            scene.add(mesh);
+            currentMesh = mesh;
+            currentIndex = index;
+            controls.target.set(0, 0, 0);
+            camera.position.set(0, 0, 0.1);
+            controls.update();
+            updateThumbActive(index);
+        } catch (e) {
+            console.error('加载失败', e);
+            loadingText.textContent = '加载失败，请重试';
+            setTimeout(() => { loadingTip.style.display = 'none'; }, 1500);
+        }
+        isLoading = false;
+        loadingTip.style.display = 'none';
+    }
+
+    // ---- 缩略图 ----
+    function renderThumbs() {
+        thumbStrip.innerHTML = '';
+        SCENES.forEach((s, idx) => {
+            const btn = document.createElement('div');
+            btn.className = 'thumb-item' + (idx === 0 ? ' active' : '');
+            btn.innerHTML = `<span class="icon">${s.icon}</span><span class="label">${s.name}</span>`;
+            btn.addEventListener('click', () => loadScene(idx));
+            thumbStrip.appendChild(btn);
+        });
+    }
+
+    function updateThumbActive(index) {
+        const items = thumbStrip.querySelectorAll('.thumb-item');
+        items.forEach((el, i) => el.classList.toggle('active', i === index));
+    }
+
+    // ---- 窗口自适应 ----
+    function onResize() {
+        const w = container.clientWidth;
+        const h = container.clientHeight;
+        camera.aspect = w / h;
+        camera.updateProjectionMatrix();
+        renderer.setSize(w, h);
+    }
+    window.addEventListener('resize', onResize);
+
+    // ---- 动画循环 ----
+    function animate() {
+        requestAnimationFrame(animate);
+        if (autoRotateBtn.classList.contains('active') && currentMesh) {
+            currentMesh.rotation.y += 0.002;
+        }
+        controls.update();
+        renderer.render(scene, camera);
+    }
+
+    // ============================================================
+    // 4. 交互绑定
+    // ============================================================
+    fullscreenBtn.addEventListener('click', () => {
+        document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen();
+    });
+
+    resetViewBtn.addEventListener('click', () => {
+        controls.target.set(0, 0, 0);
+        camera.position.set(0, 0, 0.1);
+        controls.update();
+    });
+
+    autoRotateBtn.addEventListener('click', function() {
+        this.classList.toggle('active');
+        this.style.color = this.classList.contains('active') ? '#f7b731' : '#eee';
+    });
+
+    reserveBtn.addEventListener('click', () => {
+        alert('预约设计功能 (演示): 已为您预约设计师，稍后联系。');
+    });
+
+    // ============================================================
+    // 5. 启动
+    // ============================================================
+    renderThumbs();
+    loadScene(0);
+    animate();
+
+    // 隐藏加载提示 (后备)
+    setTimeout(() => {
+        loadingTip.style.display = 'none';
+    }, 5000);
+
+    console.log('✅ 三维家 · 全景沉浸 已启动');
+</script>
+</body>
+</html>
