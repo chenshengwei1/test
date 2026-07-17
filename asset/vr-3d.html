@@ -465,7 +465,12 @@
                     (texture) => {
                         // 关键：CubeTexture 不需要设置这些，但需要确保它们被正确应用
                         // 尝试移除所有额外设置，只保留最基本的
-                        texture.needsUpdate = true;
+                        //texture.needsUpdate = true;
+                        // 关键校验：确保6张图像都存在
+                        const allImgReady = texture.images.every(img => img instanceof HTMLImageElement);
+                        if (!allImgReady) {
+                            return reject(new Error("存在未正常解码的贴图"));
+                        }
                         
                         const geometry = new THREE.SphereGeometry(100, 64, 64);
                         const material = new THREE.MeshBasicMaterial({
