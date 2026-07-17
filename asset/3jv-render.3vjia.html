@@ -716,35 +716,6 @@
     switchScene(0);
 
     // ============================================================
-    //  星空背景装饰
-    // ============================================================
-    function addStars() {
-        const vertices = [];
-        for (let i = 0; i < 1500; i++) {
-            const theta = Math.random() * Math.PI * 2;
-            const phi = Math.acos(2 * Math.random() - 1);
-            const r = 80 + Math.random() * 18;
-            vertices.push(
-                r * Math.sin(phi) * Math.cos(theta),
-                r * Math.sin(phi) * Math.sin(theta),
-                r * Math.cos(phi)
-            );
-        }
-        const geometry = new THREE.BufferGeometry();
-        geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
-        const material = new THREE.PointsMaterial({
-            color: 0x88bbff,
-            size: 0.25,
-            transparent: true,
-            opacity: 0.5,
-            blending: THREE.AdditiveBlending
-        });
-        const stars = new THREE.Points(geometry, material);
-        scene.add(stars);
-    }
-    addStars();
-
-    // ============================================================
     //  窗口自适应
     // ============================================================
     window.addEventListener('resize', () => {
