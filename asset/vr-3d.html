@@ -517,6 +517,7 @@
                 void main() {
                     vec3 dir = normalize(-vDir);
                     dir.y = -dir.y;
+                    dir.z = -dir.z;
                     gl_FragColor = textureCube(cubeMap, dir);
                 }
             `;
