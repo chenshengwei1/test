@@ -472,8 +472,11 @@
                 img.crossOrigin = "anonymous";
                 img.onload = () => {
                     const pieceSize = img.height / 6; // 1:6，高度均分6份，宽=pieceSize天然正方形
+                    // 目标输出数组顺序：[left, front, right, back, up, down]
+                    // 原图从上到下 i0:right, i1:left, i2:up, i3:down, i4:front, i5:back
+                    const targetOrderIndex = [1, 4, 0, 5, 2, 3];
                     const imgArr = [];
-                    for (let i = 0; i < 6; i++) {
+                    for (const i of targetOrderIndex) {
                         const canvas = document.createElement("canvas");
                         canvas.width = pieceSize;
                         canvas.height = pieceSize;
@@ -561,7 +564,7 @@
 
             // 1. 打开加载遮罩，展示HTML静态preview缩略图过渡
             overlay.classList.remove('hidden');
-            previewImg.src = images.preview;
+            previewImg.src = images.thumb;
             previewImg.style.display = 'block';
             loadingName.textContent = `📸 ${images.icon} ${images.name} 加载中...`;
             document.querySelectorAll('.scene-nav button').forEach((btn, i) => {
@@ -774,8 +777,9 @@
         SCENES.forEach((s, i) => {
             const btn = document.createElement('button');
             // 如果有缩略图，显示图片+文字，否则只显示图标+文字
-            if (s.thumb) {
-                btn.innerHTML = `<img src="${s.thumb}" style="width:20px;height:20px;border-radius:4px;object-fit:cover;vertical-align:middle;margin-right:6px;"> ${s.name}`;
+            let scene = getSceneImages(s);
+            if (scene.thumb) {
+                btn.innerHTML = `<img src="${scene.thumb}" style="width:20px;height:20px;border-radius:4px;object-fit:cover;vertical-align:middle;margin-right:6px;"> ${s.name}`;
             } else {
                 btn.innerHTML = `<span class="icon">${s.icon}</span> ${s.name}`;
             }
