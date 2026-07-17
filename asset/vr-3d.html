@@ -509,21 +509,24 @@
                     loader.load(
                         url,
                         (texture) => {
+                            // 关键校验：图像必须解码完成、宽高大于0
+                            const img = texture.image;
+                            if (!img || img.width <= 0 || img.height <= 0) {
+                                return reject(new Error(`第 ${index+1} 张图片解码异常，尺寸为0`));
+                            }
                             textures[index] = texture;
                             loadedCount++;
                             
                             if (loadedCount === 6) {
-                                // 所有纹理加载完成，组合成立方体贴图
                                 const cubeTexture = new THREE.CubeTexture();
-                                // 注意：CubeTexture 需要 Image 对象数组，而不是 Texture 对象
                                 cubeTexture.images = textures.map(t => t.image);
-                                cubeTexture.needsUpdate = true;
-                                
-                                // 复制纹理参数
+                                cubeTexture.colorSpace = THREE.SRGBColorSpace;
+                                // 不使用mipmap，彻底规避mipmap相关报错
+                                cubeTexture.generateMipmaps = false;
                                 cubeTexture.magFilter = THREE.LinearFilter;
-                                cubeTexture.minFilter = THREE.LinearMipmapLinearFilter;
-                                cubeTexture.format = THREE.RGBAFormat;
-                                cubeTexture.type = THREE.UnsignedByteType;
+                                cubeTexture.minFilter = THREE.LinearFilter;
+                                // 删除手动指定format、type，避免和实际图像格式冲突
+                                cubeTexture.needsUpdate = true;
                                 
                                 const geometry = new THREE.SphereGeometry(100, 64, 64);
                                 const material = new THREE.MeshBasicMaterial({
