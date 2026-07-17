@@ -743,6 +743,27 @@
     }
     addStars();
 
+    // ============================================================
+    //  窗口自适应
+    // ============================================================
+    window.addEventListener('resize', () => {
+        const w = window.innerWidth;
+        const h = window.innerHeight;
+        camera.aspect = w / h;
+        camera.updateProjectionMatrix();
+        renderer.setSize(w, h);
+    });
+
+    // ============================================================
+    //  渲染循环
+    // ============================================================
+    function animate() {
+        requestAnimationFrame(animate);
+        controls.update();
+        renderer.render(scene, camera);
+    }
+    animate();
+
 
     // 额外: 5秒后如果还处于加载状态，显示错误提示
     setTimeout(() => {
