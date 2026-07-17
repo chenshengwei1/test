@@ -267,38 +267,38 @@
     </div>
     <!-- 贴图对比调试面板，上线可直接删除 -->
     <div id="debugComparePanel" style="position:fixed;right:10px;top:10px;z-index:9999;background:rgba(0,0,0,0.85);padding:12px;border-radius:8px;color:#fff;font-size:12px;display:none;">
-    <h4 style="margin:0 0 8px 0;">切片预览 vs 高清原图</h4>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
-        <div>
-            <p style="margin:2px 0 4px 0;">preview切片</p>
-            <canvas id="debugCutCanvas-left" width="256" height="256" style="width:128px;height:128px;border:1px solid #666;"></canvas>
-            <canvas id="debugCutCanvas-front" width="256" height="256" style="width:128px;height:128px;border:1px solid #666;"></canvas>
-            <canvas id="debugCutCanvas-right" width="256" height="256" style="width:128px;height:128px;border:1px solid #666;"></canvas>
-            <canvas id="debugCutCanvas-back" width="256" height="256" style="width:128px;height:128px;border:1px solid #666;"></canvas>
-            <canvas id="debugCutCanvas-up" width="256" height="256" style="width:128px;height:128px;border:1px solid #666;"></canvas>
-            <canvas id="debugCutCanvas-down" width="256" height="256" style="width:128px;height:128px;border:1px solid #666;"></canvas>
+        <h4 style="margin:0 0 8px 0;">切片预览 vs 高清原图</h4>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
+            <div>
+                <p style="margin:2px 0 4px 0;">preview切片</p>
+                <canvas id="debugCutCanvas-left" width="256" height="256" style="width:128px;height:128px;border:1px solid #666;"></canvas>
+                <canvas id="debugCutCanvas-front" width="256" height="256" style="width:128px;height:128px;border:1px solid #666;"></canvas>
+                <canvas id="debugCutCanvas-right" width="256" height="256" style="width:128px;height:128px;border:1px solid #666;"></canvas>
+                <canvas id="debugCutCanvas-back" width="256" height="256" style="width:128px;height:128px;border:1px solid #666;"></canvas>
+                <canvas id="debugCutCanvas-up" width="256" height="256" style="width:128px;height:128px;border:1px solid #666;"></canvas>
+                <canvas id="debugCutCanvas-down" width="256" height="256" style="width:128px;height:128px;border:1px solid #666;"></canvas>
+            </div>
+            <div>
+                <p style="margin:2px 0 4px 0;">高清原图</p>
+                <img id="debugHighImg-left" width="128" height="128" style="border:1px solid #666;object-fit:cover;">
+                <img id="debugHighImg-front" width="128" height="128" style="border:1px solid #666;object-fit:cover;">
+                <img id="debugHighImg-right" width="128" height="128" style="border:1px solid #666;object-fit:cover;">
+                <img id="debugHighImg-back" width="128" height="128" style="border:1px solid #666;object-fit:cover;">
+                <img id="debugHighImg-up" width="128" height="128" style="border:1px solid #666;object-fit:cover;">
+                <img id="debugHighImg-down" width="128" height="128" style="border:1px solid #666;object-fit:cover;">
+            </div>
         </div>
-        <div>
-            <p style="margin:2px 0 4px 0;">高清原图</p>
-            <img id="debugHighImg-left" width="128" height="128" style="border:1px solid #666;object-fit:cover;">
-            <img id="debugHighImg-front" width="128" height="128" style="border:1px solid #666;object-fit:cover;">
-            <img id="debugHighImg-right" width="128" height="128" style="border:1px solid #666;object-fit:cover;">
-            <img id="debugHighImg-back" width="128" height="128" style="border:1px solid #666;object-fit:cover;">
-            <img id="debugHighImg-up" width="128" height="128" style="border:1px solid #666;object-fit:cover;">
-            <img id="debugHighImg-down" width="128" height="128" style="border:1px solid #666;object-fit:cover;">
+        <div style="margin-top:8px;">
+            <span>切换面：</span>
+            <select id="debugFaceSelect" style="color:#000;padding:2px 4px;">
+            <option value="0">0-left</option>
+            <option value="1">1-front</option>
+            <option value="2">2-right</option>
+            <option value="3">3-back</option>
+            <option value="4">4-up</option>
+            <option value="5">5-down</option>
+            </select>
         </div>
-    </div>
-    <div style="margin-top:8px;">
-        <span>切换面：</span>
-        <select id="debugFaceSelect" style="color:#000;padding:2px 4px;">
-        <option value="0">0-left</option>
-        <option value="1">1-front</option>
-        <option value="2">2-right</option>
-        <option value="3">3-back</option>
-        <option value="4">4-up</option>
-        <option value="5">5-down</option>
-        </select>
-    </div>
     </div>
 
     <!-- ===== Three.js ===== -->
@@ -536,7 +536,7 @@
 
                     // 加载完成后自动显示调试面板
                     const panel = document.getElementById('debugComparePanel');
-                    panel.style.display = 'block';
+                    //panel.style.display = 'block';
                     // 默认展示第0面 left
                     renderDebugFace(0);
 
