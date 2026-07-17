@@ -232,6 +232,14 @@
             border-radius: 12px;
             box-shadow: 0 8px 32px rgba(0,0,0,0.5);
             border: 1px solid rgba(255,255,255,0.1);
+            position: fixed;
+            inset: 0;
+            width: 100vw;
+            height: 100vh;
+            object-fit: cover;
+            border-radius: 0;
+            border: none;
+            box-shadow: none;
         }
     </style>
 </head>
@@ -243,6 +251,7 @@
         <img id="previewImage" src="https://threejs.org/examples/textures/2294472375_24a3b8ef46_o.jpg" style="max-width:80%;max-height:40%;border-radius:12px;margin-bottom:16px;object-fit:cover;">
         <p>🌐 全景加载中...</p>
         <div class="sub" id="loadingSceneName">准备就绪</div>
+        <div id="loadProgress" style="color:#ffd700;font-size:13px;margin-top:8px;min-height:20px;"></div>
     </div>
 
     <!-- ===== 顶部栏 ===== -->
@@ -634,6 +643,147 @@
         }
 
         async function switchScene(index) {
+            if (isTransitioning) return;
+            const sceneData = SCENES[index];
+            if (!sceneData) return;
+            const images = getSceneImages(sceneData);
+            window.currentSceneImages = images;
+
+            isTransitioning = true;
+            const overlay = document.getElementById('loadingOverlay');
+            const loadingName = document.getElementById('loadingSceneName');
+            const indicator = document.getElementById('sceneIndicator');
+            const badge = document.getElementById('sceneBadge');
+            const previewImg = document.getElementById('previewImage');
+            const progressEl = document.getElementById('loadProgress');
+
+            // 1. 全屏显示预览图
+            overlay.classList.remove('hidden');
+            previewImg.src = images.preview || images.thumb;
+            previewImg.style.display = 'block';
+            loadingName.textContent = `📸 ${images.icon} ${images.name} 加载中...`;
+            progressEl.textContent = '⏳ 准备预览图...';
+
+            document.querySelectorAll('.scene-nav button').forEach((btn, i) => {
+                btn.classList.toggle('active', i === index);
+            });
+
+            try {
+                // 2. 先用预览图快速渲染低清全景（用户秒见画面）
+                const lowResCubeTex = await splitPreviewToCubeTex(images.preview || images.thumb);
+                const lowResMesh = createCubeSphereMesh(lowResCubeTex);
+
+                if (sphereMesh) {
+                    scene.remove(sphereMesh);
+                    if (sphereMesh.material.uniforms?.cubeMap?.value) {
+                        sphereMesh.material.uniforms.cubeMap.value.dispose();
+                    }
+                    sphereMesh.geometry.dispose();
+                    sphereMesh.material.dispose();
+                }
+                sphereMesh = lowResMesh;
+                scene.add(sphereMesh);
+
+                controls.target.set(0, 0, 0);
+                camera.position.set(0, 0, 0.1);
+                controls.update();
+                currentSceneIndex = index;
+                indicator.textContent = `📍 ${sceneData.icon} ${sceneData.name}`;
+                badge.textContent = `● ${sceneData.name}`;
+
+                // 3. 隐藏遮罩，让用户看到预览画面
+                setTimeout(() => overlay.classList.add('hidden'), 300);
+
+                // 4. 🆕 逐片加载高清图（一片片替换）
+                progressEl.textContent = '🔄 正在逐片升级高清画质...';
+                
+                // 加载6个面的高清图
+                const faceNames = ['right', 'left', 'up', 'down', 'front', 'back'];
+                let loadedCount = 0;
+                const totalFaces = 6;
+
+                // 先为每一面创建独立的纹理占位（基于预览图）
+                const currentCubeTex = sphereMesh.material.uniforms.cubeMap.value;
+                const faceTextures = currentCubeTex.image; // 6个canvas
+
+                // 逐面加载高清图
+                for (let i = 0; i < faceNames.length; i++) {
+                    const faceName = faceNames[i];
+                    const highResUrl = images[faceName];
+                    
+                    if (!highResUrl) {
+                        loadedCount++;
+                        updateProgress(loadedCount, totalFaces, progressEl);
+                        continue;
+                    }
+
+                    // 加载单个面的高清图
+                    const loader = new THREE.TextureLoader();
+                    loader.setCrossOrigin('anonymous');
+                    
+                    try {
+                        const highTex = await new Promise((resolve, reject) => {
+                            loader.load(highResUrl, resolve, undefined, reject);
+                        });
+                        
+                        // 🎯 关键：替换立方体贴图中对应的面
+                        // CubeTexture的image数组顺序：[right, left, up, down, front, back]
+                        // 但你的targetOrderIndex映射了不同顺序
+                        const cubeImages = sphereMesh.material.uniforms.cubeMap.value.image;
+                        // 找到正确的索引位置
+                        const targetIdx = targetOrderIndex[i]; // 使用你已有的映射
+                        cubeImages[targetIdx] = highTex.image; // 替换为高清图
+                        
+                        // 标记纹理需要更新
+                        sphereMesh.material.uniforms.cubeMap.value.needsUpdate = true;
+                        
+                        loadedCount++;
+                        updateProgress(loadedCount, totalFaces, progressEl);
+                        console.log(`✅ ${faceName} 面已升级为高清 (${loadedCount}/${totalFaces})`);
+                        
+                    } catch (err) {
+                        console.warn(`⚠️ ${faceName} 面加载失败，保持预览`, err);
+                        loadedCount++;
+                        updateProgress(loadedCount, totalFaces, progressEl);
+                    }
+                }
+
+                // 全部加载完成
+                progressEl.textContent = '✅ 全部高清加载完成！';
+                setTimeout(() => {
+                    progressEl.textContent = '';
+                }, 2000);
+
+            } catch (previewErr) {
+                console.error("预览图加载失败", previewErr);
+                loadingName.textContent = '❌ 全景资源加载失败';
+                setTimeout(() => overlay.classList.add('hidden'), 2000);
+            }
+
+            isTransitioning = false;
+        }
+
+        // 🆕 辅助函数：更新进度
+        function updateProgress(loaded, total, el) {
+            const pct = Math.round((loaded / total) * 100);
+            const names = ['右', '左', '上', '下', '前', '后'];
+            el.textContent = `🔄 升级画质 ${pct}% (${loaded}/${total})`;
+        }
+
+        // 🆕 延迟函数
+        function sleep(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+        // 🆕 获取当前球体的某个面的纹理（用于调试）
+        function getFaceTexture(mesh, faceIndex) {
+            if (!mesh || !mesh.material || !mesh.material.uniforms) return null;
+            const cubeTex = mesh.material.uniforms.cubeMap.value;
+            if (!cubeTex || !cubeTex.image) return null;
+            return cubeTex.image[faceIndex];
+        }
+
+        async function switchScene3(index) {
             if (isTransitioning) return;
             const sceneData = SCENES[index];
             if (!sceneData) return;
