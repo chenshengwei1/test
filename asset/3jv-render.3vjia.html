@@ -231,13 +231,13 @@
         }
 
         /* 右侧按钮组 */
-        
+
         .right-tools .btn:hover {
-            background: rgba(255,255,255,0.12);
-            color: #fff;
+            background: transparent !important;
         }
-        .right-tools .btn:active {
-            transform: scale(0.94);
+
+        .right-tools .btn:hover i {
+            background-color: rgba(255, 255, 255, 0.15);  /* 悬停时轻微高亮，保持圆形 */
         }
 
         .header {
@@ -345,6 +345,8 @@
             right: 14px;
             bottom: 0;
             line-height: 80px;
+            background: transparent !important;  /* 添加：强制透明背景 */
+            backdrop-filter: none !important;    /* 添加：移除模糊效果 */
         }
 
         .right-tools .btn{
@@ -365,7 +367,7 @@
             width: 44px;
             height: 44px;
             background-color: rgba(0, 0, 0, .5);
-            border-radius: 22px;
+            border-radius: 50%;
             line-height: 44px;
             float: top;
             border: 1px solid #999;
