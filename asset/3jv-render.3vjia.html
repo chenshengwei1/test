@@ -262,7 +262,7 @@
             right: 0;                 /* 延伸到右侧 */
             width: 100%;              /* 占满整行 */
             transform: none;          /* 移除 transform: translateX(-50%) */
-            background: #000;         /* 纯黑色背景，替代半透明背景 */
+            background: rgba(0,0,0,0.5);         /* 纯黑色背景，替代半透明背景 */
             /* 其他样式根据需要调整 */
             padding: 16px 20px;
             border-radius: 0;         /* 如果需要完全方正，移除圆角 */
@@ -285,7 +285,6 @@
             transform: translateX(-50%);
             z-index: 25;
             display: none;
-            background: rgba(20,20,30,0.85);
             backdrop-filter: blur(16px);
             padding: 16px 20px;
             border-radius: 24px;
