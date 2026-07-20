@@ -488,6 +488,53 @@
         };
     }
 
+    // ============================================================
+    //  WASD 漫游数据
+    // ============================================================
+
+    // 房间连接关系（根据户型图）
+    const SCENE_GRAPH = {
+        '主卫':   { w: null, s: '主卧', a: null, d: null },
+        '主卧':   { w: '主卫', s: '走廊上', a: null, d: null },
+        '走廊上': { w: null, s: '走廊中', a: null, d: null },
+        '男童房': { w: null, s: null, a: null, d: '走廊中' },
+        '走廊中': { w: '男童房', s: '走廊下', a: null, d: '客房' },
+        '客房':   { w: '走廊中', s: null, a: null, d: null },
+        '女童房': { w: null, s: null, a: null, d: '走廊下' },
+        '走廊下': { w: '女童房', s: '客厅', a: null, d: '次卫' },
+        '次卫':   { w: '走廊下', s: null, a: null, d: null },
+        '客厅':   { w: '走廊下', s: '门口', a: '生活阳台', d: '阳台' },
+        '生活阳台': { w: null, s: null, a: null, d: '客厅' },
+        '阳台':   { w: null, s: null, a: '客厅', d: null },
+        '厨房':   { w: null, s: null, a: null, d: null },
+        '阳光房': { w: null, s: null, a: null, d: null },
+        '门口':   { w: '客厅', s: null, a: null, d: null },
+    };
+
+    // 每个房间的坐标（用于以后做平滑过渡动画）
+    const ROOM_POSITIONS = {
+        '主卫':     { x: 2, y: 0.5 },
+        '主卧':     { x: 5, y: 0.5 },
+        '走廊上':   { x: 3.5, y: 1.5 },
+        '男童房':   { x: 1, y: 2.5 },
+        '走廊中':   { x: 3.5, y: 2.5 },
+        '客房':     { x: 6, y: 2.5 },
+        '女童房':   { x: 1, y: 4.5 },
+        '走廊下':   { x: 3.5, y: 4.5 },
+        '次卫':     { x: 6, y: 4.5 },
+        '客厅':     { x: 3.5, y: 6 },
+        '生活阳台': { x: 0.5, y: 6 },
+        '阳台':     { x: 5.5, y: 6.5 },
+        '厨房':     { x: 2.5, y: 7.5 },
+        '阳光房':   { x: 4.5, y: 8.5 },
+        '门口':     { x: 3.5, y: 9 },
+    };
+
+    // 当前所在房间
+    let currentRoomName = '主卧';
+
+
+
     // 测试第一个场景的图片路径
     const testImages = getSceneImages(SCENES[0]);
     log(`🔍 测试路径: ${testImages.right}`);
@@ -818,6 +865,7 @@
         });
         log(`✅ 缩略图渲染完成, 共 ${SCENES.length} 个`);
     }
+    
 
     // ============================================================
     // 6. 窗口自适应
@@ -918,6 +966,34 @@
     reserveBtn.addEventListener('click', () => {
         alert('预约设计功能 (演示): 已为您预约设计师，稍后联系。');
         log(`🖱️ 预约设计点击`);
+    });
+
+        // WASD 键盘监听
+    document.addEventListener('keydown', (e) => {
+        const key = e.key.toLowerCase();
+        if (!['w', 'a', 's', 'd'].includes(key)) return;
+        e.preventDefault();
+        
+        const neighbors = SCENE_GRAPH[currentRoomName];
+        if (!neighbors) return;
+        
+        const dirMap = { 'w': '⬆️ 前', 's': '⬇️ 后', 'a': '⬅️ 左', 'd': '➡️ 右' };
+        const targetName = neighbors[key];
+        
+        if (targetName && targetName !== currentRoomName) {
+            const targetIndex = SCENES.findIndex(s => s.name === targetName);
+            if (targetIndex !== -1) {
+                console.log(`🚶 ${dirMap[key]} → ${targetName}`);
+                currentRoomName = targetName;
+                switchScene(targetIndex);
+            } else {
+                console.log(`⚠️ 房间 "${targetName}" 没有全景数据`);
+            }
+        } else if (targetName === currentRoomName) {
+            console.log('🚫 已经在这个房间');
+        } else {
+            console.log(`🚫 ${dirMap[key]} 方向没有房间`);
+        }
     });
 
     // ============================================================
