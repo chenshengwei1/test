@@ -272,6 +272,19 @@
         #model-viewer {
             display: none !important;
         }
+
+        /* 在 style 中添加 */
+        #backHomeBtn.drag-active {
+            animation: borderFlash 0.8s ease-in-out 3;
+            border-color: #00ff88;
+            box-shadow: 0 0 20px rgba(0, 255, 136, 0.5);
+        }
+
+        @keyframes borderFlash {
+            0% { border-color: rgba(255,255,255,0.2); box-shadow: 0 8px 30px rgba(0,0,0,0.4); }
+            50% { border-color: #00ff88; box-shadow: 0 0 30px rgba(0, 255, 136, 0.8); }
+            100% { border-color: rgba(255,255,255,0.2); box-shadow: 0 8px 30px rgba(0,0,0,0.4); }
+        }
     </style>
 </head>
 <body>
@@ -470,7 +483,7 @@
             // ============================================================
             $backBtn.click(function(e) {
                 // 避免点击触发拖拽误操作
-                if ($backBtn.data('dragging') || isDragging) return;
+                if ($backBtn.data('dragging') || isDragging  || $backBtn.data('justDragged')) return;
                 goHome();
             });
 
@@ -515,6 +528,10 @@
                         console.log('isDragging starting');
                         $backBtn.data('dragging', true);
                         $backBtn.css('cursor', 'grabbing');
+
+                        // 添加闪烁效果
+                        $backBtn.addClass('drag-active');
+
                         // 计算偏移
                         offsetX = e.clientX - rect.left;
                         offsetY = e.clientY - rect.top;
@@ -540,6 +557,8 @@
             $(document).on('mouseup', function(e) {
                 // 清除按下标记
                 $backBtn.data('mousedown', false);
+                // 移除闪烁效果
+                $backBtn.removeClass('drag-active');
                 // 清除定时器
                 if (dragTimer) {
                     clearTimeout(dragTimer);
@@ -551,6 +570,12 @@
                     isDragging = false;
                     $backBtn.data('dragging', false);
                     $backBtn.css('cursor', 'grab');
+
+                     // 设置刚刚拖拽标记，250ms内点击不触发返回
+                    $backBtn.data('justDragged', true);
+                    setTimeout(() => {
+                        $backBtn.data('justDragged', false);
+                    }, 250);
                 }
             });
 
