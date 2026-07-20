@@ -470,7 +470,7 @@
             // ============================================================
             $backBtn.click(function(e) {
                 // 避免点击触发拖拽误操作
-                if ($backBtn.data('dragging')) return;
+                if ($backBtn.data('dragging') || isDragging) return;
                 goHome();
             });
 
