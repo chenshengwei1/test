@@ -203,6 +203,150 @@
             .scene-indicator { bottom: 100px; font-size: 11px; padding: 4px 14px; }
             #debugLog { bottom: 160px; font-size: 10px; max-height: 80px; }
         }
+
+        /* 品牌栏 - 左 */
+        .brand-bar {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            pointer-events: auto;
+        }
+        .brand-bar h1 {
+            color: #fff;
+            font-size: 17px;
+            font-weight: 400;
+            text-shadow: 0 2px 12px rgba(0,0,0,0.9);
+        }
+        .brand-bar .badge {
+            color: #8f8;
+            font-size: 12px;
+            background: rgba(0,0,0,0.5);
+            padding: 4px 14px;
+            border-radius: 20px;
+            backdrop-filter: blur(4px);
+            border: 1px solid rgba(255,255,255,0.06);
+        }
+
+        /* 右侧按钮组 */
+        .right-tools {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            pointer-events: auto;
+            background: rgba(0,0,0,0.35);
+            backdrop-filter: blur(8px);
+            padding: 4px 8px;
+            border-radius: 30px;
+            border: 1px solid rgba(255,255,255,0.06);
+        }
+        .right-tools .btn {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-width: 44px;
+            padding: 4px 8px;
+            border-radius: 24px;
+            background: transparent;
+            border: none;
+            color: rgba(255,255,255,0.75);
+            font-size: 11px;
+            cursor: pointer;
+            transition: all 0.2s;
+            line-height: 1.2;
+            font-family: inherit;
+        }
+        .right-tools .btn i {
+            font-size: 18px;
+            font-style: normal;
+            display: block;
+            margin-bottom: 1px;
+        }
+        .right-tools .btn p {
+            margin: 0;
+            font-size: 9px;
+            opacity: 0.7;
+        }
+        .right-tools .btn:hover {
+            background: rgba(255,255,255,0.12);
+            color: #fff;
+        }
+        .right-tools .btn:active {
+            transform: scale(0.94);
+        }
+
+        .header {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            padding: 12px 18px;
+            display: flex;
+            justify-content: space-between;  /* 左右分开 */
+            align-items: center;
+            z-index: 20;
+            background: linear-gradient(180deg, rgba(0,0,0,0.7) 0%, transparent 100%);
+            pointer-events: none;
+        }
+
+        .thumb-panel {
+            position: absolute;
+            bottom: 100px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 25;
+            display: none;
+            background: rgba(20,20,30,0.85);
+            backdrop-filter: blur(16px);
+            padding: 16px 20px;
+            border-radius: 24px;
+            border: 1px solid rgba(255,255,255,0.08);
+            box-shadow: 0 12px 48px rgba(0,0,0,0.7);
+            max-width: 92vw;
+            overflow-x: auto;
+            white-space: nowrap;
+            gap: 12px;
+        }
+        .thumb-panel.open {
+            display: flex;
+        }
+        .thumb-item {
+            display: inline-flex;
+            flex-direction: column;
+            align-items: center;
+            background: rgba(255,255,255,0.04);
+            border-radius: 16px;
+            padding: 8px 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 2px solid transparent;
+            min-width: 70px;
+        }
+        .thumb-item:hover {
+            background: rgba(255,255,255,0.10);
+            transform: translateY(-4px);
+        }
+        .thumb-item.active {
+            border-color: #ffd700;
+            background: rgba(255,215,0,0.12);
+        }
+        .thumb-item img {
+            width: 64px;
+            height: 64px;
+            border-radius: 12px;
+            object-fit: cover;
+            background: #333;
+        }
+        .thumb-item p {
+            margin: 6px 0 0 0;
+            color: rgba(255,255,255,0.8);
+            font-size: 11px;
+            text-align: center;
+        }
+
+        #debugLog {
+            display: none !important;
+        }
     </style>
 </head>
 <body>
@@ -236,6 +380,8 @@
         </div>
     </div>
 
+    
+
     <!-- 底部信息卡 -->
     <div class="bottom-card">
         <div class="info-card">
@@ -259,6 +405,18 @@
         </div>
         <div class="scene-strip" id="thumbStrip"></div>
     </div>
+
+    <!-- 右边：按钮组 -->
+    <div class="right-tools">
+        <button class="btn" id="btnRoomSwitch"><i></i><p>房间切换</p></button>
+        <button class="btn" id="btnVR"><i></i><p>VR</p></button>
+        <button class="btn" id="btnCast"><i></i><p>投屏</p></button>
+        <button class="btn" id="btnReplace"><i></i><p>商品替换</p></button>
+        <button class="btn" id="btnShare"><i></i><p>分享</p></button>
+    </div>
+
+    <!-- 场景缩略图面板 -->
+    <div class="thumb-panel" id="thumbPanel"></div>
 </div>
 
 <script type="importmap">
@@ -525,6 +683,11 @@
             return;
         }
 
+        // 高亮缩略图
+        document.querySelectorAll('.thumb-item').forEach((el, i) => {
+            el.classList.toggle('active', i === index);
+        });
+
         log(`📦 切换到场景: ${sceneData.icon} ${sceneData.name} (key: ${sceneData.key})`);
         const images = getSceneImages(sceneData);
         log(`  📁 图片基础路径: ${BASE_PATH}${sceneData.key}/`);
@@ -683,6 +846,55 @@
     // ============================================================
     // 8. 交互绑定
     // ============================================================
+
+    // 1. 渲染缩略图面板（放在 switchScene 函数后面）
+    function renderThumbPanel() {
+        const panel = document.getElementById('thumbPanel');
+        panel.innerHTML = '';
+        SCENES.forEach((s, i) => {
+            const div = document.createElement('div');
+            div.className = 'thumb-item' + (i === currentSceneIndex ? ' active' : '');
+            const img = document.createElement('img');
+            const images = getSceneImages(s);
+            img.src = images.thumb || images.preview;
+            img.draggable = false;
+            img.alt = s.name;
+            const p = document.createElement('p');
+            p.textContent = s.name;
+            div.appendChild(img);
+            div.appendChild(p);
+            div.addEventListener('click', () => {
+                if (i !== currentSceneIndex) {
+                    switchScene(i);
+                }
+                document.getElementById('thumbPanel').classList.remove('open');
+            });
+            panel.appendChild(div);
+        });
+    }
+    renderThumbPanel();
+
+    // 2. 房间切换按钮 - 显示/隐藏面板
+    document.getElementById('btnRoomSwitch').addEventListener('click', () => {
+        const panel = document.getElementById('thumbPanel');
+        panel.classList.toggle('open');
+    });
+
+    // 3. 点击其他地方关闭面板
+    document.addEventListener('click', (e) => {
+        const panel = document.getElementById('thumbPanel');
+        const btn = document.getElementById('btnRoomSwitch');
+        if (!panel.contains(e.target) && !btn.contains(e.target)) {
+            panel.classList.remove('open');
+        }
+    });
+
+    // 4. 其他按钮占位事件
+    document.getElementById('btnVR').addEventListener('click', () => alert('VR 功能'));
+    document.getElementById('btnCast').addEventListener('click', () => alert('投屏功能'));
+    document.getElementById('btnReplace').addEventListener('click', () => alert('商品替换'));
+    document.getElementById('btnShare').addEventListener('click', () => alert('分享功能'));
+
     fullscreenBtn.addEventListener('click', () => {
         document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen();
         log(`🖱️ 全屏切换`);
