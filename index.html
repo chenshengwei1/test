@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>酷炫项目导航</title>
+    <title>项目导航</title>
     <!-- 引入jQuery -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <!-- 引入字体图标 -->
@@ -101,7 +101,7 @@
             font-family: monospace;
         }
 
-        /* ----- 悬浮返回按钮 (默认隐藏，进入子页面后显示) ----- */
+        /* ----- 悬浮返回按钮 (默认隐藏，进入子页面后显示) 可拖拽 ----- */
         #backHomeBtn {
             display: none;
             position: fixed;
@@ -116,12 +116,17 @@
             color: #fff;
             font-size: 16px;
             font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
+            cursor: grab; /* 拖动提示 */
+            transition: box-shadow 0.3s ease, background 0.3s ease;
             box-shadow: 0 8px 30px rgba(0,0,0,0.4);
-            display: none; /* 默认隐藏 */
             align-items: center;
             gap: 10px;
+            user-select: none;
+            touch-action: none; /* 避免触屏滚动干扰 */
+        }
+
+        #backHomeBtn:active {
+            cursor: grabbing;
         }
 
         #backHomeBtn:hover {
@@ -132,6 +137,7 @@
 
         #backHomeBtn i {
             font-size: 18px;
+            pointer-events: none; /* 避免图标干扰拖拽 */
         }
 
         /* ----- 主页原有样式 (保持不变) ----- */
@@ -259,7 +265,7 @@
             }
         }
 
-        /* ----- 旧样式残留清理 ----- */
+        /* 旧样式残留清理 */
         .mmd-viewer-container,
         .controls-panel,
         #canvas-container,
@@ -308,56 +314,14 @@
         //  1. 项目数据
         // ============================================================
         const projects = [
-            {
-                title: "Chat",
-                description: "聊天室",
-                url: "./chat/wechat.html",
-                icon: "fas fa-robot"
-            },
-            {
-                title: "Easyfile",
-                description: "实时数据展示系统",
-                url: "./easyfile/easyfile.html",
-                icon: "fas fa-chart-line"
-            },
-            {
-                title: "MarkDown",
-                description: "智能设备管理中心",
-                url: "./easyfile/md.html",
-                icon: "fas fa-network-wired"
-            },
-            {
-                title: "云存储",
-                description: "安全文件存储解决方案",
-                url: "./cloudstorage/storage.html",
-                icon: "fas fa-cloud"
-            },
-            {
-                title: "漫剧资产",
-                description: "安全文件存储解决方案",
-                url: "./asset/assetindex.html",
-                icon: "fas fa-cloud"
-            },
-            {
-                title: "Test",
-                description: "安全文件存储解决方案",
-                url: "./test/test.html",
-                icon: "fas fa-cloud"
-            }
-            ,
-            {
-                title: "水电线路",
-                description: "VR 3D",
-                url: "./asset/vr-3d.html",
-                icon: "fas fa-cloud"
-            }
-            ,
-            {
-                title: "全屋定制",
-                description: "VR 3D",
-                url: "./asset/3jv-render.3vjia.html",
-                icon: "fas fa-cloud"
-            }
+            { title: "Chat", description: "聊天室", url: "./chat/wechat.html", icon: "fas fa-robot" },
+            { title: "Easyfile", description: "实时数据展示系统", url: "./easyfile/easyfile.html", icon: "fas fa-chart-line" },
+            { title: "MarkDown", description: "智能设备管理中心", url: "./easyfile/md.html", icon: "fas fa-network-wired" },
+            { title: "云存储", description: "安全文件存储解决方案", url: "./cloudstorage/storage.html", icon: "fas fa-cloud" },
+            { title: "漫剧资产", description: "安全文件存储解决方案", url: "./asset/assetindex.html", icon: "fas fa-cloud" },
+            { title: "Test", description: "安全文件存储解决方案", url: "./test/test.html", icon: "fas fa-cloud" },
+            { title: "水电线路", description: "VR 3D", url: "./asset/vr-3d.html", icon: "fas fa-cloud" },
+            { title: "全屋定制", description: "VR 3D", url: "./asset/3jv-render.3vjia.html", icon: "fas fa-cloud" }
         ];
 
         // ============================================================
@@ -372,116 +336,62 @@
         const $container = $('#projectsContainer');
 
         // ============================================================
-        //  3. 核心函数：进入子页面
+        //  3. URL 参数工具
         // ============================================================
-        function openProject(url) {
+        function getUrlParam(name) {
+            const params = new URLSearchParams(window.location.search);
+            return params.get(name);
+        }
+
+        function setUrlParam(name, value) {
+            const url = new URL(window.location);
+            url.searchParams.set(name, value);
+            window.history.replaceState({}, '', url);
+        }
+
+        // 根据 p 参数查找项目
+        function findProjectByParam(param) {
+            if (!param) return null;
+            return projects.find(p => p.title.toLowerCase() === param.toLowerCase()) || null;
+        }
+
+        // ============================================================
+        //  4. 核心函数：进入子页面 (同时更新URL)
+        // ============================================================
+        function openProjectWithCheck(url, title) {
             // 隐藏主页
             $homePage.hide();
-
-            // 显示全屏 iframe 容器
             $fullscreenFrame.show();
             $backBtn.css('display', 'flex');
 
-            // 隐藏 404 错误遮罩
+            // 隐藏 404 遮罩
             $errorOverlay.hide();
 
-            // 重置 iframe 并加载新 URL
-            $pageFrame.attr('src', url);
-
-            // 设置 404 错误路径显示
-            $errorPath.text(url);
-        }
-
-        // ============================================================
-        //  4. 核心函数：回到主页
-        // ============================================================
-        function goHome() {
-            // 显示主页
-            $homePage.show();
-
-            // 隐藏全屏 iframe 容器
-            $fullscreenFrame.hide();
-            $backBtn.hide();
-
-            // 清空 iframe 的 src，停止加载
-            $pageFrame.attr('src', '');
-        }
-
-        // ============================================================
-        //  5. iframe 加载错误处理 (404 检测)
-        // ============================================================
-        // 监听 iframe 加载完成
-        $pageFrame.on('load', function() {
-            // 尝试检测 iframe 是否加载了错误页面
-            // 由于跨域限制，无法直接读取 iframe 内容，
-            // 但我们可以用 setTimeout 检测是否加载了 GitHub 的 404 页面
-            // 或者使用 fetch 预检（但 fetch 可能因为跨域被阻止）
-            // 这里使用一种兼容性更好的方式：尝试通过 fetch 检测文件是否存在
-            const url = $pageFrame.attr('src');
-            if (url) {
-                fetch(url, { method: 'HEAD', mode: 'no-cors' })
-                    .catch(() => {
-                        // no-cors 模式下无法获取状态码，但可以检测到网络错误
-                        // 但这种方式不准确，改用超时检测
-                    });
+            // 更新 URL 参数 (p=项目标题)
+            if (title) {
+                setUrlParam('p', title);
+            } else {
+                // 从 url 反推 title (若未提供)
+                const found = projects.find(p => p.url === url);
+                if (found) setUrlParam('p', found.title);
             }
-        });
 
-        // 更可靠的 404 检测：使用 XMLHttpRequest 预检
-        function checkFileExists(url, callback) {
-            const xhr = new XMLHttpRequest();
-            xhr.open('HEAD', url, true);
-            xhr.onreadystatechange = function() {
-                if (xhr.readyState === 4) {
-                    // 如果状态码是 404 或者 0（跨域失败），视为文件不存在
-                    if (xhr.status === 404 || xhr.status === 0) {
-                        callback(false);
-                    } else if (xhr.status >= 200 && xhr.status < 400) {
-                        callback(true);
-                    } else {
-                        // 其他状态码也视为失败
-                        callback(false);
-                    }
-                }
-            };
-            xhr.onerror = function() {
-                callback(false);
-            };
-            xhr.send();
-        }
-
-        // 修改 openProject 函数，加入 404 检测
-        function openProjectWithCheck(url) {
-            // 先显示加载状态（隐藏错误遮罩）
-            $errorOverlay.hide();
-            $homePage.hide();
-            $fullscreenFrame.show();
-            $backBtn.css('display', 'flex');
-
-            // 用 fetch 检测文件是否存在（更准确）
+            // 用 fetch 检测文件是否存在
             fetch(url, { method: 'HEAD', mode: 'cors' })
                 .then(response => {
                     if (response.ok) {
-                        // 文件存在，加载 iframe
                         $pageFrame.attr('src', url);
                         $errorOverlay.hide();
                     } else {
-                        // 文件不存在（404 或其他错误状态）
                         show404Error(url);
                     }
                 })
                 .catch(() => {
-                    // 网络错误或跨域问题，尝试直接加载 iframe，
-                    // 用备用检测（因为跨域时 HEAD 请求可能被阻止）
-                    // 此时直接加载 iframe，并在 iframe 的 error 事件处理
+                    // 跨域或网络问题：直接加载 iframe，并设置超时检测
                     $pageFrame.attr('src', url);
-                    // 设置一个定时器，如果 3 秒后 iframe 没有加载成功，显示 404
                     let timeoutId = setTimeout(() => {
-                        // 检查 iframe 是否加载了内容（通过尝试获取 iframe 的 src 是否变化）
-                        // 这种方法不太准确，但作为兜底
                         show404Error(url);
                     }, 3000);
-                    // 如果 iframe 加载成功，清除定时器
                     $pageFrame.off('load.errorCheck').on('load.errorCheck', function() {
                         clearTimeout(timeoutId);
                         $errorOverlay.hide();
@@ -493,14 +403,28 @@
         function show404Error(url) {
             $errorPath.text(url);
             $errorOverlay.css('display', 'flex');
-            // 仍然尝试加载 iframe（可能显示 GitHub 的 404 页面，但被遮罩挡住）
             $pageFrame.attr('src', url);
         }
 
         // ============================================================
-        //  6. 动态生成项目卡片
+        //  5. 核心函数：回到主页 (清除URL参数)
+        // ============================================================
+        function goHome() {
+            $homePage.show();
+            $fullscreenFrame.hide();
+            $backBtn.hide();
+            $pageFrame.attr('src', '');
+            // 移除 URL 中的 p 参数
+            const url = new URL(window.location);
+            url.searchParams.delete('p');
+            window.history.replaceState({}, '', url);
+        }
+
+        // ============================================================
+        //  6. 动态生成项目卡片 + 根据参数自动打开
         // ============================================================
         $(document).ready(function() {
+            // 生成卡片
             projects.forEach((project, index) => {
                 const card = $('<div>')
                     .addClass('project-card')
@@ -510,45 +434,43 @@
                         <p class="project-description">${project.description}</p>
                     `)
                     .click(function() {
-                        // 点击动画
-                        $(this).css({
-                            transform: 'scale(0.95)',
-                            opacity: 0.8
-                        });
+                        $(this).css({ transform: 'scale(0.95)', opacity: 0.8 });
                         setTimeout(() => {
-                            // 使用带 404 检测的打开方式
-                            openProjectWithCheck(project.url);
-                            // 恢复卡片样式
-                            $(this).css({
-                                transform: '',
-                                opacity: ''
-                            });
+                            openProjectWithCheck(project.url, project.title);
+                            $(this).css({ transform: '', opacity: '' });
                         }, 300);
                     })
                     .hover(
-                        function() {
-                            $(this).css('transform', 'translateY(-10px) rotateX(5deg) rotateY(5deg)');
-                        },
-                        function() {
-                            $(this).css('transform', '');
-                        }
+                        function() { $(this).css('transform', 'translateY(-10px) rotateX(5deg) rotateY(5deg)'); },
+                        function() { $(this).css('transform', ''); }
                     );
-
-                // 入场动画
                 setTimeout(() => {
-                    card.css({
-                        opacity: 1,
-                        transform: 'translateY(0)'
-                    });
+                    card.css({ opacity: 1, transform: 'translateY(0)' });
                 }, index * 200);
-
                 $container.append(card);
             });
 
+            // ---- 处理 URL 参数 p，自动打开对应项目 ----
+            const paramProject = getUrlParam('p');
+            if (paramProject) {
+                const matched = findProjectByParam(paramProject);
+                if (matched) {
+                    // 延迟一下确保 DOM 完全加载，然后自动打开
+                    setTimeout(() => {
+                        openProjectWithCheck(matched.url, matched.title);
+                    }, 400);
+                } else {
+                    // 如果参数无效，可以忽略
+                    console.warn('未找到项目: ' + paramProject);
+                }
+            }
+
             // ============================================================
-            //  7. 返回主页按钮事件
+            //  7. 返回主页按钮事件 (点击回到主页)
             // ============================================================
-            $backBtn.click(function() {
+            $backBtn.click(function(e) {
+                // 避免点击触发拖拽误操作
+                if ($backBtn.data('dragging')) return;
                 goHome();
             });
 
@@ -556,28 +478,102 @@
             //  8. 键盘快捷键：ESC 返回主页
             // ============================================================
             $(document).keydown(function(e) {
-                if (e.key === 'Escape') {
-                    if ($fullscreenFrame.is(':visible')) {
-                        goHome();
-                    }
+                if (e.key === 'Escape' && $fullscreenFrame.is(':visible')) {
+                    goHome();
                 }
             });
 
             // ============================================================
-            //  9. 鼠标跟随效果（保留原有效果）
+            //  9. 鼠标拖拽功能 (按下3秒后激活)
             // ============================================================
-            $(document).mousemove(function(e) {
-                $('.project-card').each(function() {
-                    const rect = this.getBoundingClientRect();
-                    const x = e.clientX - rect.left;
-                    const y = e.clientY - rect.top;
-                    $(this).css('--x', x + 'px');
-                    $(this).css('--y', y + 'px');
+            let dragTimer = null;
+            let isDragging = false;
+            let offsetX = 0, offsetY = 0;
+            let startX = 0, startY = 0;
+            let mouseDownTime = 0;
+
+            $backBtn.on('mousedown', function(e) {
+                // 只响应左键
+                if (e.button !== 0) return;
+                const now = Date.now();
+                mouseDownTime = now;
+
+                // 清除之前的定时器
+                if (dragTimer) clearTimeout(dragTimer);
+
+                // 记录初始位置
+                const rect = this.getBoundingClientRect();
+                startX = rect.left;
+                startY = rect.top;
+
+                // 3秒后启用拖动
+                dragTimer = setTimeout(() => {
+                    // 检查鼠标是否还按着（通过检测鼠标状态，但无法直接获取，用标记）
+                    // 如果鼠标已松开，则不启用拖动
+                    if (!isDragging && $backBtn.data('mousedown')) {
+                        isDragging = true;
+                        $backBtn.data('dragging', true);
+                        $backBtn.css('cursor', 'grabbing');
+                        // 计算偏移
+                        offsetX = e.clientX - rect.left;
+                        offsetY = e.clientY - rect.top;
+                    }
+                }, 3000);
+                $backBtn.data('mousedown', true);
+            });
+
+            $(document).on('mousemove', function(e) {
+                if (!isDragging) return;
+                // 防止按钮被拖出可视区域（可自由拖动，不加限制）
+                let left = e.clientX - offsetX;
+                let top = e.clientY - offsetY;
+                // 可加边界约束（可选）
+                $backBtn.css({
+                    left: left + 'px',
+                    top: top + 'px',
+                    right: 'auto',
+                    bottom: 'auto'
                 });
+            });
+
+            $(document).on('mouseup', function(e) {
+                // 清除按下标记
+                $backBtn.data('mousedown', false);
+                // 清除定时器
+                if (dragTimer) {
+                    clearTimeout(dragTimer);
+                    dragTimer = null;
+                }
+                // 如果正在拖动，结束拖动状态
+                if (isDragging) {
+                    isDragging = false;
+                    $backBtn.data('dragging', false);
+                    $backBtn.css('cursor', 'grab');
+                }
+            });
+
+            // 防止拖拽时选中文本
+            $backBtn.on('dragstart', function(e) { e.preventDefault(); });
+
+            // 鼠标悬停提示
+            $backBtn.css('cursor', 'grab');
+
+            // 额外：若用户按下后快速移动，但3秒未到，不触发拖动
+            // 用mouseleave取消定时器（可选）
+            $backBtn.on('mouseleave', function() {
+                if (dragTimer) {
+                    clearTimeout(dragTimer);
+                    dragTimer = null;
+                }
+                // 如果未进入拖动状态，重置标记
+                if (!isDragging) {
+                    $backBtn.data('mousedown', false);
+                }
             });
 
             console.log('✅ 项目导航已启动！共 ' + projects.length + ' 个项目');
             console.log('💡 按 ESC 键可快速返回主页');
+            console.log('🖱️ 返回按钮按住3秒后可拖拽移动');
         });
     </script>
 
