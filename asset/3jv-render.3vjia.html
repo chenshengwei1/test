@@ -231,46 +231,7 @@
         }
 
         /* 右侧按钮组 */
-        .right-tools {
-            display: flex;
-            align-items: center;
-            gap: 4px;
-            pointer-events: auto;
-            background: rgba(0,0,0,0.35);
-            backdrop-filter: blur(8px);
-            padding: 4px 8px;
-            border-radius: 30px;
-            border: 1px solid rgba(255,255,255,0.06);
-            margin-left: auto;
-        }
-        .right-tools .btn {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            min-width: 44px;
-            padding: 4px 8px;
-            border-radius: 24px;
-            background: transparent;
-            border: none;
-            color: rgba(255,255,255,0.75);
-            font-size: 11px;
-            cursor: pointer;
-            transition: all 0.2s;
-            line-height: 1.2;
-            font-family: inherit;
-        }
-        .right-tools .btn i {
-            font-size: 18px;
-            font-style: normal;
-            display: block;
-            margin-bottom: 1px;
-        }
-        .right-tools .btn p {
-            margin: 0;
-            font-size: 9px;
-            opacity: 0.7;
-        }
+        
         .right-tools .btn:hover {
             background: rgba(255,255,255,0.12);
             color: #fff;
@@ -375,6 +336,50 @@
         }
         #thumbStrip {
             display: none !important;
+        }
+
+        .right-tools{
+            width: auto;
+            height: auto;
+            position: absolute;
+            right: 14px;
+            bottom: 0;
+            line-height: 80px;
+        }
+
+        .right-tools .btn{
+            width: 72px;
+            height: auto;
+            float: left;
+            text-align: center;
+            padding: 0;
+            cursor: pointer;
+        }
+
+        .right-tools .btn i{
+            margin: 0 auto 8px;
+            font-family: iconfont;
+            font-style: normal;
+            display: block;
+            font-size: 22px;
+            width: 44px;
+            height: 44px;
+            background-color: rgba(0, 0, 0, .5);
+            border-radius: 22px;
+            line-height: 44px;
+            float: top;
+            border: 1px solid #999;
+        }
+
+        .right-tools .btn i{
+            margin: 0 0 18px;
+            float: top;
+            line-height: 14px;
+            width: 100%;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            text-shadow: 0 0 3px #000;
         }
     </style>
 </head>
