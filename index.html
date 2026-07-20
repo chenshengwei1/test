@@ -512,6 +512,7 @@
                     // 如果鼠标已松开，则不启用拖动
                     if (!isDragging && $backBtn.data('mousedown')) {
                         isDragging = true;
+                        console.log('isDragging starting');
                         $backBtn.data('dragging', true);
                         $backBtn.css('cursor', 'grabbing');
                         // 计算偏移
@@ -546,6 +547,7 @@
                 }
                 // 如果正在拖动，结束拖动状态
                 if (isDragging) {
+                    console.log('isDragging end');
                     isDragging = false;
                     $backBtn.data('dragging', false);
                     $backBtn.css('cursor', 'grab');
