@@ -1,0 +1,903 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>P2P 安全文件传输</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f0f4f8;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .container {
+            max-width: 800px;
+            width: 100%;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.1);
+            padding: 40px;
+            transition: all 0.2s;
+        }
+        h1 {
+            font-size: 28px;
+            font-weight: 700;
+            color: #1a202c;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .subtitle {
+            color: #4a5568;
+            margin-bottom: 30px;
+            font-size: 14px;
+            border-left: 4px solid #4299e1;
+            padding-left: 16px;
+            background: #ebf8ff;
+            border-radius: 0 8px 8px 0;
+            padding: 10px 16px;
+        }
+        .role-selector {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+        .role-btn {
+            flex: 1;
+            min-width: 120px;
+            padding: 14px 20px;
+            border: 2px solid #e2e8f0;
+            background: white;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            color: #4a5568;
+            text-align: center;
+        }
+        .role-btn:hover {
+            border-color: #bee3f8;
+            background: #f7fafc;
+        }
+        .role-btn.active {
+            border-color: #4299e1;
+            background: #ebf8ff;
+            color: #2b6cb0;
+            box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.2);
+        }
+        .panel {
+            display: none;
+            animation: fadeIn 0.3s ease;
+        }
+        .panel.active {
+            display: block;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .card {
+            background: #f7fafc;
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 20px;
+            border: 1px solid #edf2f7;
+        }
+        .card-title {
+            font-weight: 600;
+            color: #2d3748;
+            margin-bottom: 12px;
+            font-size: 15px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        textarea, .info-box {
+            width: 100%;
+            padding: 14px 16px;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            background: white;
+            resize: vertical;
+            min-height: 80px;
+            color: #2d3748;
+        }
+        textarea:focus {
+            outline: none;
+            border-color: #4299e1;
+            box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.2);
+        }
+        .info-box {
+            background: #edf2f7;
+            color: #2d3748;
+            min-height: 60px;
+            word-break: break-all;
+            font-size: 12px;
+            line-height: 1.6;
+        }
+        .btn-group {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-top: 16px;
+        }
+        .btn {
+            padding: 12px 28px;
+            border: none;
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 15px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: #e2e8f0;
+            color: #4a5568;
+        }
+        .btn:hover:not(:disabled) {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+        .btn-primary {
+            background: #4299e1;
+            color: white;
+        }
+        .btn-primary:hover:not(:disabled) {
+            background: #3182ce;
+        }
+        .btn-success {
+            background: #48bb78;
+            color: white;
+        }
+        .btn-success:hover:not(:disabled) {
+            background: #38a169;
+        }
+        .btn-danger {
+            background: #fc8181;
+            color: white;
+        }
+        .btn-danger:hover:not(:disabled) {
+            background: #f56565;
+        }
+        .btn-outline {
+            background: transparent;
+            border: 2px solid #e2e8f0;
+        }
+        .btn-outline:hover:not(:disabled) {
+            background: #f7fafc;
+        }
+        .file-upload-area {
+            border: 2px dashed #cbd5e0;
+            border-radius: 12px;
+            padding: 30px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: white;
+        }
+        .file-upload-area:hover {
+            border-color: #4299e1;
+            background: #f7fafc;
+        }
+        .file-upload-area.dragover {
+            border-color: #4299e1;
+            background: #ebf8ff;
+        }
+        .file-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            background: white;
+            border-radius: 10px;
+            border: 1px solid #e2e8f0;
+            margin-top: 12px;
+        }
+        .file-name {
+            font-weight: 500;
+            color: #2d3748;
+            flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .file-size {
+            color: #718096;
+            font-size: 13px;
+        }
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #edf2f7;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 12px;
+        }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #4299e1, #48bb78);
+            border-radius: 4px;
+            width: 0%;
+            transition: width 0.3s;
+        }
+        .status-msg {
+            margin-top: 12px;
+            padding: 10px 16px;
+            border-radius: 10px;
+            font-size: 14px;
+            display: none;
+        }
+        .status-msg.show {
+            display: block;
+        }
+        .status-msg.info {
+            background: #ebf8ff;
+            color: #2b6cb0;
+            border: 1px solid #bee3f8;
+        }
+        .status-msg.success {
+            background: #f0fff4;
+            color: #276749;
+            border: 1px solid #c6f6d5;
+        }
+        .status-msg.error {
+            background: #fff5f5;
+            color: #9b2c2c;
+            border: 1px solid #fed7d7;
+        }
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .badge-blue {
+            background: #bee3f8;
+            color: #2b6cb0;
+        }
+        .badge-green {
+            background: #c6f6d5;
+            color: #276749;
+        }
+        .flex-between {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .mt-2 { margin-top: 12px; }
+        .mt-3 { margin-top: 20px; }
+        .hidden { display: none; }
+        @media (max-width: 600px) {
+            .container { padding: 20px; }
+            .role-btn { min-width: 80px; padding: 10px 14px; font-size: 14px; }
+            .btn { padding: 10px 18px; font-size: 14px; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="flex-between">
+        <h1>📦 P2P 文件传输</h1>
+        <span class="badge badge-blue">端到端加密</span>
+    </div>
+    <div class="subtitle">
+        🔒 文件不经过任何服务器，直接在浏览器之间传输 · 支持大文件 · 无需注册
+    </div>
+
+    <!-- 角色选择 -->
+    <div class="role-selector">
+        <button class="role-btn active" data-role="sender">📤 发送方</button>
+        <button class="role-btn" data-role="receiver">📥 接收方</button>
+    </div>
+
+    <!-- ============ 发送方面板 ============ -->
+    <div id="senderPanel" class="panel active">
+        <div class="card">
+            <div class="card-title">📄 1. 选择要发送的文件</div>
+            <div class="file-upload-area" id="fileDropArea">
+                <div style="color: #4a5568;">
+                    <span style="font-size: 32px; display: block;">📎</span>
+                    <span>点击选择文件 或 拖拽到这里</span>
+                    <span style="display: block; font-size: 13px; color: #a0aec0; margin-top: 4px;">最大支持 2GB</span>
+                </div>
+                <input type="file" id="fileInput" style="display: none;" multiple>
+            </div>
+            <div id="fileList"></div>
+        </div>
+
+        <div class="card">
+            <div class="card-title">🔗 2. 创建连接</div>
+            <button class="btn btn-primary" id="createRoomBtn">🚀 创建传输房间</button>
+            <div id="roomInfo" class="hidden mt-2">
+                <p style="font-size: 14px; color: #4a5568; margin-bottom: 8px;">将下方信息复制并发送给接收方：</p>
+                <div class="info-box" id="roomCodeDisplay">等待生成...</div>
+                <button class="btn btn-outline mt-2" id="copyRoomBtn">📋 复制房间码</button>
+                <button class="btn btn-danger mt-2" id="disconnectSenderBtn">🔌 断开连接</button>
+            </div>
+            <div id="senderStatus" class="status-msg"></div>
+        </div>
+
+        <div class="card" id="senderTransferCard" style="display: none;">
+            <div class="card-title">📊 3. 传输进度</div>
+            <div id="senderFileProgress">
+                <div class="file-info">
+                    <span>📄</span>
+                    <span class="file-name" id="senderFileName">文件名</span>
+                    <span class="file-size" id="senderFileSize">0 B</span>
+                </div>
+                <div class="progress-bar"><div class="progress-fill" id="senderProgressFill"></div></div>
+                <div style="display: flex; justify-content: space-between; font-size: 13px; color: #718096; margin-top: 4px;">
+                    <span id="senderProgressText">0%</span>
+                    <span id="senderSpeedText">--</span>
+                </div>
+            </div>
+            <div id="senderTransferStatus" class="status-msg"></div>
+        </div>
+    </div>
+
+    <!-- ============ 接收方面板 ============ -->
+    <div id="receiverPanel" class="panel">
+        <div class="card">
+            <div class="card-title">🔗 1. 输入房间码加入传输</div>
+            <textarea id="roomCodeInput" placeholder="请粘贴发送方提供的房间码..."></textarea>
+            <div class="btn-group">
+                <button class="btn btn-success" id="joinRoomBtn">📥 加入房间</button>
+                <button class="btn btn-danger" id="disconnectReceiverBtn">🔌 断开连接</button>
+            </div>
+            <div id="receiverStatus" class="status-msg"></div>
+        </div>
+
+        <div class="card" id="receiverTransferCard" style="display: none;">
+            <div class="card-title">📥 2. 接收文件</div>
+            <div id="receiverFileProgress">
+                <div class="file-info">
+                    <span>📄</span>
+                    <span class="file-name" id="receiverFileName">文件名</span>
+                    <span class="file-size" id="receiverFileSize">0 B</span>
+                </div>
+                <div class="progress-bar"><div class="progress-fill" id="receiverProgressFill"></div></div>
+                <div style="display: flex; justify-content: space-between; font-size: 13px; color: #718096; margin-top: 4px;">
+                    <span id="receiverProgressText">0%</span>
+                    <span id="receiverSpeedText">--</span>
+                </div>
+            </div>
+            <div id="receiverTransferStatus" class="status-msg"></div>
+            <button class="btn btn-success mt-3" id="downloadBtn" style="display: none;">💾 下载文件</button>
+        </div>
+    </div>
+
+    <div style="margin-top: 24px; text-align: center; font-size: 12px; color: #a0aec0; border-top: 1px solid #edf2f7; padding-top: 20px;">
+        基于 WebRTC · 数据端到端加密 · 不经过任何服务器
+    </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- 使用 esm.sh 加载 webconnect 库 (轻量级信令) -->
+<script type="importmap">
+{
+    "imports": {
+        "webconnect": "https://esm.sh/webconnect@0.0.22"
+    }
+}
+</script>
+
+<script type="module">
+// ============================================================
+// 引入 webconnect 库
+// ============================================================
+import { WebConnect } from 'webconnect';
+
+// ============================================================
+// DOM 引用
+// ============================================================
+const $ = (id) => document.getElementById(id);
+
+const senderPanel = $('senderPanel');
+const receiverPanel = $('receiverPanel');
+const roleBtns = document.querySelectorAll('.role-btn');
+const fileInput = $('fileInput');
+const fileDropArea = $('fileDropArea');
+const fileList = $('fileList');
+const createRoomBtn = $('createRoomBtn');
+const roomCodeDisplay = $('roomCodeDisplay');
+const roomInfo = $('roomInfo');
+const copyRoomBtn = $('copyRoomBtn');
+const disconnectSenderBtn = $('disconnectSenderBtn');
+const senderStatus = $('senderStatus');
+const senderTransferCard = $('senderTransferCard');
+const senderFileName = $('senderFileName');
+const senderFileSize = $('senderFileSize');
+const senderProgressFill = $('senderProgressFill');
+const senderProgressText = $('senderProgressText');
+const senderSpeedText = $('senderSpeedText');
+const senderTransferStatus = $('senderTransferStatus');
+
+const roomCodeInput = $('roomCodeInput');
+const joinRoomBtn = $('joinRoomBtn');
+const disconnectReceiverBtn = $('disconnectReceiverBtn');
+const receiverStatus = $('receiverStatus');
+const receiverTransferCard = $('receiverTransferCard');
+const receiverFileName = $('receiverFileName');
+const receiverFileSize = $('receiverFileSize');
+const receiverProgressFill = $('receiverProgressFill');
+const receiverProgressText = $('receiverProgressText');
+const receiverSpeedText = $('receiverSpeedText');
+const receiverTransferStatus = $('receiverTransferStatus');
+const downloadBtn = $('downloadBtn');
+
+// ============================================================
+// 状态
+// ============================================================
+let wc = null;                 // WebConnect 实例
+let currentRole = 'sender';    // 'sender' | 'receiver'
+let selectedFiles = [];
+let isConnected = false;
+let isTransferring = false;
+let receivedFileData = null;   // 接收到的文件数据 (ArrayBuffer)
+let receivedFileName = '';
+let receivedFileType = '';
+
+// ============================================================
+// 工具函数
+// ============================================================
+function formatSize(bytes) {
+    if (bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+function showStatus(el, msg, type = 'info') {
+    el.textContent = msg;
+    el.className = 'status-msg show ' + type;
+}
+
+function hideStatus(el) {
+    el.className = 'status-msg';
+}
+
+function generateRoomCode() {
+    // 生成6位数字+字母组合
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    let code = '';
+    for (let i = 0; i < 6; i++) {
+        code += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return code;
+}
+
+// ============================================================
+// 角色切换
+// ============================================================
+roleBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+        roleBtns.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        currentRole = btn.dataset.role;
+        if (currentRole === 'sender') {
+            senderPanel.classList.add('active');
+            receiverPanel.classList.remove('active');
+        } else {
+            senderPanel.classList.remove('active');
+            receiverPanel.classList.add('active');
+        }
+        // 切换时重置状态
+        cleanupConnection();
+    });
+});
+
+// ============================================================
+// 文件选择 (发送方)
+// ============================================================
+function updateFileList() {
+    if (selectedFiles.length === 0) {
+        fileList.innerHTML = '';
+        return;
+    }
+    let html = '';
+    let totalSize = 0;
+    selectedFiles.forEach((f, i) => {
+        totalSize += f.size;
+        html += `
+            <div class="file-info">
+                <span>📄</span>
+                <span class="file-name">${f.name}</span>
+                <span class="file-size">${formatSize(f.size)}</span>
+                <button class="btn btn-danger" style="padding: 4px 12px; font-size: 12px;" data-index="${i}">✕</button>
+            </div>
+        `;
+    });
+    fileList.innerHTML = html;
+    // 绑定删除事件
+    fileList.querySelectorAll('.btn-danger').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const idx = parseInt(e.target.dataset.index);
+            selectedFiles.splice(idx, 1);
+            updateFileList();
+            if (selectedFiles.length === 0) {
+                // 重置传输卡
+                senderTransferCard.style.display = 'none';
+            }
+        });
+    });
+}
+
+fileDropArea.addEventListener('click', () => fileInput.click());
+
+fileDropArea.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    fileDropArea.classList.add('dragover');
+});
+fileDropArea.addEventListener('dragleave', () => {
+    fileDropArea.classList.remove('dragover');
+});
+fileDropArea.addEventListener('drop', (e) => {
+    e.preventDefault();
+    fileDropArea.classList.remove('dragover');
+    if (e.dataTransfer.files.length) {
+        selectedFiles = Array.from(e.dataTransfer.files);
+        updateFileList();
+        showStatus(senderStatus, `已选择 ${selectedFiles.length} 个文件，总大小 ${formatSize(selectedFiles.reduce((a,b) => a + b.size, 0))}`, 'info');
+    }
+});
+
+fileInput.addEventListener('change', (e) => {
+    if (e.target.files.length) {
+        selectedFiles = Array.from(e.target.files);
+        updateFileList();
+        showStatus(senderStatus, `已选择 ${selectedFiles.length} 个文件，总大小 ${formatSize(selectedFiles.reduce((a,b) => a + b.size, 0))}`, 'info');
+    }
+    fileInput.value = '';
+});
+
+// ============================================================
+// 核心：WebConnect 封装
+// ============================================================
+function cleanupConnection() {
+    if (wc) {
+        try { wc.destroy(); } catch (e) {}
+        wc = null;
+    }
+    isConnected = false;
+    isTransferring = false;
+    hideStatus(senderStatus);
+    hideStatus(receiverStatus);
+    hideStatus(senderTransferStatus);
+    hideStatus(receiverTransferStatus);
+    roomInfo.classList.add('hidden');
+    senderTransferCard.style.display = 'none';
+    receiverTransferCard.style.display = 'none';
+    downloadBtn.style.display = 'none';
+    receivedFileData = null;
+}
+
+function setupSenderCallbacks() {
+    if (!wc) return;
+
+    // 房间创建成功
+    wc.on('room-created', (roomId) => {
+        isConnected = true;
+        roomCodeDisplay.textContent = roomId;
+        roomInfo.classList.remove('hidden');
+        showStatus(senderStatus, `✅ 房间已创建！房间码: ${roomId}`, 'success');
+        createRoomBtn.disabled = true;
+    });
+
+    // 接收方已加入
+    wc.on('peer-joined', () => {
+        showStatus(senderStatus, '👤 接收方已加入，可以开始传输！', 'success');
+        // 如果有选中的文件，自动开始传输
+        if (selectedFiles.length > 0 && !isTransferring) {
+            startSendFiles();
+        } else if (selectedFiles.length === 0) {
+            showStatus(senderStatus, '⚠️ 请先选择要发送的文件', 'error');
+        }
+    });
+
+    // 对等方断开
+    wc.on('peer-left', () => {
+        showStatus(senderStatus, '🔌 接收方已断开', 'error');
+        isConnected = false;
+        createRoomBtn.disabled = false;
+        roomInfo.classList.add('hidden');
+        senderTransferCard.style.display = 'none';
+    });
+
+    // 传输进度
+    wc.on('file-progress', (progress) => {
+        // progress: { loaded, total, fileName }
+        const pct = Math.min(100, Math.round((progress.loaded / progress.total) * 100));
+        senderProgressFill.style.width = pct + '%';
+        senderProgressText.textContent = pct + '%';
+        senderFileSize.textContent = formatSize(progress.total);
+        senderFileName.textContent = progress.fileName || '文件';
+        // 速度计算 (简单展示)
+        if (progress.speed) {
+            senderSpeedText.textContent = formatSize(progress.speed) + '/s';
+        }
+    });
+
+    // 传输完成
+    wc.on('file-complete', (data) => {
+        isTransferring = false;
+        senderProgressFill.style.width = '100%';
+        senderProgressText.textContent = '100%';
+        showStatus(senderTransferStatus, '✅ 文件传输完成！', 'success');
+        createRoomBtn.disabled = false;
+    });
+
+    // 错误
+    wc.on('error', (err) => {
+        console.error('WebConnect error:', err);
+        showStatus(senderStatus, '❌ 错误: ' + (err.message || err), 'error');
+        isTransferring = false;
+        createRoomBtn.disabled = false;
+    });
+}
+
+function setupReceiverCallbacks() {
+    if (!wc) return;
+
+    // 加入房间成功
+    wc.on('room-joined', () => {
+        isConnected = true;
+        showStatus(receiverStatus, '✅ 已加入房间，等待发送方传输...', 'success');
+        joinRoomBtn.disabled = true;
+    });
+
+    // 收到文件信息
+    wc.on('file-info', (info) => {
+        // info: { name, size, type }
+        receiverFileName.textContent = info.name || '文件';
+        receiverFileSize.textContent = formatSize(info.size || 0);
+        receiverTransferCard.style.display = 'block';
+        receiverProgressFill.style.width = '0%';
+        receiverProgressText.textContent = '0%';
+        showStatus(receiverStatus, `📥 正在接收: ${info.name} (${formatSize(info.size)})`, 'info');
+        isTransferring = true;
+    });
+
+    // 接收进度
+    wc.on('file-progress', (progress) => {
+        const pct = Math.min(100, Math.round((progress.loaded / progress.total) * 100));
+        receiverProgressFill.style.width = pct + '%';
+        receiverProgressText.textContent = pct + '%';
+        receiverFileSize.textContent = formatSize(progress.total);
+        if (progress.speed) {
+            receiverSpeedText.textContent = formatSize(progress.speed) + '/s';
+        }
+    });
+
+    // 接收完成
+    wc.on('file-complete', (data) => {
+        isTransferring = false;
+        receiverProgressFill.style.width = '100%';
+        receiverProgressText.textContent = '100%';
+        showStatus(receiverTransferStatus, '✅ 文件接收完成！点击下方按钮下载', 'success');
+        // 保存数据
+        if (data && data.data) {
+            receivedFileData = data.data;
+            receivedFileName = data.name || '下载文件';
+            receivedFileType = data.type || 'application/octet-stream';
+            downloadBtn.style.display = 'inline-flex';
+        }
+        joinRoomBtn.disabled = false;
+    });
+
+    // 发送方断开
+    wc.on('peer-left', () => {
+        showStatus(receiverStatus, '🔌 发送方已断开', 'error');
+        isConnected = false;
+        isTransferring = false;
+        joinRoomBtn.disabled = false;
+        receiverTransferCard.style.display = 'none';
+        downloadBtn.style.display = 'none';
+    });
+
+    wc.on('error', (err) => {
+        console.error('WebConnect error:', err);
+        showStatus(receiverStatus, '❌ 错误: ' + (err.message || err), 'error');
+        joinRoomBtn.disabled = false;
+    });
+}
+
+// ============================================================
+// 发送方：创建房间 & 发送文件
+// ============================================================
+createRoomBtn.addEventListener('click', async () => {
+    if (selectedFiles.length === 0) {
+        showStatus(senderStatus, '⚠️ 请先选择要发送的文件', 'error');
+        return;
+    }
+
+    if (wc) {
+        try { wc.destroy(); } catch (e) {}
+        wc = null;
+    }
+
+    // 生成房间码 (6位)
+    const roomId = generateRoomCode();
+
+    try {
+        wc = new WebConnect({
+            roomId: roomId,
+            role: 'sender',
+            // 可以自定义信令服务器，默认使用公共信令
+        });
+        setupSenderCallbacks();
+
+        // 主动连接信令
+        await wc.connect();
+        showStatus(senderStatus, `🔄 正在创建房间...`, 'info');
+
+    } catch (err) {
+        console.error(err);
+        showStatus(senderStatus, '❌ 创建房间失败: ' + err.message, 'error');
+        createRoomBtn.disabled = false;
+    }
+});
+
+async function startSendFiles() {
+    if (!wc || !isConnected) {
+        showStatus(senderStatus, '⚠️ 请先创建房间并等待接收方加入', 'error');
+        return;
+    }
+    if (selectedFiles.length === 0) {
+        showStatus(senderStatus, '⚠️ 没有选中的文件', 'error');
+        return;
+    }
+    if (isTransferring) {
+        showStatus(senderStatus, '⏳ 正在传输中...', 'info');
+        return;
+    }
+
+    isTransferring = true;
+    senderTransferCard.style.display = 'block';
+    senderFileName.textContent = selectedFiles[0].name;
+    senderFileSize.textContent = formatSize(selectedFiles[0].size);
+    senderProgressFill.style.width = '0%';
+    senderProgressText.textContent = '0%';
+    hideStatus(senderTransferStatus);
+    showStatus(senderStatus, '📤 开始传输...', 'info');
+
+    try {
+        // 发送第一个文件 (简单起见只发第一个)
+        const file = selectedFiles[0];
+        await wc.sendFile(file);
+        // 传输完成后由 file-complete 事件处理
+    } catch (err) {
+        console.error(err);
+        isTransferring = false;
+        showStatus(senderTransferStatus, '❌ 传输失败: ' + err.message, 'error');
+        showStatus(senderStatus, '❌ 传输失败', 'error');
+        createRoomBtn.disabled = false;
+    }
+}
+
+// 复制房间码
+copyRoomBtn.addEventListener('click', () => {
+    const code = roomCodeDisplay.textContent;
+    if (code && code !== '等待生成...') {
+        navigator.clipboard.writeText(code).then(() => {
+            showStatus(senderStatus, '✅ 已复制房间码', 'success');
+            setTimeout(() => hideStatus(senderStatus), 2000);
+        }).catch(() => {
+            // fallback
+            const range = document.createRange();
+            range.selectNode(roomCodeDisplay);
+            window.getSelection().removeAllRanges();
+            window.getSelection().addRange(range);
+            document.execCommand('copy');
+            showStatus(senderStatus, '✅ 已复制房间码', 'success');
+            setTimeout(() => hideStatus(senderStatus), 2000);
+        });
+    }
+});
+
+disconnectSenderBtn.addEventListener('click', () => {
+    cleanupConnection();
+    createRoomBtn.disabled = false;
+    showStatus(senderStatus, '🔌 已断开连接', 'error');
+});
+
+// ============================================================
+// 接收方：加入房间
+// ============================================================
+joinRoomBtn.addEventListener('click', async () => {
+    const roomId = roomCodeInput.value.trim().toUpperCase();
+    if (!roomId) {
+        showStatus(receiverStatus, '⚠️ 请输入房间码', 'error');
+        return;
+    }
+
+    if (wc) {
+        try { wc.destroy(); } catch (e) {}
+        wc = null;
+    }
+
+    try {
+        wc = new WebConnect({
+            roomId: roomId,
+            role: 'receiver',
+        });
+        setupReceiverCallbacks();
+
+        await wc.connect();
+        showStatus(receiverStatus, `🔄 正在加入房间 ${roomId}...`, 'info');
+
+    } catch (err) {
+        console.error(err);
+        showStatus(receiverStatus, '❌ 加入房间失败: ' + err.message, 'error');
+        joinRoomBtn.disabled = false;
+    }
+});
+
+disconnectReceiverBtn.addEventListener('click', () => {
+    cleanupConnection();
+    joinRoomBtn.disabled = false;
+    showStatus(receiverStatus, '🔌 已断开连接', 'error');
+});
+
+// 下载接收到的文件
+downloadBtn.addEventListener('click', () => {
+    if (!receivedFileData) {
+        showStatus(receiverTransferStatus, '⚠️ 没有可下载的文件', 'error');
+        return;
+    }
+    const blob = new Blob([receivedFileData], { type: receivedFileType || 'application/octet-stream' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = receivedFileName || '下载文件';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showStatus(receiverTransferStatus, '✅ 文件已下载', 'success');
+});
+
+// 按回车键加入房间
+roomCodeInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+        joinRoomBtn.click();
+    }
+});
+
+// ============================================================
+// 页面关闭时清理
+// ============================================================
+window.addEventListener('beforeunload', () => {
+    if (wc) {
+        try { wc.destroy(); } catch (e) {}
+    }
+});
+
+console.log('📦 P2P 文件传输已加载 - 基于 WebConnect');
+</script>
+</body>
+</html>
