@@ -397,19 +397,14 @@
 
 <!-- ============================================================ -->
 <!-- 使用 esm.sh 加载 webconnect 库 (轻量级信令) -->
-<script type="importmap">
-{
-    "imports": {
-        "webconnect": "https://cdn.jsdelivr.net/npm/webconnect/dist/esm/webconnect.js"
-    }
-}
+<script src="https://cdn.jsdelivr.net/npm/webconnect/dist/esm/webconnect.js" type="text/javascript">
 </script>
 
 <script type="module">
 // ============================================================
 // 引入 webconnect 库
 // ============================================================
-import { WebConnect } from 'webconnect';
+let WebConnect = window.webconnect;
 
 // ============================================================
 // DOM 引用
