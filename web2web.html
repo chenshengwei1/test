@@ -397,14 +397,33 @@
 
 <!-- ============================================================ -->
 <!-- 使用 esm.sh 加载 webconnect 库 (轻量级信令) -->
-<script src="https://cdn.jsdelivr.net/npm/webconnect/dist/esm/webconnect.js" type="module">
+<script type="module">
+  // 使用最新版本
+  import webconnect from 'https://cdn.jsdelivr.net/npm/webconnect/dist/esm/webconnect.js';
+  
+  // 或指定版本
+  // import webconnect from 'https://cdn.jsdelivr.net/npm/webconnect@0.0.10/dist/esm/webconnect.js';
+
+  // 之后就可以用 webconnect 来初始化了
+  window.webconnect = window.webconnect || webconnect({});
 </script>
 
 <script type="module">
 // ============================================================
 // 引入 webconnect 库
 // ============================================================
-let WebConnect = window.webconnect;
+//let WebConnect = window.webconnect;
+
+// 定义一个包装类
+class WebConnect {
+    constructor(options) {
+        // 内部直接调用导出的函数，并返回其实例
+        return (window.webconnect && window.webconnect(options));
+    }
+    
+    // 如果需要，可以在这里添加或覆盖方法
+    // 但通常直接返回原实例就足够了
+}
 
 // ============================================================
 // DOM 引用
