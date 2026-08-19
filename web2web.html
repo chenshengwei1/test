@@ -290,6 +290,14 @@
         .mt-2 { margin-top: 12px; }
         .mt-3 { margin-top: 20px; }
         .hidden { display: none; }
+        .peer-id-display {
+            font-family: 'Courier New', monospace;
+            background: #edf2f7;
+            padding: 2px 12px;
+            border-radius: 6px;
+            font-size: 13px;
+            color: #2b6cb0;
+        }
         @media (max-width: 600px) {
             .container { padding: 20px; }
             .role-btn { min-width: 80px; padding: 10px 14px; font-size: 14px; }
@@ -306,6 +314,9 @@
     </div>
     <div class="subtitle">
         🔒 文件不经过任何服务器，直接在浏览器之间传输 · 支持大文件 · 无需注册
+        <span style="display: block; font-size: 12px; margin-top: 4px; color: #2b6cb0;">
+            🆔 我的 Peer ID: <span id="myPeerIdDisplay" class="peer-id-display">连接中...</span>
+        </span>
     </div>
 
     <!-- 角色选择 -->
@@ -330,12 +341,14 @@
         </div>
 
         <div class="card">
-            <div class="card-title">🔗 2. 创建连接</div>
-            <button class="btn btn-primary" id="createRoomBtn">🚀 创建传输房间</button>
+            <div class="card-title">🔗 2. 连接到接收方</div>
+            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                <input type="text" id="targetPeerInput" placeholder="输入接收方的 Peer ID" style="flex: 2; min-width: 150px; padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 12px; font-size: 14px; font-family: monospace;">
+                <button class="btn btn-primary" id="connectToReceiverBtn">🔗 连接</button>
+            </div>
+            <div id="senderConnectionStatus" class="status-msg"></div>
             <div id="roomInfo" class="hidden mt-2">
-                <p style="font-size: 14px; color: #4a5568; margin-bottom: 8px;">将下方信息复制并发送给接收方：</p>
-                <div class="info-box" id="roomCodeDisplay">等待生成...</div>
-                <button class="btn btn-outline mt-2" id="copyRoomBtn">📋 复制房间码</button>
+                <p style="font-size: 14px; color: #4a5568; margin-bottom: 8px;">✅ 已连接到接收方，可以传输文件</p>
                 <button class="btn btn-danger mt-2" id="disconnectSenderBtn">🔌 断开连接</button>
             </div>
             <div id="senderStatus" class="status-msg"></div>
@@ -362,11 +375,11 @@
     <!-- ============ 接收方面板 ============ -->
     <div id="receiverPanel" class="panel">
         <div class="card">
-            <div class="card-title">🔗 1. 输入房间码加入传输</div>
-            <textarea id="roomCodeInput" placeholder="请粘贴发送方提供的房间码..."></textarea>
-            <div class="btn-group">
-                <button class="btn btn-success" id="joinRoomBtn">📥 加入房间</button>
-                <button class="btn btn-danger" id="disconnectReceiverBtn">🔌 断开连接</button>
+            <div class="card-title">🔗 1. 等待发送方连接</div>
+            <div style="background: #edf2f7; border-radius: 12px; padding: 16px; text-align: center;">
+                <p style="color: #4a5568; font-size: 14px; margin-bottom: 4px;">📋 将你的 Peer ID 发送给发送方：</p>
+                <p style="font-size: 24px; font-weight: bold; font-family: monospace; color: #2b6cb0;" id="receiverPeerIdDisplay">连接中...</p>
+                <button class="btn btn-outline mt-2" id="copyPeerIdBtn">📋 复制 Peer ID</button>
             </div>
             <div id="receiverStatus" class="status-msg"></div>
         </div>
@@ -387,44 +400,21 @@
             </div>
             <div id="receiverTransferStatus" class="status-msg"></div>
             <button class="btn btn-success mt-3" id="downloadBtn" style="display: none;">💾 下载文件</button>
+            <button class="btn btn-danger mt-3" id="disconnectReceiverBtn" style="display: none;">🔌 断开连接</button>
         </div>
     </div>
 
     <div style="margin-top: 24px; text-align: center; font-size: 12px; color: #a0aec0; border-top: 1px solid #edf2f7; padding-top: 20px;">
-        基于 WebRTC · 数据端到端加密 · 不经过任何服务器
+        基于 PeerJS + WebRTC · 数据端到端加密 · 不经过任何服务器
     </div>
 </div>
 
 <!-- ============================================================ -->
-<!-- 使用 esm.sh 加载 webconnect 库 (轻量级信令) -->
-<script type="module">
-  // 使用最新版本
-  import webconnect from 'https://cdn.jsdelivr.net/npm/webconnect/dist/esm/webconnect.js';
-  
-  // 或指定版本
-  // import webconnect from 'https://cdn.jsdelivr.net/npm/webconnect@0.0.10/dist/esm/webconnect.js';
-
-  // 之后就可以用 webconnect 来初始化了
-  window.webconnect = window.webconnect || webconnect({});
+<!-- 引入 PeerJS -->
+<script src="https://unpkg.com/peerjs@1.5.5/dist/peerjs.min.js">
 </script>
 
-<script type="module">
-// ============================================================
-// 引入 webconnect 库
-// ============================================================
-//let WebConnect = window.webconnect;
-
-// 定义一个包装类
-class WebConnect {
-    constructor(options) {
-        // 内部直接调用导出的函数，并返回其实例
-        return (window.webconnect && window.webconnect(options));
-    }
-    
-    // 如果需要，可以在这里添加或覆盖方法
-    // 但通常直接返回原实例就足够了
-}
-
+<script>
 // ============================================================
 // DOM 引用
 // ============================================================
@@ -437,11 +427,12 @@ const fileInput = $('fileInput');
 const fileDropArea = $('fileDropArea');
 const fileList = $('fileList');
 const createRoomBtn = $('createRoomBtn');
-const roomCodeDisplay = $('roomCodeDisplay');
+const connectToReceiverBtn = $('connectToReceiverBtn');
+const targetPeerInput = $('targetPeerInput');
 const roomInfo = $('roomInfo');
-const copyRoomBtn = $('copyRoomBtn');
 const disconnectSenderBtn = $('disconnectSenderBtn');
 const senderStatus = $('senderStatus');
+const senderConnectionStatus = $('senderConnectionStatus');
 const senderTransferCard = $('senderTransferCard');
 const senderFileName = $('senderFileName');
 const senderFileSize = $('senderFileSize');
@@ -450,8 +441,8 @@ const senderProgressText = $('senderProgressText');
 const senderSpeedText = $('senderSpeedText');
 const senderTransferStatus = $('senderTransferStatus');
 
-const roomCodeInput = $('roomCodeInput');
-const joinRoomBtn = $('joinRoomBtn');
+const receiverPeerIdDisplay = $('receiverPeerIdDisplay');
+const copyPeerIdBtn = $('copyPeerIdBtn');
 const disconnectReceiverBtn = $('disconnectReceiverBtn');
 const receiverStatus = $('receiverStatus');
 const receiverTransferCard = $('receiverTransferCard');
@@ -462,18 +453,24 @@ const receiverProgressText = $('receiverProgressText');
 const receiverSpeedText = $('receiverSpeedText');
 const receiverTransferStatus = $('receiverTransferStatus');
 const downloadBtn = $('downloadBtn');
+const myPeerIdDisplay = $('myPeerIdDisplay');
 
 // ============================================================
 // 状态
 // ============================================================
-let wc = null;                 // WebConnect 实例
-let currentRole = 'sender';    // 'sender' | 'receiver'
+let peer = null;                 // PeerJS 实例
+let currentRole = 'sender';      // 'sender' | 'receiver'
 let selectedFiles = [];
 let isConnected = false;
 let isTransferring = false;
-let receivedFileData = null;   // 接收到的文件数据 (ArrayBuffer)
+let receivedFileData = null;     // 接收到的文件数据 (ArrayBuffer)
 let receivedFileName = '';
 let receivedFileType = '';
+let currentConnection = null;    // DataConnection 实例
+let myPeerId = '';
+
+// 文件分块参数
+const CHUNK_SIZE = 64 * 1024;    // 64KB 每块
 
 // ============================================================
 // 工具函数
@@ -495,14 +492,57 @@ function hideStatus(el) {
     el.className = 'status-msg';
 }
 
-function generateRoomCode() {
-    // 生成6位数字+字母组合
-    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-    let code = '';
-    for (let i = 0; i < 6; i++) {
-        code += chars.charAt(Math.floor(Math.random() * chars.length));
+// ============================================================
+// 初始化 PeerJS
+// ============================================================
+function initPeer() {
+    if (peer) {
+        try { peer.destroy(); } catch (e) {}
+        peer = null;
     }
-    return code;
+
+    // 生成随机 ID (便于识别)
+    const randomId = 'peer-' + Date.now().toString(36) + '-' + Math.random().toString(36).substr(2, 6);
+    peer = new Peer(randomId, {
+        debug: 0
+    });
+
+    peer.on('open', (id) => {
+        myPeerId = id;
+        myPeerIdDisplay.textContent = id;
+        receiverPeerIdDisplay.textContent = id;
+        showStatus(senderStatus, `✅ Peer 已初始化，ID: ${id}`, 'success');
+        showStatus(receiverStatus, `✅ Peer 已初始化，ID: ${id}`, 'success');
+        console.log('✅ PeerJS 已连接，ID:', id);
+    });
+
+    peer.on('error', (err) => {
+        console.error('PeerJS 错误:', err);
+        const msg = err.message || '连接错误';
+        showStatus(senderStatus, '❌ ' + msg, 'error');
+        showStatus(receiverStatus, '❌ ' + msg, 'error');
+        if (err.type === 'unavailable-id') {
+            // ID 被占用，重新初始化
+            initPeer();
+        }
+    });
+
+    peer.on('disconnected', () => {
+        console.warn('PeerJS 断开连接');
+        isConnected = false;
+        showStatus(senderStatus, '⚠️ 已断开连接', 'error');
+        showStatus(receiverStatus, '⚠️ 已断开连接', 'error');
+        // 尝试重连
+        if (peer) {
+            peer.reconnect();
+        }
+    });
+
+    // 监听接收方收到的连接 (接收端)
+    peer.on('connection', (conn) => {
+        console.log('📥 收到连接请求，来自:', conn.peer);
+        setupReceiverConnection(conn);
+    });
 }
 
 // ============================================================
@@ -547,14 +587,12 @@ function updateFileList() {
         `;
     });
     fileList.innerHTML = html;
-    // 绑定删除事件
     fileList.querySelectorAll('.btn-danger').forEach(btn => {
         btn.addEventListener('click', (e) => {
             const idx = parseInt(e.target.dataset.index);
             selectedFiles.splice(idx, 1);
             updateFileList();
             if (selectedFiles.length === 0) {
-                // 重置传输卡
                 senderTransferCard.style.display = 'none';
             }
         });
@@ -590,195 +628,221 @@ fileInput.addEventListener('change', (e) => {
 });
 
 // ============================================================
-// 核心：WebConnect 封装
+// 清理连接
 // ============================================================
 function cleanupConnection() {
-    if (wc) {
-        try { wc.destroy(); } catch (e) {}
-        wc = null;
+    if (currentConnection) {
+        try { currentConnection.close(); } catch (e) {}
+        currentConnection = null;
     }
     isConnected = false;
     isTransferring = false;
     hideStatus(senderStatus);
     hideStatus(receiverStatus);
+    hideStatus(senderConnectionStatus);
     hideStatus(senderTransferStatus);
     hideStatus(receiverTransferStatus);
     roomInfo.classList.add('hidden');
     senderTransferCard.style.display = 'none';
     receiverTransferCard.style.display = 'none';
     downloadBtn.style.display = 'none';
+    disconnectReceiverBtn.style.display = 'none';
     receivedFileData = null;
 }
 
-function setupSenderCallbacks() {
-    if (!wc) return;
-
-    // 房间创建成功
-    wc.on('room-created', (roomId) => {
-        isConnected = true;
-        roomCodeDisplay.textContent = roomId;
-        roomInfo.classList.remove('hidden');
-        showStatus(senderStatus, `✅ 房间已创建！房间码: ${roomId}`, 'success');
-        createRoomBtn.disabled = true;
-    });
-
-    // 接收方已加入
-    wc.on('peer-joined', () => {
-        showStatus(senderStatus, '👤 接收方已加入，可以开始传输！', 'success');
-        // 如果有选中的文件，自动开始传输
-        if (selectedFiles.length > 0 && !isTransferring) {
-            startSendFiles();
-        } else if (selectedFiles.length === 0) {
-            showStatus(senderStatus, '⚠️ 请先选择要发送的文件', 'error');
-        }
-    });
-
-    // 对等方断开
-    wc.on('peer-left', () => {
-        showStatus(senderStatus, '🔌 接收方已断开', 'error');
-        isConnected = false;
-        createRoomBtn.disabled = false;
-        roomInfo.classList.add('hidden');
-        senderTransferCard.style.display = 'none';
-    });
-
-    // 传输进度
-    wc.on('file-progress', (progress) => {
-        // progress: { loaded, total, fileName }
-        const pct = Math.min(100, Math.round((progress.loaded / progress.total) * 100));
-        senderProgressFill.style.width = pct + '%';
-        senderProgressText.textContent = pct + '%';
-        senderFileSize.textContent = formatSize(progress.total);
-        senderFileName.textContent = progress.fileName || '文件';
-        // 速度计算 (简单展示)
-        if (progress.speed) {
-            senderSpeedText.textContent = formatSize(progress.speed) + '/s';
-        }
-    });
-
-    // 传输完成
-    wc.on('file-complete', (data) => {
-        isTransferring = false;
-        senderProgressFill.style.width = '100%';
-        senderProgressText.textContent = '100%';
-        showStatus(senderTransferStatus, '✅ 文件传输完成！', 'success');
-        createRoomBtn.disabled = false;
-    });
-
-    // 错误
-    wc.on('error', (err) => {
-        console.error('WebConnect error:', err);
-        showStatus(senderStatus, '❌ 错误: ' + (err.message || err), 'error');
-        isTransferring = false;
-        createRoomBtn.disabled = false;
-    });
-}
-
-function setupReceiverCallbacks() {
-    if (!wc) return;
-
-    // 加入房间成功
-    wc.on('room-joined', () => {
-        isConnected = true;
-        showStatus(receiverStatus, '✅ 已加入房间，等待发送方传输...', 'success');
-        joinRoomBtn.disabled = true;
-    });
-
-    // 收到文件信息
-    wc.on('file-info', (info) => {
-        // info: { name, size, type }
-        receiverFileName.textContent = info.name || '文件';
-        receiverFileSize.textContent = formatSize(info.size || 0);
-        receiverTransferCard.style.display = 'block';
-        receiverProgressFill.style.width = '0%';
-        receiverProgressText.textContent = '0%';
-        showStatus(receiverStatus, `📥 正在接收: ${info.name} (${formatSize(info.size)})`, 'info');
-        isTransferring = true;
-    });
-
-    // 接收进度
-    wc.on('file-progress', (progress) => {
-        const pct = Math.min(100, Math.round((progress.loaded / progress.total) * 100));
-        receiverProgressFill.style.width = pct + '%';
-        receiverProgressText.textContent = pct + '%';
-        receiverFileSize.textContent = formatSize(progress.total);
-        if (progress.speed) {
-            receiverSpeedText.textContent = formatSize(progress.speed) + '/s';
-        }
-    });
-
-    // 接收完成
-    wc.on('file-complete', (data) => {
-        isTransferring = false;
-        receiverProgressFill.style.width = '100%';
-        receiverProgressText.textContent = '100%';
-        showStatus(receiverTransferStatus, '✅ 文件接收完成！点击下方按钮下载', 'success');
-        // 保存数据
-        if (data && data.data) {
-            receivedFileData = data.data;
-            receivedFileName = data.name || '下载文件';
-            receivedFileType = data.type || 'application/octet-stream';
-            downloadBtn.style.display = 'inline-flex';
-        }
-        joinRoomBtn.disabled = false;
-    });
-
-    // 发送方断开
-    wc.on('peer-left', () => {
-        showStatus(receiverStatus, '🔌 发送方已断开', 'error');
-        isConnected = false;
-        isTransferring = false;
-        joinRoomBtn.disabled = false;
-        receiverTransferCard.style.display = 'none';
-        downloadBtn.style.display = 'none';
-    });
-
-    wc.on('error', (err) => {
-        console.error('WebConnect error:', err);
-        showStatus(receiverStatus, '❌ 错误: ' + (err.message || err), 'error');
-        joinRoomBtn.disabled = false;
-    });
-}
-
 // ============================================================
-// 发送方：创建房间 & 发送文件
+// 发送方：连接到接收方
 // ============================================================
-createRoomBtn.addEventListener('click', async () => {
+connectToReceiverBtn.addEventListener('click', () => {
+    const targetId = targetPeerInput.value.trim();
+    if (!targetId) {
+        showStatus(senderConnectionStatus, '⚠️ 请输入接收方的 Peer ID', 'error');
+        return;
+    }
     if (selectedFiles.length === 0) {
-        showStatus(senderStatus, '⚠️ 请先选择要发送的文件', 'error');
+        showStatus(senderConnectionStatus, '⚠️ 请先选择要发送的文件', 'error');
+        return;
+    }
+    if (!peer) {
+        showStatus(senderConnectionStatus, '⚠️ Peer 未初始化，请刷新页面', 'error');
         return;
     }
 
-    if (wc) {
-        try { wc.destroy(); } catch (e) {}
-        wc = null;
+    // 清理旧连接
+    if (currentConnection) {
+        try { currentConnection.close(); } catch (e) {}
+        currentConnection = null;
     }
 
-    // 生成房间码 (6位)
-    const roomId = generateRoomCode();
+    showStatus(senderConnectionStatus, `🔄 正在连接到 ${targetId}...`, 'info');
 
     try {
-        wc = new WebConnect({
-            roomId: roomId,
-            role: 'sender',
-            // 可以自定义信令服务器，默认使用公共信令
+        const conn = peer.connect(targetId, {
+            reliable: true,
+            serialization: 'binary'
         });
-        setupSenderCallbacks();
 
-        // 主动连接信令
-        await wc.connect();
-        showStatus(senderStatus, `🔄 正在创建房间...`, 'info');
-
+        setupSenderConnection(conn);
     } catch (err) {
         console.error(err);
-        showStatus(senderStatus, '❌ 创建房间失败: ' + err.message, 'error');
-        createRoomBtn.disabled = false;
+        showStatus(senderConnectionStatus, '❌ 连接失败: ' + err.message, 'error');
     }
 });
 
+function setupSenderConnection(conn) {
+    currentConnection = conn;
+
+    conn.on('open', () => {
+        isConnected = true;
+        roomInfo.classList.remove('hidden');
+        showStatus(senderConnectionStatus, `✅ 已连接到 ${conn.peer}`, 'success');
+        // 自动开始传输
+        if (selectedFiles.length > 0 && !isTransferring) {
+            startSendFiles();
+        }
+    });
+
+    conn.on('data', (data) => {
+        // 接收方可能发送确认消息
+        console.log('📨 收到消息:', data);
+        if (data && data.type === 'ready') {
+            // 接收方准备就绪
+        } else if (data && data.type === 'ack') {
+            // 确认消息
+        }
+    });
+
+    conn.on('close', () => {
+        isConnected = false;
+        roomInfo.classList.add('hidden');
+        showStatus(senderConnectionStatus, '🔌 连接已断开', 'error');
+        senderTransferCard.style.display = 'none';
+    });
+
+    conn.on('error', (err) => {
+        console.error('连接错误:', err);
+        showStatus(senderConnectionStatus, '❌ 连接错误: ' + err.message, 'error');
+    });
+}
+
+// ============================================================
+// 接收方：处理传入连接
+// ============================================================
+function setupReceiverConnection(conn) {
+    if (currentConnection) {
+        // 如果有其他连接，拒绝
+        conn.close();
+        return;
+    }
+
+    currentConnection = conn;
+    isConnected = true;
+    disconnectReceiverBtn.style.display = 'inline-flex';
+
+    showStatus(receiverStatus, `✅ 已连接到发送方: ${conn.peer}`, 'success');
+
+    conn.on('open', () => {
+        showStatus(receiverStatus, `✅ 连接已建立，等待接收文件...`, 'success');
+        // 发送就绪信号
+        conn.send({ type: 'ready' });
+    });
+
+    // 接收文件数据 (二进制)
+    let fileChunks = [];
+    let fileMetadata = null;
+    let receivedSize = 0;
+    let isReceiving = false;
+
+    conn.on('data', (data) => {
+        // 判断数据类型
+        if (data instanceof ArrayBuffer || data instanceof Uint8Array) {
+            // 二进制数据 - 文件块
+            if (!isReceiving) return;
+            const chunk = new Uint8Array(data);
+            fileChunks.push(chunk);
+            receivedSize += chunk.length;
+
+            // 更新进度
+            if (fileMetadata) {
+                const pct = Math.min(100, Math.round((receivedSize / fileMetadata.size) * 100));
+                receiverProgressFill.style.width = pct + '%';
+                receiverProgressText.textContent = pct + '%';
+                if (fileMetadata.size > 0) {
+                    const speed = Math.round((receivedSize / (Date.now() - fileMetadata.startTime)) * 1000);
+                    receiverSpeedText.textContent = formatSize(speed) + '/s';
+                }
+            }
+
+            // 检查是否接收完成
+            if (fileMetadata && receivedSize >= fileMetadata.size) {
+                // 完成接收
+                const fullData = new Uint8Array(receivedSize);
+                let offset = 0;
+                for (const chunk of fileChunks) {
+                    fullData.set(chunk, offset);
+                    offset += chunk.length;
+                }
+
+                receivedFileData = fullData.buffer;
+                receivedFileName = fileMetadata.filename;
+                receivedFileType = fileMetadata.type || 'application/octet-stream';
+
+                receiverProgressFill.style.width = '100%';
+                receiverProgressText.textContent = '100%';
+                showStatus(receiverTransferStatus, '✅ 文件接收完成！点击下载按钮保存', 'success');
+                downloadBtn.style.display = 'inline-flex';
+                isTransferring = false;
+                isReceiving = false;
+
+                // 发送完成确认
+                conn.send({ type: 'complete', filename: fileMetadata.filename });
+            }
+        } else if (data && data.type === 'metadata') {
+            // 文件元数据
+            fileMetadata = data;
+            fileMetadata.startTime = Date.now();
+            fileChunks = [];
+            receivedSize = 0;
+            isReceiving = true;
+            isTransferring = true;
+
+            receiverFileName.textContent = data.filename || '文件';
+            receiverFileSize.textContent = formatSize(data.size || 0);
+            receiverTransferCard.style.display = 'block';
+            receiverProgressFill.style.width = '0%';
+            receiverProgressText.textContent = '0%';
+            showStatus(receiverStatus, `📥 正在接收: ${data.filename} (${formatSize(data.size)})`, 'info');
+        } else if (data && data.type === 'complete') {
+            // 发送方确认完成
+            console.log('✅ 传输完成确认');
+        } else {
+            // 普通消息
+            console.log('📨 收到消息:', data);
+        }
+    });
+
+    conn.on('close', () => {
+        isConnected = false;
+        isTransferring = false;
+        disconnectReceiverBtn.style.display = 'none';
+        showStatus(receiverStatus, '🔌 发送方已断开', 'error');
+        receiverTransferCard.style.display = 'none';
+        downloadBtn.style.display = 'none';
+        currentConnection = null;
+    });
+
+    conn.on('error', (err) => {
+        console.error('接收连接错误:', err);
+        showStatus(receiverStatus, '❌ 连接错误: ' + err.message, 'error');
+    });
+}
+
+// ============================================================
+// 发送方：发送文件
+// ============================================================
 async function startSendFiles() {
-    if (!wc || !isConnected) {
-        showStatus(senderStatus, '⚠️ 请先创建房间并等待接收方加入', 'error');
+    if (!currentConnection || !isConnected) {
+        showStatus(senderStatus, '⚠️ 请先连接接收方', 'error');
         return;
     }
     if (selectedFiles.length === 0) {
@@ -792,92 +856,98 @@ async function startSendFiles() {
 
     isTransferring = true;
     senderTransferCard.style.display = 'block';
-    senderFileName.textContent = selectedFiles[0].name;
-    senderFileSize.textContent = formatSize(selectedFiles[0].size);
+    const file = selectedFiles[0];
+    senderFileName.textContent = file.name;
+    senderFileSize.textContent = formatSize(file.size);
     senderProgressFill.style.width = '0%';
     senderProgressText.textContent = '0%';
     hideStatus(senderTransferStatus);
     showStatus(senderStatus, '📤 开始传输...', 'info');
 
     try {
-        // 发送第一个文件 (简单起见只发第一个)
-        const file = selectedFiles[0];
-        await wc.sendFile(file);
-        // 传输完成后由 file-complete 事件处理
+        // 1. 发送元数据
+        const metadata = {
+            type: 'metadata',
+            filename: file.name,
+            size: file.size,
+            type: file.type || 'application/octet-stream'
+        };
+        currentConnection.send(metadata);
+
+        // 2. 分块发送文件
+        const reader = new FileReader();
+        const fileData = await readFileAsArrayBuffer(file);
+
+        const totalChunks = Math.ceil(fileData.byteLength / CHUNK_SIZE);
+        let sentSize = 0;
+        const startTime = Date.now();
+
+        for (let i = 0; i < totalChunks; i++) {
+            const start = i * CHUNK_SIZE;
+            const end = Math.min(start + CHUNK_SIZE, fileData.byteLength);
+            const chunk = fileData.slice(start, end);
+
+            currentConnection.send(chunk);
+
+            sentSize += chunk.byteLength;
+            const pct = Math.min(100, Math.round((sentSize / file.size) * 100));
+            senderProgressFill.style.width = pct + '%';
+            senderProgressText.textContent = pct + '%';
+
+            // 计算速度
+            const elapsed = (Date.now() - startTime) / 1000;
+            if (elapsed > 0) {
+                const speed = Math.round(sentSize / elapsed);
+                senderSpeedText.textContent = formatSize(speed) + '/s';
+            }
+
+            // 让出主线程，避免 UI 卡死
+            if (i % 10 === 0) {
+                await new Promise(resolve => setTimeout(resolve, 0));
+            }
+        }
+
+        senderProgressFill.style.width = '100%';
+        senderProgressText.textContent = '100%';
+        showStatus(senderTransferStatus, '✅ 文件发送完成！', 'success');
+        showStatus(senderStatus, '✅ 文件发送完成！', 'success');
+        isTransferring = false;
+        createRoomBtn.disabled = false;
+
     } catch (err) {
         console.error(err);
         isTransferring = false;
         showStatus(senderTransferStatus, '❌ 传输失败: ' + err.message, 'error');
         showStatus(senderStatus, '❌ 传输失败', 'error');
-        createRoomBtn.disabled = false;
     }
 }
 
-// 复制房间码
-copyRoomBtn.addEventListener('click', () => {
-    const code = roomCodeDisplay.textContent;
-    if (code && code !== '等待生成...') {
-        navigator.clipboard.writeText(code).then(() => {
-            showStatus(senderStatus, '✅ 已复制房间码', 'success');
-            setTimeout(() => hideStatus(senderStatus), 2000);
-        }).catch(() => {
-            // fallback
-            const range = document.createRange();
-            range.selectNode(roomCodeDisplay);
-            window.getSelection().removeAllRanges();
-            window.getSelection().addRange(range);
-            document.execCommand('copy');
-            showStatus(senderStatus, '✅ 已复制房间码', 'success');
-            setTimeout(() => hideStatus(senderStatus), 2000);
-        });
-    }
-});
+function readFileAsArrayBuffer(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = () => reject(reader.error);
+        reader.readAsArrayBuffer(file);
+    });
+}
 
+// ============================================================
+// 断开连接
+// ============================================================
 disconnectSenderBtn.addEventListener('click', () => {
     cleanupConnection();
-    createRoomBtn.disabled = false;
     showStatus(senderStatus, '🔌 已断开连接', 'error');
-});
-
-// ============================================================
-// 接收方：加入房间
-// ============================================================
-joinRoomBtn.addEventListener('click', async () => {
-    const roomId = roomCodeInput.value.trim().toUpperCase();
-    if (!roomId) {
-        showStatus(receiverStatus, '⚠️ 请输入房间码', 'error');
-        return;
-    }
-
-    if (wc) {
-        try { wc.destroy(); } catch (e) {}
-        wc = null;
-    }
-
-    try {
-        wc = new WebConnect({
-            roomId: roomId,
-            role: 'receiver',
-        });
-        setupReceiverCallbacks();
-
-        await wc.connect();
-        showStatus(receiverStatus, `🔄 正在加入房间 ${roomId}...`, 'info');
-
-    } catch (err) {
-        console.error(err);
-        showStatus(receiverStatus, '❌ 加入房间失败: ' + err.message, 'error');
-        joinRoomBtn.disabled = false;
-    }
+    showStatus(senderConnectionStatus, '🔌 已断开', 'error');
 });
 
 disconnectReceiverBtn.addEventListener('click', () => {
     cleanupConnection();
-    joinRoomBtn.disabled = false;
     showStatus(receiverStatus, '🔌 已断开连接', 'error');
 });
 
-// 下载接收到的文件
+// ============================================================
+// 下载文件
+// ============================================================
 downloadBtn.addEventListener('click', () => {
     if (!receivedFileData) {
         showStatus(receiverTransferStatus, '⚠️ 没有可下载的文件', 'error');
@@ -895,23 +965,55 @@ downloadBtn.addEventListener('click', () => {
     showStatus(receiverTransferStatus, '✅ 文件已下载', 'success');
 });
 
-// 按回车键加入房间
-roomCodeInput.addEventListener('keydown', (e) => {
+// ============================================================
+// 复制 Peer ID
+// ============================================================
+copyPeerIdBtn.addEventListener('click', () => {
+    const id = myPeerId;
+    if (!id || id === '连接中...') {
+        showStatus(receiverStatus, '⚠️ Peer ID 尚未生成', 'error');
+        return;
+    }
+    navigator.clipboard.writeText(id).then(() => {
+        showStatus(receiverStatus, '✅ 已复制 Peer ID', 'success');
+        setTimeout(() => hideStatus(receiverStatus), 2000);
+    }).catch(() => {
+        // 降级方案
+        const range = document.createRange();
+        range.selectNode(receiverPeerIdDisplay);
+        window.getSelection().removeAllRanges();
+        window.getSelection().addRange(range);
+        document.execCommand('copy');
+        showStatus(receiverStatus, '✅ 已复制 Peer ID', 'success');
+        setTimeout(() => hideStatus(receiverStatus), 2000);
+    });
+});
+
+// 点击 Peer ID 也可复制
+receiverPeerIdDisplay.addEventListener('click', copyPeerIdBtn.click);
+
+// ============================================================
+// 回车键快捷操作
+// ============================================================
+targetPeerInput.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') {
-        joinRoomBtn.click();
+        connectToReceiverBtn.click();
     }
 });
 
 // ============================================================
+// 初始化
+// ============================================================
+initPeer();
+
 // 页面关闭时清理
-// ============================================================
 window.addEventListener('beforeunload', () => {
-    if (wc) {
-        try { wc.destroy(); } catch (e) {}
+    if (peer) {
+        try { peer.destroy(); } catch (e) {}
     }
 });
 
-console.log('📦 P2P 文件传输已加载 - 基于 WebConnect');
+console.log('📦 P2P 文件传输已加载 - 基于 PeerJS');
 </script>
 </body>
 </html>
