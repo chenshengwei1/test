@@ -798,6 +798,17 @@
                 this.connectedPeerId = peerId;
                 this.isConnecting = false;
 
+                // ★★★ 修复：标记连接就绪状态 ★★★
+                if (conn.open) {
+                    conn._isReady = true;
+                    console.log('✅ 连接已完全打开 (直接检测)');
+                } else {
+                    conn.on('open', () => {
+                        conn._isReady = true;
+                        console.log('✅ 连接已完全打开 (事件触发)');
+                    });
+                }
+
                 // 触发连接成功回调
                 if (this.onConnection) {
                     this.onConnection(conn, peerId, isIncoming);
@@ -871,6 +882,21 @@
                 return new Promise((resolve, reject) => {
                     if (!this.currentConnection) {
                         reject(new Error('没有活动连接'));
+                        return;
+                    }
+
+                     const conn = this.currentConnection;
+
+                     console.log('isReady?',conn._isReady, ' is opened?', !!conn.open)
+
+                    // ★★★ 检查两种状态 ★★★
+                    if (conn._isReady || conn.open) {
+                        try {
+                            conn.send(data);
+                            resolve(true);
+                        } catch (err) {
+                            reject(err);
+                        }
                         return;
                     }
 
@@ -1547,11 +1573,13 @@
                 }
 
                 // 如果连接未打开，等待 open 事件
+                // ★★★ 直接检查 open 状态，而不是等待事件 ★★★
                 if (!conn.open) {
-                    console.log('⏳ 等待连接打开...');
+                    console.log('⏳ 连接尚未打开，等待中...');
+                    // 只有未打开时才等待事件
                     await new Promise((resolve, reject) => {
                         const timeout = setTimeout(() => {
-                            reject(new Error('等待连接打开超时'));
+                            reject(new Error('等待连接打开超时 (10s)'));
                         }, 10000);
                         conn.once('open', () => {
                             clearTimeout(timeout);
@@ -1562,8 +1590,11 @@
                             reject(err);
                         });
                     });
-                    console.log('✅ 连接已打开，开始发送');
+                    console.log('✅ 连接已打开');
+                } else {
+                    console.log('✅ 连接已打开，直接发送');
                 }
+
                 
                 // 1. 发送元数据
                 const metadata = {
