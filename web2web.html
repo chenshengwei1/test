@@ -898,8 +898,20 @@ function setupSenderConnection(conn) {
         isConnected = true;
         roomInfo.classList.remove('hidden');
         showStatus(senderConnectionStatus, `✅ 已连接到 ${conn.peer}`, 'success');
+        // ★★★ 不立即发送，等待接收方的 'ready' 信号 ★★★
+        showStatus(senderStatus, '⏳ 等待接收方就绪...', 'info');
         if (selectedFiles.length > 0 && !isTransferring) {
             startSendFiles();
+        }
+    });
+
+    // ★★★ 新增：监听接收方的 'ready' 信号 ★★★
+    conn.on('data', (data) => {
+        if (data && data.type === 'ready') {
+            showStatus(senderStatus, '📤 接收方已就绪，开始传输...', 'info');
+            if (!isTransferring && selectedFiles.length > 0) {
+                startSendFiles();
+            }
         }
     });
 
@@ -988,7 +1000,30 @@ function setupReceiverConnection(conn) {
 
                 conn.send({ type: 'complete', filename: fileMetadata.filename });
             }
-        } else if (data && data.type === 'metadata') {
+        } 
+        // ★★★ 新增：判断是否是 JSON 对象（元数据/控制信号）★★★
+        else if (data && typeof data === 'object') {
+            console.log('📨 接收方收到 JSON:', data);
+            
+            if (data.type === 'metadata') {
+                // ★★★ 新增：处理文件元数据 ★★★
+                fileMetadata = data;
+                fileMetadata.startTime = Date.now();
+                fileChunks = [];
+                receivedSize = 0;
+                isReceiving = true;
+                isTransferring = true;
+
+                receiverFileName.textContent = data.filename || '文件';
+                receiverFileSize.textContent = formatSize(data.size || 0);
+                receiverTransferCard.style.display = 'block';
+                receiverProgressFill.style.width = '0%';
+                receiverProgressText.textContent = '0%';
+                showStatus(receiverStatus, `📥 正在接收: ${data.filename} (${formatSize(data.size)})`, 'info');
+                showStatus(receiverTransferStatus, `⏳ 正在接收 ${data.filename}...`, 'info');
+            }
+        }
+        else if (data && data.type === 'metadata') {
             fileMetadata = data;
             fileMetadata.startTime = Date.now();
             fileChunks = [];
@@ -1060,6 +1095,8 @@ async function startSendFiles() {
             type: file.type || 'application/octet-stream'
         };
         currentConnection.send(metadata);
+
+        console.log('📤 发送元数据:', metadata);  // ★★★ 新增日志 ★★★
 
         const fileData = await readFileAsArrayBuffer(file);
         const totalChunks = Math.ceil(fileData.byteLength / CHUNK_SIZE);
