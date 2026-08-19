@@ -298,10 +298,61 @@
             font-size: 13px;
             color: #2b6cb0;
         }
+
+        /* 二维码样式 */
+        .qr-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 16px;
+            background: white;
+            border-radius: 12px;
+            border: 1px solid #e2e8f0;
+            margin-top: 12px;
+        }
+        .qr-container canvas {
+            max-width: 180px;
+            height: auto;
+            border-radius: 8px;
+        }
+        .qr-container .qr-label {
+            font-size: 13px;
+            color: #4a5568;
+            margin-top: 8px;
+            text-align: center;
+        }
+        .qr-container .qr-label strong {
+            color: #2b6cb0;
+        }
+
+        .peer-id-box {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            background: white;
+            padding: 10px 16px;
+            border-radius: 10px;
+            border: 1px solid #e2e8f0;
+        }
+        .peer-id-box .id {
+            font-family: 'Courier New', monospace;
+            font-size: 16px;
+            font-weight: 600;
+            color: #2b6cb0;
+            flex: 1;
+            word-break: break-all;
+        }
+        .peer-id-box .btn-sm {
+            padding: 6px 14px;
+            font-size: 12px;
+        }
+
         @media (max-width: 600px) {
             .container { padding: 20px; }
             .role-btn { min-width: 80px; padding: 10px 14px; font-size: 14px; }
             .btn { padding: 10px 18px; font-size: 14px; }
+            .qr-container canvas { max-width: 140px; }
         }
     </style>
 </head>
@@ -346,6 +397,26 @@
                 <input type="text" id="targetPeerInput" placeholder="输入接收方的 Peer ID" style="flex: 2; min-width: 150px; padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 12px; font-size: 14px; font-family: monospace;">
                 <button class="btn btn-primary" id="connectToReceiverBtn">🔗 连接</button>
             </div>
+
+            <!-- 二维码区域：显示发送方自己的 Peer ID，供接收方扫码 -->
+            <div style="margin-top: 14px; display: flex; gap: 16px; flex-wrap: wrap; align-items: center;">
+                <div style="flex: 1; min-width: 120px;">
+                    <div class="peer-id-box">
+                        <span style="font-size: 13px; color: #4a5568;">📋 我的 ID</span>
+                        <span class="id" id="senderPeerIdDisplay">--</span>
+                        <button class="btn btn-outline btn-sm" id="copySenderPeerIdBtn">复制</button>
+                    </div>
+                    <p style="font-size: 12px; color: #a0aec0; margin-top: 4px;">将此 ID 发送给接收方</p>
+                </div>
+                <div style="flex-shrink: 0;">
+                    <div class="qr-container" id="senderQrContainer" style="display: none;">
+                        <div id="senderQrCode"></div>
+                        <div class="qr-label">📱 接收方扫码打开</div>
+                    </div>
+                    <button class="btn btn-outline btn-sm" id="toggleSenderQrBtn" style="margin-top: 8px;">📱 显示二维码</button>
+                </div>
+            </div>
+
             <div id="senderConnectionStatus" class="status-msg"></div>
             <div id="roomInfo" class="hidden mt-2">
                 <p style="font-size: 14px; color: #4a5568; margin-bottom: 8px;">✅ 已连接到接收方，可以传输文件</p>
@@ -376,11 +447,28 @@
     <div id="receiverPanel" class="panel">
         <div class="card">
             <div class="card-title">🔗 1. 等待发送方连接</div>
-            <div style="background: #edf2f7; border-radius: 12px; padding: 16px; text-align: center;">
-                <p style="color: #4a5568; font-size: 14px; margin-bottom: 4px;">📋 将你的 Peer ID 发送给发送方：</p>
-                <p style="font-size: 24px; font-weight: bold; font-family: monospace; color: #2b6cb0;" id="receiverPeerIdDisplay">连接中...</p>
-                <button class="btn btn-outline mt-2" id="copyPeerIdBtn">📋 复制 Peer ID</button>
+
+            <!-- 接收方显示自己的 Peer ID + 二维码 -->
+            <div style="display: flex; gap: 20px; flex-wrap: wrap; align-items: center; background: white; padding: 16px; border-radius: 12px; border: 1px solid #e2e8f0;">
+                <div style="flex: 1; min-width: 150px;">
+                    <div style="font-size: 13px; color: #4a5568; margin-bottom: 4px;">📋 你的 Peer ID</div>
+                    <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                        <span style="font-size: 20px; font-weight: bold; font-family: monospace; color: #2b6cb0;" id="receiverPeerIdDisplay">连接中...</span>
+                        <button class="btn btn-outline btn-sm" id="copyPeerIdBtn">复制</button>
+                    </div>
+                    <p style="font-size: 12px; color: #a0aec0; margin-top: 4px;">将此 ID 发送给发送方</p>
+                </div>
+                <div style="flex-shrink: 0;">
+                    <div class="qr-container" id="receiverQrContainer">
+                        <div id="receiverQrCode"></div>
+                        <div class="qr-label">📱 发送方扫码打开</div>
+                    </div>
+                </div>
             </div>
+
+            <!-- 提示：如果是从二维码打开的，自动填入发送方 ID -->
+            <div id="autoFillInfo" class="status-msg" style="margin-top: 12px;"></div>
+
             <div id="receiverStatus" class="status-msg"></div>
         </div>
 
@@ -413,6 +501,9 @@
 <!-- 引入 PeerJS -->
 <script src="https://unpkg.com/peerjs@1.5.5/dist/peerjs.min.js">
 </script>
+<!-- 引入 QRCode.js -->
+<script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js">
+</script>
 
 <script>
 // ============================================================
@@ -426,7 +517,6 @@ const roleBtns = document.querySelectorAll('.role-btn');
 const fileInput = $('fileInput');
 const fileDropArea = $('fileDropArea');
 const fileList = $('fileList');
-const createRoomBtn = $('createRoomBtn');
 const connectToReceiverBtn = $('connectToReceiverBtn');
 const targetPeerInput = $('targetPeerInput');
 const roomInfo = $('roomInfo');
@@ -440,6 +530,11 @@ const senderProgressFill = $('senderProgressFill');
 const senderProgressText = $('senderProgressText');
 const senderSpeedText = $('senderSpeedText');
 const senderTransferStatus = $('senderTransferStatus');
+const senderPeerIdDisplay = $('senderPeerIdDisplay');
+const copySenderPeerIdBtn = $('copySenderPeerIdBtn');
+const toggleSenderQrBtn = $('toggleSenderQrBtn');
+const senderQrContainer = $('senderQrContainer');
+const senderQrCode = $('senderQrCode');
 
 const receiverPeerIdDisplay = $('receiverPeerIdDisplay');
 const copyPeerIdBtn = $('copyPeerIdBtn');
@@ -454,23 +549,27 @@ const receiverSpeedText = $('receiverSpeedText');
 const receiverTransferStatus = $('receiverTransferStatus');
 const downloadBtn = $('downloadBtn');
 const myPeerIdDisplay = $('myPeerIdDisplay');
+const receiverQrCode = $('receiverQrCode');
+const receiverQrContainer = $('receiverQrContainer');
+const autoFillInfo = $('autoFillInfo');
 
 // ============================================================
 // 状态
 // ============================================================
-let peer = null;                 // PeerJS 实例
-let currentRole = 'sender';      // 'sender' | 'receiver'
+let peer = null;
+let currentRole = 'sender';
 let selectedFiles = [];
 let isConnected = false;
 let isTransferring = false;
-let receivedFileData = null;     // 接收到的文件数据 (ArrayBuffer)
+let receivedFileData = null;
 let receivedFileName = '';
 let receivedFileType = '';
-let currentConnection = null;    // DataConnection 实例
+let currentConnection = null;
 let myPeerId = '';
+let senderQrCodeInstance = null;
+let receiverQrCodeInstance = null;
 
-// 文件分块参数
-const CHUNK_SIZE = 64 * 1024;    // 64KB 每块
+const CHUNK_SIZE = 64 * 1024;
 
 // ============================================================
 // 工具函数
@@ -492,6 +591,72 @@ function hideStatus(el) {
     el.className = 'status-msg';
 }
 
+function getCurrentPageUrl() {
+    return window.location.href.split('?')[0];
+}
+
+// ============================================================
+// 二维码生成
+// ============================================================
+function generateQRCode(container, peerId) {
+    // 清除之前的二维码
+    container.innerHTML = '';
+    if (!peerId || peerId === '连接中...' || peerId === '--') {
+        container.innerHTML = '<div style="color: #a0aec0; font-size: 13px; padding: 10px;">等待 ID...</div>';
+        return null;
+    }
+
+    // 构建扫码 URL: 当前页面 URL + ?peer=ID
+    const baseUrl = getCurrentPageUrl();
+    const qrUrl = baseUrl + '?peer=' + encodeURIComponent(peerId);
+
+    try {
+        const qr = new QRCode(container, {
+            text: qrUrl,
+            width: 150,
+            height: 150,
+            colorDark: '#1a202c',
+            colorLight: '#ffffff',
+            correctLevel: QRCode.CorrectLevel.H
+        });
+        return qr;
+    } catch (err) {
+        console.error('生成二维码失败:', err);
+        container.innerHTML = '<div style="color: #fc8181; font-size: 13px;">生成失败</div>';
+        return null;
+    }
+}
+
+function updateQRCodes() {
+    if (myPeerId && myPeerId !== '连接中...' && myPeerId !== '--') {
+        // 发送方二维码
+        if (senderQrContainer.style.display !== 'none') {
+            senderQrCodeInstance = generateQRCode(senderQrCode, myPeerId);
+        }
+        // 接收方二维码
+        receiverQrCodeInstance = generateQRCode(receiverQrCode, myPeerId);
+    }
+}
+
+// ============================================================
+// 发送方二维码切换
+// ============================================================
+let senderQrVisible = false;
+
+toggleSenderQrBtn.addEventListener('click', () => {
+    senderQrVisible = !senderQrVisible;
+    if (senderQrVisible) {
+        senderQrContainer.style.display = 'flex';
+        toggleSenderQrBtn.textContent = '🙈 隐藏二维码';
+        if (myPeerId && myPeerId !== '连接中...' && myPeerId !== '--') {
+            senderQrCodeInstance = generateQRCode(senderQrCode, myPeerId);
+        }
+    } else {
+        senderQrContainer.style.display = 'none';
+        toggleSenderQrBtn.textContent = '📱 显示二维码';
+    }
+});
+
 // ============================================================
 // 初始化 PeerJS
 // ============================================================
@@ -501,7 +666,6 @@ function initPeer() {
         peer = null;
     }
 
-    // 生成随机 ID (便于识别)
     const randomId = 'peer-' + Date.now().toString(36) + '-' + Math.random().toString(36).substr(2, 6);
     peer = new Peer(randomId, {
         debug: 0
@@ -511,8 +675,22 @@ function initPeer() {
         myPeerId = id;
         myPeerIdDisplay.textContent = id;
         receiverPeerIdDisplay.textContent = id;
+        senderPeerIdDisplay.textContent = id;
         showStatus(senderStatus, `✅ Peer 已初始化，ID: ${id}`, 'success');
         showStatus(receiverStatus, `✅ Peer 已初始化，ID: ${id}`, 'success');
+
+        // 生成二维码
+        setTimeout(() => {
+            updateQRCodes();
+            // 如果发送方二维码已显示，更新
+            if (senderQrVisible) {
+                senderQrCodeInstance = generateQRCode(senderQrCode, id);
+            }
+        }, 100);
+
+        // 检查 URL 参数，自动填入发送方 ID（接收方场景）
+        checkUrlParams();
+
         console.log('✅ PeerJS 已连接，ID:', id);
     });
 
@@ -522,7 +700,6 @@ function initPeer() {
         showStatus(senderStatus, '❌ ' + msg, 'error');
         showStatus(receiverStatus, '❌ ' + msg, 'error');
         if (err.type === 'unavailable-id') {
-            // ID 被占用，重新初始化
             initPeer();
         }
     });
@@ -532,7 +709,6 @@ function initPeer() {
         isConnected = false;
         showStatus(senderStatus, '⚠️ 已断开连接', 'error');
         showStatus(receiverStatus, '⚠️ 已断开连接', 'error');
-        // 尝试重连
         if (peer) {
             peer.reconnect();
         }
@@ -546,22 +722,48 @@ function initPeer() {
 }
 
 // ============================================================
+// URL 参数处理：自动填入 Peer ID
+// ============================================================
+function checkUrlParams() {
+    const params = new URLSearchParams(window.location.search);
+    const peerId = params.get('peer');
+    if (peerId) {
+        // 自动切换到接收方
+        switchRole('receiver');
+        // 填入 Peer ID 到目标输入框（发送方那边）
+        targetPeerInput.value = peerId;
+        showStatus(autoFillInfo, `📥 已从二维码读取 Peer ID: ${peerId}，请点击「连接」`, 'info');
+        // 自动连接
+        setTimeout(() => {
+            connectToReceiverBtn.click();
+        }, 500);
+    }
+}
+
+// ============================================================
 // 角色切换
 // ============================================================
+function switchRole(role) {
+    roleBtns.forEach(b => {
+        b.classList.remove('active');
+        if (b.dataset.role === role) {
+            b.classList.add('active');
+        }
+    });
+    currentRole = role;
+    if (role === 'sender') {
+        senderPanel.classList.add('active');
+        receiverPanel.classList.remove('active');
+    } else {
+        senderPanel.classList.remove('active');
+        receiverPanel.classList.add('active');
+    }
+    cleanupConnection();
+}
+
 roleBtns.forEach(btn => {
     btn.addEventListener('click', () => {
-        roleBtns.forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        currentRole = btn.dataset.role;
-        if (currentRole === 'sender') {
-            senderPanel.classList.add('active');
-            receiverPanel.classList.remove('active');
-        } else {
-            senderPanel.classList.remove('active');
-            receiverPanel.classList.add('active');
-        }
-        // 切换时重置状态
-        cleanupConnection();
+        switchRole(btn.dataset.role);
     });
 });
 
@@ -642,6 +844,7 @@ function cleanupConnection() {
     hideStatus(senderConnectionStatus);
     hideStatus(senderTransferStatus);
     hideStatus(receiverTransferStatus);
+    hideStatus(autoFillInfo);
     roomInfo.classList.add('hidden');
     senderTransferCard.style.display = 'none';
     receiverTransferCard.style.display = 'none';
@@ -668,7 +871,6 @@ connectToReceiverBtn.addEventListener('click', () => {
         return;
     }
 
-    // 清理旧连接
     if (currentConnection) {
         try { currentConnection.close(); } catch (e) {}
         currentConnection = null;
@@ -696,14 +898,12 @@ function setupSenderConnection(conn) {
         isConnected = true;
         roomInfo.classList.remove('hidden');
         showStatus(senderConnectionStatus, `✅ 已连接到 ${conn.peer}`, 'success');
-        // 自动开始传输
         if (selectedFiles.length > 0 && !isTransferring) {
             startSendFiles();
         }
     });
 
     conn.on('data', (data) => {
-        // 接收方可能发送确认消息
         console.log('📨 收到消息:', data);
         if (data && data.type === 'ready') {
             // 接收方准备就绪
@@ -730,7 +930,6 @@ function setupSenderConnection(conn) {
 // ============================================================
 function setupReceiverConnection(conn) {
     if (currentConnection) {
-        // 如果有其他连接，拒绝
         conn.close();
         return;
     }
@@ -743,26 +942,21 @@ function setupReceiverConnection(conn) {
 
     conn.on('open', () => {
         showStatus(receiverStatus, `✅ 连接已建立，等待接收文件...`, 'success');
-        // 发送就绪信号
         conn.send({ type: 'ready' });
     });
 
-    // 接收文件数据 (二进制)
     let fileChunks = [];
     let fileMetadata = null;
     let receivedSize = 0;
     let isReceiving = false;
 
     conn.on('data', (data) => {
-        // 判断数据类型
         if (data instanceof ArrayBuffer || data instanceof Uint8Array) {
-            // 二进制数据 - 文件块
             if (!isReceiving) return;
             const chunk = new Uint8Array(data);
             fileChunks.push(chunk);
             receivedSize += chunk.length;
 
-            // 更新进度
             if (fileMetadata) {
                 const pct = Math.min(100, Math.round((receivedSize / fileMetadata.size) * 100));
                 receiverProgressFill.style.width = pct + '%';
@@ -773,9 +967,7 @@ function setupReceiverConnection(conn) {
                 }
             }
 
-            // 检查是否接收完成
             if (fileMetadata && receivedSize >= fileMetadata.size) {
-                // 完成接收
                 const fullData = new Uint8Array(receivedSize);
                 let offset = 0;
                 for (const chunk of fileChunks) {
@@ -794,11 +986,9 @@ function setupReceiverConnection(conn) {
                 isTransferring = false;
                 isReceiving = false;
 
-                // 发送完成确认
                 conn.send({ type: 'complete', filename: fileMetadata.filename });
             }
         } else if (data && data.type === 'metadata') {
-            // 文件元数据
             fileMetadata = data;
             fileMetadata.startTime = Date.now();
             fileChunks = [];
@@ -813,10 +1003,8 @@ function setupReceiverConnection(conn) {
             receiverProgressText.textContent = '0%';
             showStatus(receiverStatus, `📥 正在接收: ${data.filename} (${formatSize(data.size)})`, 'info');
         } else if (data && data.type === 'complete') {
-            // 发送方确认完成
             console.log('✅ 传输完成确认');
         } else {
-            // 普通消息
             console.log('📨 收到消息:', data);
         }
     });
@@ -865,7 +1053,6 @@ async function startSendFiles() {
     showStatus(senderStatus, '📤 开始传输...', 'info');
 
     try {
-        // 1. 发送元数据
         const metadata = {
             type: 'metadata',
             filename: file.name,
@@ -874,10 +1061,7 @@ async function startSendFiles() {
         };
         currentConnection.send(metadata);
 
-        // 2. 分块发送文件
-        const reader = new FileReader();
         const fileData = await readFileAsArrayBuffer(file);
-
         const totalChunks = Math.ceil(fileData.byteLength / CHUNK_SIZE);
         let sentSize = 0;
         const startTime = Date.now();
@@ -894,14 +1078,12 @@ async function startSendFiles() {
             senderProgressFill.style.width = pct + '%';
             senderProgressText.textContent = pct + '%';
 
-            // 计算速度
             const elapsed = (Date.now() - startTime) / 1000;
             if (elapsed > 0) {
                 const speed = Math.round(sentSize / elapsed);
                 senderSpeedText.textContent = formatSize(speed) + '/s';
             }
 
-            // 让出主线程，避免 UI 卡死
             if (i % 10 === 0) {
                 await new Promise(resolve => setTimeout(resolve, 0));
             }
@@ -912,7 +1094,6 @@ async function startSendFiles() {
         showStatus(senderTransferStatus, '✅ 文件发送完成！', 'success');
         showStatus(senderStatus, '✅ 文件发送完成！', 'success');
         isTransferring = false;
-        createRoomBtn.disabled = false;
 
     } catch (err) {
         console.error(err);
@@ -968,29 +1149,37 @@ downloadBtn.addEventListener('click', () => {
 // ============================================================
 // 复制 Peer ID
 // ============================================================
-copyPeerIdBtn.addEventListener('click', () => {
+function copyPeerId(displayEl, statusEl) {
     const id = myPeerId;
-    if (!id || id === '连接中...') {
-        showStatus(receiverStatus, '⚠️ Peer ID 尚未生成', 'error');
+    if (!id || id === '连接中...' || id === '--') {
+        showStatus(statusEl || receiverStatus, '⚠️ Peer ID 尚未生成', 'error');
         return;
     }
     navigator.clipboard.writeText(id).then(() => {
-        showStatus(receiverStatus, '✅ 已复制 Peer ID', 'success');
-        setTimeout(() => hideStatus(receiverStatus), 2000);
+        showStatus(statusEl || receiverStatus, '✅ 已复制 Peer ID', 'success');
+        setTimeout(() => hideStatus(statusEl || receiverStatus), 2000);
     }).catch(() => {
-        // 降级方案
         const range = document.createRange();
-        range.selectNode(receiverPeerIdDisplay);
+        range.selectNode(displayEl);
         window.getSelection().removeAllRanges();
         window.getSelection().addRange(range);
         document.execCommand('copy');
-        showStatus(receiverStatus, '✅ 已复制 Peer ID', 'success');
-        setTimeout(() => hideStatus(receiverStatus), 2000);
+        showStatus(statusEl || receiverStatus, '✅ 已复制 Peer ID', 'success');
+        setTimeout(() => hideStatus(statusEl || receiverStatus), 2000);
     });
+}
+
+copyPeerIdBtn.addEventListener('click', () => {
+    copyPeerId(receiverPeerIdDisplay, receiverStatus);
+});
+
+copySenderPeerIdBtn.addEventListener('click', () => {
+    copyPeerId(senderPeerIdDisplay, senderStatus);
 });
 
 // 点击 Peer ID 也可复制
-receiverPeerIdDisplay.addEventListener('click', copyPeerIdBtn.click);
+receiverPeerIdDisplay.addEventListener('click', () => copyPeerId(receiverPeerIdDisplay, receiverStatus));
+senderPeerIdDisplay.addEventListener('click', () => copyPeerId(senderPeerIdDisplay, senderStatus));
 
 // ============================================================
 // 回车键快捷操作
@@ -1006,14 +1195,13 @@ targetPeerInput.addEventListener('keydown', (e) => {
 // ============================================================
 initPeer();
 
-// 页面关闭时清理
 window.addEventListener('beforeunload', () => {
     if (peer) {
         try { peer.destroy(); } catch (e) {}
     }
 });
 
-console.log('📦 P2P 文件传输已加载 - 基于 PeerJS');
+console.log('📦 P2P 文件传输已加载 - 基于 PeerJS + 二维码');
 </script>
 </body>
 </html>
