@@ -866,18 +866,49 @@
              * @param {*} data - 要发送的数据
              * @returns {boolean} 是否发送成功
              */
-            send(data) {
-                if (!this.currentConnection) {
-                    console.warn('没有活动连接，无法发送数据');
-                    return false;
-                }
-                try {
-                    this.currentConnection.send(data);
-                    return true;
-                } catch (err) {
-                    if (this.onError) this.onError(err);
-                    return false;
-                }
+            // 在 ConnectionManager 类中修改 send 方法
+            send(data, timeout = 10000) {
+                return new Promise((resolve, reject) => {
+                    if (!this.currentConnection) {
+                        reject(new Error('没有活动连接'));
+                        return;
+                    }
+
+                    // 如果连接已经打开，直接发送
+                    if (this.currentConnection.open) {
+                        try {
+                            this.currentConnection.send(data);
+                            resolve(true);
+                        } catch (err) {
+                            reject(err);
+                        }
+                        return;
+                    }
+
+                    // 连接未打开，等待 open 事件
+                    let resolved = false;
+                    const timeoutId = setTimeout(() => {
+                        if (!resolved) {
+                            resolved = true;
+                            reject(new Error('等待连接打开超时'));
+                        }
+                    }, timeout);
+
+                    const onOpen = () => {
+                        if (resolved) return;
+                        resolved = true;
+                        clearTimeout(timeoutId);
+                        try {
+                            this.currentConnection.send(data);
+                            resolve(true);
+                        } catch (err) {
+                            reject(err);
+                        }
+                    };
+
+                    // 监听 open 事件（一次性）
+                    this.currentConnection.once('open', onOpen);
+                });
             }
 
             /**
@@ -1492,6 +1523,8 @@
                 return;
             }
 
+            
+
             isTransferring = true;
             sendFileBtn.disabled = true;
             senderTransferCard.style.display = 'block';
@@ -1506,6 +1539,32 @@
             showStatus(senderSendStatus, '📤 正在传输...', 'info');
 
             try {
+
+                // ★★★ 确保连接已打开 ★★★
+                const conn = connManager.getConnection();
+                if (!conn) {
+                    throw new Error('没有连接对象');
+                }
+
+                // 如果连接未打开，等待 open 事件
+                if (!conn.open) {
+                    console.log('⏳ 等待连接打开...');
+                    await new Promise((resolve, reject) => {
+                        const timeout = setTimeout(() => {
+                            reject(new Error('等待连接打开超时'));
+                        }, 10000);
+                        conn.once('open', () => {
+                            clearTimeout(timeout);
+                            resolve();
+                        });
+                        conn.once('error', (err) => {
+                            clearTimeout(timeout);
+                            reject(err);
+                        });
+                    });
+                    console.log('✅ 连接已打开，开始发送');
+                }
+                
                 // 1. 发送元数据
                 const metadata = {
                     type: 'metadata',
