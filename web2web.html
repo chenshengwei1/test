@@ -919,8 +919,10 @@ function setupSenderConnection(conn) {
         console.log('📨 收到消息:', data);
         if (data && data.type === 'ready') {
             // 接收方准备就绪
+            console.log('已经收到ready');
         } else if (data && data.type === 'ack') {
             // 确认消息
+            console.log('已经收到ack');
         }
     });
 
