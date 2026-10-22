@@ -2163,28 +2163,112 @@ function saveAsked() {
 /* =========================================================
    测试连接
    ========================================================= */
-async function testConnection() {
-  const cfg = readConfigFromForm();
-  if (!cfg.baseUrl || !cfg.apiKey || !cfg.model) {
-    const msg = '请先填写 Base URL、API Key、模型名';
-    setStatus('❌ ' + msg, 'error');
-    showToast(msg, 'error');
-    return;
-  }
-  setStatus('<span class="spinner"></span> 正在测试连接…');
-  try {
-    const reply = await callLLM(cfg, [{ role: 'user', content: '只回复 OK' }], 10);
-    const msg = `连接成功，模型回复：${reply.slice(0, 40)}`;
+  async function testConnection() {
+    const cfg = readConfigFromForm();
+    if (!cfg.baseUrl || !cfg.apiKey || !cfg.model) {
+      const msg = '请先填写 Base URL、API Key、模型名';
+      setStatus('❌ ' + msg, 'error');
+      showToast(msg, 'error');
+      return;
+    }
+    setStatus('<span class="spinner"></span> 正在测试连接…');
+  
+    // 测试连接只验证四件事：BaseURL 可达 / Key 有效 / 模型存在 / 网络通
+    // 不要求模型输出实质内容，因此：
+    //   1. max_tokens 给足够跑完推理的余量（128 足以覆盖大多数推理模型的开销）
+    //   2. 请求里带上"关推理"字段，服务商支持就生效，不支持会被忽略
+    //   3. 判定标准 = HTTP 200 + choices[0].message 结构完整，不看 content 是否为空
+    const baseBody = {
+      model: cfg.model,
+      messages: [{ role: 'user', content: '回复"OK"' }],
+      temperature: 0,
+      max_tokens: 128
+    };
+    // 各服务商的"关推理"字段（顺序即发送顺序，无字段的服务商会忽略）
+    const noThinkingFields = {
+      reasoning_effort: 'none',                          // OpenAI o 系列 / 兼容实现
+      enable_thinking: false,                            // 部分国产模型（Qwen、GLM 等）
+      thinking: { type: 'disabled' },                    // Anthropic / 部分兼容网关
+      chat_template_kwargs: { enable_thinking: false }   // vLLM / Ollama 等
+    };
+  
+    let resp;
+    try {
+      resp = await doTestRequest(cfg, { ...baseBody, ...noThinkingFields });
+      // 400 且疑似"未知字段" → 去掉关推理字段重试一次
+      if (resp.status === 400) {
+        let errText = '';
+        try { errText = await resp.clone().text(); } catch (e) {}
+        if (/unknown|unrecognized|invalid.*(param|field)|extra.*field/i.test(errText)) {
+          resp = await doTestRequest(cfg, baseBody);
+        }
+      }
+    } catch (e) {
+      const msg = '连接失败：' + e.message;
+      setStatus('❌ ' + msg, 'error');
+      showToast(msg, 'error', 10000);
+      return;
+    }
+  
+    if (!resp.ok) {
+      let t = '';
+      try { t = await resp.text(); } catch (e) {}
+      const msg = '连接失败：' + friendlyError(resp.status, t);
+      setStatus('❌ ' + msg, 'error');
+      showToast(msg, 'error', 10000);
+      return;
+    }
+  
+    let data;
+    try {
+      data = await resp.json();
+    } catch (e) {
+      const msg = '连接失败：服务端返回非 JSON 响应，可能不是 OpenAI 兼容接口';
+      setStatus('❌ ' + msg, 'error');
+      showToast(msg, 'error', 10000);
+      return;
+    }
+  
+    const choice = data.choices && data.choices[0];
+    if (!choice || !choice.message) {
+      const msg = '连接失败：返回结构缺少 choices[0].message，可能不是 OpenAI 兼容接口';
+      setStatus('❌ ' + msg, 'error');
+      showToast(msg, 'error', 10000);
+      return;
+    }
+  
+    // HTTP 200 + 结构合法 → 连接成功，content 空不空都不影响判定
+    const content = (choice.message.content || '').trim();
+    const finishReason = choice.finish_reason || '未知';
+    const usage = data.usage || {};
+    const reasoningTokens = usage.completion_tokens_details && usage.completion_tokens_details.reasoning_tokens;
+  
+    let detail;
+    if (content) {
+      detail = `模型回复：${content.slice(0, 40)}`;
+    } else if (finishReason === 'length') {
+      detail = `接口调用成功（模型将 ${reasoningTokens ?? '?'} tokens 用于推理，content 未产出，属推理模型正常行为）`;
+    } else {
+      detail = `接口调用成功（finish_reason=${finishReason}，content 为空）`;
+    }
+  
+    const msg = `连接成功：${detail}`;
     setStatus('✅ ' + msg, 'success');
-    showToast(msg, 'success');
-    if (!document.getElementById('cfgModelSelect').style.display ||
-        document.getElementById('cfgModelSelect').style.display === 'none') fetchModels(true);
-  } catch (e) {
-    const msg = '连接失败：' + e.message;
-    setStatus('❌ ' + msg, 'error');
-    showToast(msg, 'error', 10000);
+    showToast(msg, 'success', 5000);
+  
+    // 顺带拉一次模型列表
+    const sel = document.getElementById('cfgModelSelect');
+    if (!sel.style.display || sel.style.display === 'none') fetchModels(true);
   }
-}
+  
+  // 小工具：带超时的测试请求，30s 超时、不重试
+  function doTestRequest(cfg, body) {
+    return fetchWithTimeout(cfg.baseUrl + '/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + cfg.apiKey },
+      body: JSON.stringify(body)
+    }, 30000, 0);
+  }
 
 /* =========================================================
    键盘
