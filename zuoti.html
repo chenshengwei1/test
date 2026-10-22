@@ -1,0 +1,1029 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Java 面试题 · 多类型 · 本地题库 + 大模型</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; background: #0f172a; color: #e2e8f0; min-height: 100vh; padding: 24px 16px 80px; line-height: 1.6; }
+  .container { max-width: 960px; margin: 0 auto; }
+
+  .header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+  .header h1 { font-size: 22px; font-weight: 700; background: linear-gradient(135deg, #60a5fa, #a78bfa); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .header-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .badge { font-size: 12px; padding: 4px 10px; border-radius: 20px; background: #1e293b; border: 1px solid #334155; color: #94a3b8; }
+
+  button { cursor: pointer; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; padding: 10px 18px; transition: all .2s; font-family: inherit; }
+  button:disabled { opacity: .5; cursor: not-allowed; }
+  .btn-primary { background: #3b82f6; color: #fff; }
+  .btn-primary:hover:not(:disabled) { background: #2563eb; }
+  .btn-ghost { background: #1e293b; color: #cbd5e1; border: 1px solid #334155; }
+  .btn-ghost:hover:not(:disabled) { background: #334155; }
+  .btn-ok { background: #16a34a; color: #fff; }
+  .btn-ok:hover:not(:disabled) { background: #15803d; }
+  .btn-sm { padding: 6px 12px; font-size: 13px; }
+
+  /* 题型面板 */
+  .type-panel { background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 14px 18px; margin-bottom: 16px; }
+  .type-panel-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
+  .type-panel-title { font-weight: 600; color: #cbd5e1; font-size: 14px; }
+  .type-panel-actions { display: flex; gap: 6px; }
+  .type-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+  .chip { display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 20px; background: #0f172a; border: 1px solid #334155; color: #94a3b8; font-size: 13px; cursor: pointer; transition: all .15s; user-select: none; font-weight: 500; }
+  .chip:hover { border-color: #475569; color: #cbd5e1; }
+  .chip.active { background: #1e3a5f; border-color: #3b82f6; color: #93c5fd; }
+  .chip input { display: none; }
+
+  /* 配置面板 */
+  .config-panel { background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 18px 20px; margin-bottom: 16px; }
+  .config-panel summary { cursor: pointer; font-weight: 600; color: #cbd5e1; outline: none; user-select: none; }
+  .config-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-top: 16px; }
+  .config-grid label { display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: #94a3b8; }
+  .config-grid input, .config-grid select { background: #0f172a; border: 1px solid #334155; border-radius: 6px; padding: 8px 10px; color: #e2e8f0; font-size: 13px; font-family: inherit; outline: none; width: 100%; }
+  .config-grid input:focus, .config-grid select:focus { border-color: #3b82f6; }
+  .model-row { display: flex; gap: 6px; }
+  .model-row input { flex: 1; min-width: 0; }
+  .model-row button { flex-shrink: 0; white-space: nowrap; padding: 8px 12px; }
+  #cfgModelSelect { margin-top: 6px; }
+  .preset-row { display: flex; flex-direction: column; gap: 6px; grid-column: 1 / -1; }
+  .preset-select { background: #0f172a; border: 1px solid #334155; border-radius: 6px; padding: 8px 10px; color: #cbd5e1; font-size: 13px; font-family: inherit; outline: none; width: 100%; }
+  .checkbox-row { flex-direction: row !important; align-items: center; gap: 8px; grid-column: 1 / -1; cursor: pointer; color: #cbd5e1; }
+  .checkbox-row input { width: 16px; height: 16px; accent-color: #3b82f6; }
+  .config-actions { margin-top: 14px; display: flex; gap: 10px; flex-wrap: wrap; }
+  .config-tip { margin-top: 10px; font-size: 12px; color: #64748b; }
+  .config-tip code { background: #0f172a; padding: 1px 5px; border-radius: 4px; color: #94a3b8; }
+
+  /* 题目 */
+  .question-list { display: flex; flex-direction: column; gap: 16px; }
+  .question-card { background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 20px 22px; transition: border-color .3s; }
+  .question-card.answered { border-color: #3b82f6; }
+  .question-card.correct { border-color: #22c55e; }
+  .question-card.wrong { border-color: #ef4444; }
+
+  .q-meta { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+  .q-index { font-size: 12px; color: #64748b; font-weight: 600; }
+  .q-tag { font-size: 11px; padding: 2px 8px; border-radius: 10px; background: #0f172a; color: #60a5fa; border: 1px solid #1e40af; }
+
+  .q-text { font-size: 15px; font-weight: 500; margin-bottom: 14px; color: #f1f5f9; }
+
+  .option { display: flex; align-items: flex-start; gap: 10px; padding: 10px 12px; border-radius: 8px; border: 1px solid #334155; margin-bottom: 8px; cursor: pointer; transition: background .15s, border-color .15s; }
+  .option:hover { background: #273449; border-color: #475569; }
+  .option.selected { border-color: #3b82f6; background: #1e3a5f; }
+  .option.correct-answer { border-color: #22c55e; background: #052e16; }
+  .option.wrong-answer { border-color: #ef4444; background: #450a0a; }
+  .option input[type="radio"] { margin-top: 3px; accent-color: #3b82f6; cursor: pointer; flex-shrink: 0; }
+  .option-label { font-weight: 600; color: #94a3b8; min-width: 20px; }
+  .option-text { flex: 1; font-size: 14px; }
+
+  .explanation { margin-top: 14px; padding: 14px 16px; border-radius: 8px; background: #0f172a; border-left: 3px solid #3b82f6; font-size: 13px; color: #cbd5e1; display: none; }
+  .explanation.show { display: block; }
+  .explanation .exp-title { font-weight: 700; color: #60a5fa; margin-bottom: 4px; font-size: 12px; text-transform: uppercase; letter-spacing: .5px; }
+
+  .status-bar { margin-top: 20px; text-align: center; font-size: 13px; color: #64748b; min-height: 20px; }
+
+  .spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid #334155; border-top-color: #3b82f6; border-radius: 50%; animation: spin .7s linear infinite; vertical-align: middle; margin-right: 8px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .fab-refresh { position: fixed; bottom: 24px; right: 24px; z-index: 100; width: 52px; height: 52px; border-radius: 50%; background: #3b82f6; color: #fff; font-size: 22px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 20px rgba(59,130,246,.5); transition: transform .2s, background .2s; border: none; cursor: pointer; }
+  .fab-refresh:hover:not(:disabled) { transform: scale(1.08); background: #2563eb; }
+  .fab-refresh:disabled { opacity: .5; }
+
+  @media (min-width: 700px) { .fab-refresh { display: none; } }
+  @media (max-width: 500px) {
+    body { padding: 16px 10px 80px; }
+    .question-card { padding: 16px; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <h1>☕ 技术面试题 · 多类型</h1>
+    <div class="header-actions">
+      <span class="badge" id="qCountBadge">0 道</span>
+      <span class="badge" id="historyBadge">历史 0 条</span>
+      <button class="btn-ok btn-sm" onclick="exportHistory('md')">📥 导出 MD</button>
+      <button class="btn-ok btn-sm" onclick="exportHistory('json')">📥 导出 JSON</button>
+      <button class="btn-primary btn-sm" id="btnRefreshTop" onclick="refresh()">⟳ 刷新题目</button>
+    </div>
+  </div>
+
+  <!-- 题型选择 -->
+  <div class="type-panel">
+    <div class="type-panel-header">
+      <span class="type-panel-title">📚 题目类型（可多选）</span>
+      <div class="type-panel-actions">
+        <button class="btn-ghost btn-sm" onclick="selectAllTypes(true)">全选</button>
+        <button class="btn-ghost btn-sm" onclick="selectAllTypes(false)">清空</button>
+        <button class="btn-ghost btn-sm" onclick="resetTypes()">默认 Java</button>
+      </div>
+    </div>
+    <div class="type-chips" id="typeChips"></div>
+  </div>
+
+  <!-- 大模型设置 -->
+  <details class="config-panel" id="configPanel">
+    <summary>⚙️ 大模型设置（可选，不配置也能用本地题库）</summary>
+    <div class="config-grid">
+      <div class="preset-row">
+        <span style="font-size:13px;color:#94a3b8;">快速选择服务商（填充下方 Base URL）</span>
+        <select class="preset-select" id="cfgPreset">
+          <option value="">— 选择预置服务商 —</option>
+        </select>
+      </div>
+      <label>Base URL
+        <input id="cfgBaseUrl" placeholder="https://api.openai.com/v1" />
+      </label>
+      <label>API Key
+        <input id="cfgApiKey" type="password" placeholder="sk-..." />
+      </label>
+      <label>模型名（可下拉选择，也可手动输入）
+        <div class="model-row">
+          <input id="cfgModel" placeholder="点击「获取模型」或直接输入" autocomplete="off" />
+          <button type="button" class="btn-ghost btn-sm" onclick="fetchModels(false)" id="btnFetchModels">获取模型</button>
+        </div>
+        <select id="cfgModelSelect" style="display:none;"></select>
+      </label>
+      <label>Temperature
+        <input id="cfgTemp" type="number" step="0.1" min="0" max="2" value="0.8" />
+      </label>
+      <label>max_tokens
+        <input id="cfgMaxTokens" type="number" min="512" max="8000" value="4096" />
+      </label>
+      <label class="checkbox-row">
+        <input type="checkbox" id="cfgUseLLM" />
+        <span>启用大模型生成题目（失败时自动回退本地题库）</span>
+      </label>
+    </div>
+    <div class="config-actions">
+      <button class="btn-ghost btn-sm" onclick="saveConfig()">💾 保存配置</button>
+      <button class="btn-ghost btn-sm" onclick="testConnection()">🔌 测试连接</button>
+    </div>
+    <div class="config-tip">纯浏览器直连，接口需支持 CORS。Base URL 填到 <code>/v1</code> 层级。模型列表通过 <code>GET {BaseURL}/models</code> 自动获取。</div>
+  </details>
+
+  <div class="question-list" id="questionList"></div>
+  <div class="status-bar" id="statusBar"></div>
+</div>
+
+<button class="fab-refresh" id="btnRefreshFab" onclick="refresh()" title="刷新题目">⟳</button>
+
+<script>
+/* =========================================================
+   题型与题库（10 类，120+ 题）
+   ========================================================= */
+const TYPE_LABELS = {
+  java: 'Java',
+  python: 'Python',
+  javascript: 'JavaScript',
+  typescript: 'TypeScript',
+  springboot: 'Spring Boot',
+  springcloud: 'Spring Cloud',
+  mysql: 'MySQL',
+  redis: 'Redis',
+  docker: 'Docker / K8s',
+  algorithm: '算法与数据结构'
+};
+
+const BANK = {
+  java: [
+    { question: "JDK 8 中 HashMap 的底层数据结构是？", options: ["数组 + 链表", "数组 + 链表 + 红黑树", "纯链表", "平衡二叉树"], answer: 1, explanation: "JDK 8 起 HashMap 采用数组 + 链表 + 红黑树。当桶的链表长度达到 8 且数组长度不小于 64 时转红黑树。" },
+    { question: "ArrayList 第一次添加元素时的默认容量是多少？", options: ["0", "10", "16", "8"], answer: 1, explanation: "默认容量为 10，第一次 add 时才真正分配。" },
+    { question: "JDK 8 中 ConcurrentHashMap 如何保证线程安全？", options: ["分段锁 Segment", "全局 synchronized", "CAS + synchronized 锁单个桶", "读写锁"], answer: 2, explanation: "JDK 8 抛弃分段锁，改用 CAS + synchronized 只锁当前桶的头节点。" },
+    { question: "下列哪个不是 Object 类的方法？", options: ["equals", "hashCode", "toString", "length"], answer: 3, explanation: "length 不是 Object 的方法。" },
+    { question: "volatile 关键字能保证什么？", options: ["原子性", "可见性并禁止指令重排序", "只保证原子性", "没有任何作用"], answer: 1, explanation: "volatile 保证可见性和有序性，不保证 i++ 这类复合操作的原子性。" },
+    { question: "JDK 6 之后 synchronized 的锁升级顺序是？", options: ["重量级 → 轻量级 → 偏向锁", "偏向锁 → 轻量级锁 → 重量级锁", "轻量级 → 偏向锁 → 重量级", "无锁 → 重量级"], answer: 1, explanation: "无锁 → 偏向锁 → 轻量级锁 → 重量级锁，只能升级不能降级。" },
+    { question: "ThreadLocal 可能造成内存泄漏的根本原因是？", options: ["key 是强引用", "Entry 的 key 是弱引用而 value 是强引用", "value 是弱引用", "没有 remove 方法"], answer: 1, explanation: "key 被回收后 value 仍被线程持有，长时间存活且不 remove 会泄漏。" },
+    { question: "下列哪个不属于 JVM 运行时数据区？", options: ["程序计数器", "虚拟机栈", "CPU 寄存器组", "方法区"], answer: 2, explanation: "CPU 寄存器组属于硬件，不属于 JVM 运行时数据区。" },
+    { question: "类加载中为静态变量分配内存并设置零值的阶段是？", options: ["加载", "验证", "准备", "初始化"], answer: 2, explanation: "准备阶段分配内存设零值，初始化阶段赋真正初始值。" },
+    { question: "双亲委派模型的主要作用是？", options: ["加快类加载", "避免核心类被篡改", "减少内存", "支持热部署"], answer: 1, explanation: "让类加载先交给父加载器，防止自定义 java.lang.String 覆盖 JDK 实现。" },
+    { question: "下列哪个是 Stream 的终端操作？", options: ["filter", "map", "collect", "sorted"], answer: 2, explanation: "collect 是终端操作，触发流计算；其他三个是中间操作。" },
+    { question: "Integer a=127,b=127; a==b 的结果是？", options: ["true", "false", "编译错误", "运行时异常"], answer: 0, explanation: "IntegerCache 缓存 -128~127，都指向同一对象。" },
+    { question: "String s='a'+'b'; 编译后会发生什么？", options: ["运行时才拼接", "编译期优化为 'ab'", "编译错误", "创建两个对象"], answer: 1, explanation: "两个字面量相加属于编译期常量折叠。" },
+    { question: "接口中的 default 方法是在哪个版本引入的？", options: ["Java 7", "Java 8", "Java 9", "Java 11"], answer: 1, explanation: "Java 8 引入 default 和 static 方法以扩展接口。" },
+    { question: "关于抽象类和接口，下列说法错误的是？", options: ["抽象类可以有构造方法", "接口方法默认 public abstract", "一个类只能继承一个抽象类", "接口可以定义实例变量"], answer: 3, explanation: "接口字段默认 public static final 常量，不能有实例变量。" },
+    { question: "try-with-resources 中的资源必须实现哪个接口？", options: ["Serializable", "Cloneable", "AutoCloseable", "Runnable"], answer: 2, explanation: "需实现 AutoCloseable（或其子接口 Closeable）。" },
+    { question: "泛型擦除后 List<String> 和 List<Integer> 的 getClass() 结果？", options: ["不同", "相同", "编译错误", "运行时异常"], answer: 1, explanation: "泛型编译后被擦除，运行时都是 List。" },
+    { question: "下列哪个是受检异常？", options: ["NullPointerException", "IOException", "ArithmeticException", "ClassCastException"], answer: 1, explanation: "IOException 继承 Exception 且非 RuntimeException，属于受检异常。" },
+    { question: "线程池核心线程满、队列满、最大线程未满时怎么处理新任务？", options: ["直接拒绝", "创建新线程执行", "阻塞等待", "丢弃任务"], answer: 1, explanation: "执行顺序：核心 → 队列 → 非核心 → 拒绝策略。" },
+    { question: "下列哪个不是 JDK 线程池自带的拒绝策略？", options: ["AbortPolicy", "CallerRunsPolicy", "DiscardPolicy", "WaitPolicy"], answer: 3, explanation: "JDK 提供 Abort/CallerRuns/Discard/DiscardOldest，没有 WaitPolicy。" },
+    { question: "死锁的四个必要条件不包括？", options: ["互斥", "占有且等待", "可剥夺", "循环等待"], answer: 2, explanation: "第三个是“不可剥夺”，可剥夺正好相反。" },
+    { question: "CAS 的 ABA 问题可以用什么方式解决？", options: ["加锁", "版本号，如 AtomicStampedReference", "volatile", "synchronized"], answer: 1, explanation: "AtomicStampedReference 附加版本号，识别 ABA 变化。" },
+    { question: "AQS 内部的核心数据结构是？", options: ["红黑树", "双向链表（CLH 队列变体）", "数组", "哈希表"], answer: 1, explanation: "AQS 用 FIFO 双向链表等待队列管理阻塞线程。" },
+    { question: "关于 CountDownLatch 和 CyclicBarrier，说法正确的是？", options: ["没有区别", "CountDownLatch 不可重用，CyclicBarrier 可重用", "CyclicBarrier 不可重用", "两者都可重用"], answer: 1, explanation: "CountDownLatch 计数到 0 后不能重置；CyclicBarrier 可循环使用。" },
+    { question: "ReentrantLock 相比 synchronized 的优势是？", options: ["使用更简单", "支持公平锁、可中断、可超时", "性能一定更高", "无需手动释放"], answer: 1, explanation: "提供公平锁、lockInterruptibly、tryLock 超时等能力，需手动 unlock。" },
+    { question: "Java 线程的 RUNNABLE 状态实际对应？", options: ["包含操作系统层面的运行中和就绪", "只代表运行中", "已终止", "阻塞"], answer: 0, explanation: "Java 的 RUNNABLE 合并了就绪和运行两种状态。" },
+    { question: "-Xmx 参数的作用是？", options: ["初始堆大小", "最大堆大小", "线程栈大小", "元空间大小"], answer: 1, explanation: "-Xmx 设置最大堆；-Xms 初始堆；-Xss 线程栈。" },
+    { question: "G1 垃圾收集器的特点是？", options: ["单线程", "分代收集且支持可预测停顿模型", "只回收新生代", "已废弃"], answer: 1, explanation: "G1 分 Region，可通过 -XX:MaxGCPauseMillis 设置目标停顿。" },
+    { question: "软引用（SoftReference）的回收时机是？", options: ["永不回收", "内存不足时回收", "下次 GC 必回收", "只能手动"], answer: 1, explanation: "软引用在内存不足时被回收，弱引用下次 GC 必回收。" },
+    { question: "下列哪个不是 Java 线程的状态？", options: ["NEW", "BLOCKED", "SUSPENDED", "WAITING"], answer: 2, explanation: "Thread.State 有 6 种，没有 SUSPENDED。" },
+    { question: "HashMap 中 key 为 null 时会怎样？", options: ["抛 NPE", "放在索引 0 的桶中", "不允许 null", "随机放置"], answer: 1, explanation: "JDK 8 中 null 的 hash 为 0，最终落在 table[0] 对应的桶。" },
+    { question: "String 被设计为不可变类的主要原因不包括？", options: ["线程安全", "可缓存 hash", "节省内存", "便于被其他类继承扩展"], answer: 3, explanation: "String 是 final 类，不允许被继承。" },
+    { question: "StringBuilder 和 StringBuffer 的主要区别是？", options: ["没有区别", "StringBuffer 线程安全，StringBuilder 非线程安全", "StringBuilder 线程安全", "两者都线程安全"], answer: 1, explanation: "StringBuffer 方法加 synchronized；StringBuilder 不加锁。" },
+    { question: "transient 关键字的作用是？", options: ["序列化时忽略该字段", "禁止访问", "加锁", "变静态"], answer: 0, explanation: "transient 字段不参与默认序列化，反序列化后为默认值。" },
+    { question: "关于静态方法，说法正确的是？", options: ["可以被重写", "不能重写，只能被隐藏", "视情况而定", "编译报错"], answer: 1, explanation: "静态方法属于类，子类同名静态方法叫隐藏，不支持多态。" },
+    { question: "创建子类对象时构造方法的执行顺序是？", options: ["父类构造 → 子类构造", "子类构造 → 父类构造", "随机", "静态块先于父类构造"], answer: 0, explanation: "先父后子；静态代码块在类加载时执行，早于所有构造方法。" },
+    { question: "关于重载和重写，说法正确的是？", options: ["重载发生在子类", "重写要求方法签名相同", "重载要求返回值不同", "重写可任意改返回类型"], answer: 1, explanation: "重写要求方法名和参数列表相同，返回值可协变。" },
+    { question: "Java 17 中 record 的特点不包括？", options: ["自动生成构造器和访问器", "自动生成 equals/hashCode/toString", "可以继承其他类", "可以实现接口"], answer: 2, explanation: "record 不能继承类，但可以实现接口。" },
+    { question: "Optional 的主要用途是？", options: ["替代所有 null 判断", "显式表达值可能为空，减少 NPE", "提升性能", "用于序列化"], answer: 1, explanation: "Optional 用于方法返回值表达可能为空，不建议作字段或参数。" },
+    { question: "下列哪个集合是线程安全的？", options: ["ArrayList", "HashMap", "CopyOnWriteArrayList", "LinkedList"], answer: 2, explanation: "CopyOnWriteArrayList 通过写时复制实现线程安全，适合读多写少。" }
+  ],
+  python: [
+    { question: "Python 中以下哪种类型是不可变的？", options: ["list", "dict", "tuple", "set"], answer: 2, explanation: "tuple 是不可变序列；list、dict、set 都是可变的。" },
+    { question: "Python 的 GIL 指的是？", options: ["全局解释器锁", "垃圾回收接口", "全局索引列表", "通用接口库"], answer: 0, explanation: "GIL（Global Interpreter Lock）是 CPython 全局解释器锁。" },
+    { question: "以下哪种方式实现的是浅拷贝？", options: ["copy.deepcopy()", "copy.copy()", "两者都是深拷贝", "两者都是浅拷贝"], answer: 1, explanation: "copy.copy 只复制顶层；deepcopy 递归复制嵌套对象。" },
+    { question: "装饰器（decorator）本质上是？", options: ["一个类", "接受函数并返回函数的可调用对象", "语法糖等同于类继承", "宏替换"], answer: 1, explanation: "装饰器本质是高阶函数，@ 只是语法糖。" },
+    { question: "关于 `is` 和 `==`，说法正确的是？", options: ["完全等价", "is 比较值，== 比较身份", "is 比较身份（对象地址），== 比较值", "只在小整数等价"], answer: 2, explanation: "is 判断是否同一对象；== 判断值相等。" },
+    { question: "以下哪个是生成器函数？", options: ["包含 return 的函数", "包含 yield 的函数", "包含 async 的函数", "包含 lambda 的函数"], answer: 1, explanation: "函数体中出现 yield 即生成器函数，调用时返回生成器对象。" },
+    { question: "`__init__` 和 `__new__` 的区别是？", options: ["没有区别", "__new__ 创建实例，__init__ 初始化实例", "__init__ 创建实例", "都只用于类方法"], answer: 1, explanation: "__new__ 分配内存创建实例，__init__ 在实例创建后初始化属性。" },
+    { question: "Python 中 with 语句依赖什么协议？", options: ["迭代器协议", "上下文管理器协议（__enter__ / __exit__）", "描述符协议", "生成器协议"], answer: 1, explanation: "with 依赖上下文管理器协议，对象实现 __enter__ 和 __exit__。" },
+    { question: "以下哪个不属于 Python 内置数据类型？", options: ["bytes", "frozenset", "StringBuilder", "complex"], answer: 2, explanation: "StringBuilder 是 Java 的类，Python 没有。" },
+    { question: "关于列表推导式，下列说法正确的是？", options: ["不能包含条件", "必须使用 lambda", "可以嵌套条件，结果返回列表", "只能用于字典"], answer: 2, explanation: "支持 if 条件和嵌套，返回新列表。" }
+  ],
+  javascript: [
+    { question: "var、let、const 的主要区别是？", options: ["三者完全一样", "var 有函数作用域和变量提升，let/const 是块级作用域", "const 必须初始化，let 不能初始化", "let 是全局变量"], answer: 1, explanation: "var 有函数作用域和变量提升；let/const 是块级作用域并有暂时性死区。" },
+    { question: "JS 的原型链用于实现什么？", options: ["类型转换", "继承", "垃圾回收", "异步"], answer: 1, explanation: "通过 __proto__ 向上查找属性，实现对象继承。" },
+    { question: "以下哪项不是宏任务（macrotask）？", options: ["setTimeout", "setInterval", "Promise.then", "I/O 回调"], answer: 2, explanation: "Promise.then 属于微任务；setTimeout 等是宏任务。" },
+    { question: "以下代码中 this 指向全局对象（非严格模式）的是？", options: ["obj.method()", "普通函数独立调用 f()", "箭头函数里", "new Foo()"], answer: 1, explanation: "非严格模式下普通函数独立调用 this 指向全局；箭头函数继承外层 this。" },
+    { question: "== 和 === 的区别是？", options: ["完全一样", "== 会做类型转换后比较，=== 严格相等", "=== 比较引用", "== 更快"], answer: 1, explanation: "== 允许隐式类型转换，=== 要求类型和值都相同。" },
+    { question: "以下哪个不是 Promise 的方法？", options: ["then", "catch", "finally", "await"], answer: 3, explanation: "await 是操作符不是方法；then/catch/finally 是 Promise 原型方法。" },
+    { question: "箭头函数和普通函数的主要区别不包括？", options: ["箭头函数没有自己的 this", "箭头函数没有 arguments", "箭头函数不能作为构造函数", "箭头函数不能返回值"], answer: 3, explanation: "箭头函数可以正常返回值。" },
+    { question: "关于闭包，说法正确的是？", options: ["应完全避免", "闭包是函数及其词法环境的组合，可访问外部函数的变量", "闭包只能在 ES6 用", "闭包是同步执行的"], answer: 1, explanation: "闭包使内部函数可以访问外部函数的变量，即使外部函数已返回。" },
+    { question: "以下哪个不会触发事件循环的微任务队列？", options: ["Promise.resolve().then(fn)", "queueMicrotask(fn)", "MutationObserver 回调", "setTimeout(fn, 0)"], answer: 3, explanation: "setTimeout 走宏任务队列；前三者是微任务。" },
+    { question: "数组的 reduce 方法作用是？", options: ["遍历并返回新数组", "将数组归约为单个值", "过滤元素", "排序"], answer: 1, explanation: "reduce 通过累加器归约为单值，常用于求和、扁平化、分组。" }
+  ],
+  typescript: [
+    { question: "interface 和 type 的主要区别是？", options: ["完全相同", "interface 可声明合并、可被 extends；type 可为联合/元组等类型起别名", "type 只能定义对象", "interface 性能更好"], answer: 1, explanation: "interface 支持声明合并和 implements；type 更灵活但不可重复声明合并。" },
+    { question: "any 和 unknown 的区别是？", options: ["完全一样", "unknown 更安全，使用前必须类型收窄；any 跳过所有检查", "any 更安全", "unknown 不能赋值"], answer: 1, explanation: "unknown 是安全版的 any，赋值后必须收窄类型才能操作。" },
+    { question: "TS 泛型的主要作用是？", options: ["运行时创建类型", "让类型作为参数传递，实现复用与类型安全", "替代接口", "编译到 JS 时保留"], answer: 1, explanation: "泛型让函数、类、接口以类型参数复用逻辑，编译后擦除。" },
+    { question: "以下哪个工具类型可以将所有属性变为可选？", options: ["Required<T>", "Partial<T>", "Readonly<T>", "Pick<T, K>"], answer: 1, explanation: "Partial<T> 将 T 的所有属性变为可选；Required 相反。" },
+    { question: "关于 TS 中的类型断言，说法正确的是？", options: ["运行时真正转换类型", "只是告诉编译器把值当作某类型，不改变运行时行为", "会影响性能", "等同于强制转换对象"], answer: 1, explanation: "as/<> 只影响编译期类型检查，运行时不做任何转换。" },
+    { question: "TS 中的联合类型用哪个符号表示？", options: ["&", "|", "&&", "||"], answer: 1, explanation: "联合类型用 |；& 表示交叉类型。" },
+    { question: "TS 编译后类型信息会怎样？", options: ["保留到运行时", "被擦除，只保留 JS 代码", "转成注释", "转成 JSON"], answer: 1, explanation: "编译后类型标注被擦除，运行时没有类型信息。" },
+    { question: "以下哪个不是 TS 的内置工具类型？", options: ["Partial", "Omit", "Merge", "Record"], answer: 2, explanation: "TS 没有 Merge 工具类型；Partial/Omit/Record/Pick/Exclude 都是内置的。" }
+  ],
+  springboot: [
+    { question: "@SpringBootApplication 注解包含以下哪些注解？", options: ["@Configuration + @EnableAutoConfiguration + @ComponentScan", "@RestController + @Service", "@SpringBootTest", "@EnableCaching"], answer: 0, explanation: "@SpringBootApplication 是组合注解，包含这三大注解。" },
+    { question: "Spring Boot 自动配置的核心原理是？", options: ["反射扫描所有类", "通过 spring.factories / AutoConfiguration.imports 加载候选配置，结合 @Conditional 按需装配", "硬编码配置", "由 Maven 决定"], answer: 1, explanation: "Boot 2.7 前读 META-INF/spring.factories，Boot 3+ 读 AutoConfiguration.imports，结合 @Conditional 按需装配。" },
+    { question: "application.yml 和 application.properties 的优先级关系是？", options: ["properties 优先", "yml 优先", "properties 在 yml 之后加载，会覆盖同名属性", "没有优先级"], answer: 2, explanation: "两者都会加载，properties 后加载会覆盖 yml 同名项。" },
+    { question: "@Autowired 和 @Resource 的主要区别是？", options: ["完全一样", "@Autowired 按类型，@Resource 默认按名称", "@Autowired 按名称", "@Resource 只用于构造器"], answer: 1, explanation: "@Autowired 是 Spring 注解默认按类型；@Resource 是 JSR-250 标准默认按名称。" },
+    { question: "@Transactional 注解在以下哪种情况下会失效？", options: ["public 方法上", "同一个类内部方法自调用", "注解在类上", "rollbackFor 已配置"], answer: 1, explanation: "同类内部自调用不经过代理，事务不生效；另非 public、异常被 catch 也会失效。" },
+    { question: "Spring Boot 默认内嵌的 Servlet 容器是？", options: ["Jetty", "Undertow", "Tomcat", "Netty"], answer: 2, explanation: "spring-boot-starter-web 默认内嵌 Tomcat。" },
+    { question: "关于 @ConfigurationProperties，说法正确的是？", options: ["只能用于 @Component 类", "可以批量绑定配置文件中的属性到 Bean", "仅支持 properties", "不能与 @Validated 一起用"], answer: 1, explanation: "批量绑定同前缀配置到 Bean，支持松散绑定和嵌套对象。" },
+    { question: "Spring Boot 的 starter 机制作用是？", options: ["仅提供示例代码", "聚合依赖，一键引入某功能所需的全部依赖", "定义颜色主题", "只能用于测试"], answer: 1, explanation: "starter 是依赖聚合 POM，引入即获得所需依赖和自动配置。" },
+    { question: "Spring Boot 中拦截器和过滤器的区别是？", options: ["完全相同", "Filter 属于 Servlet 规范，Interceptor 属于 Spring MVC，Filter 执行更早", "Interceptor 更早", "Filter 不能修改请求"], answer: 1, explanation: "Filter 由 Servlet 容器管理作用于所有请求；Interceptor 由 Spring MVC 管理，时机在 Filter 之后。" },
+    { question: "Spring Boot 的 @ConditionalOnMissingBean 作用是？", options: ["容器中无某 Bean 时才注册当前 Bean", "容器中有某 Bean 时覆盖", "删除 Bean", "只在启动时执行"], answer: 0, explanation: "用于自动配置的兜底装配：用户未定义时才使用默认实现。" }
+  ],
+  springcloud: [
+    { question: "Spring Cloud 中服务注册与发现常用的组件不包括？", options: ["Eureka", "Nacos", "Consul", "Tomcat"], answer: 3, explanation: "Tomcat 是 Servlet 容器，不是注册中心。" },
+    { question: "CAP 理论中，Nacos 默认支持的模式是？", options: ["仅 CP", "仅 AP", "AP 和 CP 均可切换", "不支持 CAP"], answer: 2, explanation: "Nacos 支持 AP（临时实例）和 CP（持久实例）两种模式。" },
+    { question: "Spring Cloud Gateway 基于哪种技术栈？", options: ["Servlet", "Spring WebFlux + Reactor Netty", "Struts", "Vert.x"], answer: 1, explanation: "Gateway 基于响应式 WebFlux 栈，非阻塞。" },
+    { question: "熔断降级的主要目的是？", options: ["加速请求", "当依赖服务异常时快速失败并降级，防止雪崩", "替代负载均衡", "持久化数据"], answer: 1, explanation: "熔断快速失败、降级返回兜底，避免线程池耗尽引发雪崩。" },
+    { question: "OpenFeign 的作用是？", options: ["配置中心", "声明式 HTTP 客户端，简化服务调用", "网关", "消息队列"], answer: 1, explanation: "通过接口 + 注解声明远程调用，运行时生成代理发 HTTP 请求。" },
+    { question: "Spring Cloud 中实现配置中心常用的组件是？", options: ["Config Server / Nacos Config", "Zuul", "Eureka", "Ribbon"], answer: 0, explanation: "Spring Cloud Config 和 Nacos Config 提供配置集中管理能力。" },
+    { question: "服务雪崩的常见应对方案不包括？", options: ["熔断", "限流", "降级", "增加同步调用层级"], answer: 3, explanation: "增加同步调用层级会加剧雪崩；熔断/限流/降级/隔离才是正解。" },
+    { question: "Spring Cloud LoadBalancer 是哪个组件的替代品？", options: ["Eureka", "Ribbon", "Hystrix", "Zuul"], answer: 1, explanation: "Spring Cloud 2020 起用 LoadBalancer 替代进入维护期的 Ribbon。" }
+  ],
+  mysql: [
+    { question: "InnoDB 和 MyISAM 的主要区别不包括？", options: ["InnoDB 支持事务", "InnoDB 支持行级锁", "InnoDB 支持外键", "MyISAM 支持事务"], answer: 3, explanation: "MyISAM 不支持事务、外键和行级锁；InnoDB 支持。" },
+    { question: "MySQL 索引默认使用的数据结构是？", options: ["B 树", "B+ 树", "哈希表", "红黑树"], answer: 1, explanation: "InnoDB 索引用 B+ 树，叶子节点存数据并双向链表连接。" },
+    { question: "联合索引 (a,b,c) 能命中以下哪个查询条件？", options: ["b=1 AND c=2", "a=1 AND c=2", "a=1 AND b=2", "c=2"], answer: 2, explanation: "遵循最左前缀原则，a=1 AND b=2 可命中；跳过 a/b 会部分失效。" },
+    { question: "MySQL 默认的事务隔离级别是？", options: ["READ UNCOMMITTED", "READ COMMITTED", "REPEATABLE READ", "SERIALIZABLE"], answer: 2, explanation: "InnoDB 默认 REPEATABLE READ，用 MVCC 实现可重复读。" },
+    { question: "MVCC 主要依靠什么实现？", options: ["锁", "隐藏字段 + undo log + ReadView", "主从复制", "存储过程"], answer: 1, explanation: "InnoDB MVCC 依赖 trx_id/roll_pointer、undo log 版本链和 ReadView。" },
+    { question: "以下哪个操作最可能导致索引失效？", options: ["等值查询", "范围查询", "对索引列使用函数或运算", "覆盖索引"], answer: 2, explanation: "索引列上用函数、隐式转换、前导模糊都会失效。" },
+    { question: "explain 的 type 字段，性能由好到差排序正确的是？", options: ["ALL > index > range > ref > const", "const > ref > range > index > ALL", "range > ref > const > ALL", "index > ALL > range"], answer: 1, explanation: "常见性能排序：const > ref > range > index > ALL。" },
+    { question: "MySQL 主从复制的默认方式是？", options: ["同步复制", "异步复制", "半同步复制", "组复制"], answer: 1, explanation: "默认异步复制：主写 binlog，从拉取到 relay log 再重放。" },
+    { question: "InnoDB 的行锁实际加在什么上？", options: ["行数据本身", "索引项上", "表上", "页上"], answer: 1, explanation: "行锁加在索引项上；没走索引会退化为全表锁。" },
+    { question: "以下哪个情况适合使用覆盖索引？", options: ["查询所有列", "查询字段都在索引中，避免回表", "关联查询", "写入频繁"], answer: 1, explanation: "覆盖索引使查询字段全在二级索引中，无需回表，减少 IO。" }
+  ],
+  redis: [
+    { question: "Redis 支持的数据类型不包括？", options: ["String", "Hash", "List", "Table"], answer: 3, explanation: "Redis 核心有 String/Hash/List/Set/ZSet，没有 Table。" },
+    { question: "Redis RDB 持久化的特点是？", options: ["实时记录每条写命令", "快照式保存，恢复快但可能丢失最后一次快照后的数据", "不支持持久化", "必须与 AOF 一起开启"], answer: 1, explanation: "RDB 是定时快照，文件紧凑恢复快，可能丢少量数据。" },
+    { question: "缓存穿透的典型解决方案是？", options: ["缓存空值或布隆过滤器", "增加热点缓存", "集群扩容", "加大 key 数量"], answer: 0, explanation: "缓存穿透指查不存在的数据直达 DB，可缓存空值或用布隆过滤器。" },
+    { question: "Redis 分布式锁常用哪个命令实现？", options: ["SETNX", "EXPIRE", "SET key value NX PX ttl", "GETSET"], answer: 2, explanation: "SET key value NX PX ttl 一条命令实现设置和过期，解锁需用 Lua 保证原子。" },
+    { question: "maxmemory-policy 中淘汰最近最少使用 key 的策略是？", options: ["noeviction", "allkeys-lru", "allkeys-random", "volatile-ttl"], answer: 1, explanation: "allkeys-lru 在全部 key 中按 LRU 淘汰；volatile-lru 只针对过期 key。" },
+    { question: "Redis 单线程模型为什么快？", options: ["使用了多线程", "纯内存 + IO 多路复用 + 避免锁和上下文切换", "CPU 占用高", "支持 SQL"], answer: 1, explanation: "内存操作 + epoll + 单线程避免锁开销；Redis 6 后 IO 多线程但命令仍单线程。" },
+    { question: "Redis 哨兵（Sentinel）的主要作用是？", options: ["做缓存分片", "监控主节点并在故障时自动主从切换", "持久化", "替代 AOF"], answer: 1, explanation: "Sentinel 监控集群，主节点宕机时自动选新主并通知客户端。" },
+    { question: "Redis Cluster 采用的分片方案是？", options: ["一致性哈希", "哈希槽（16384 个槽）", "范围分片", "轮询"], answer: 1, explanation: "key 通过 CRC16 映射到 16384 个槽，槽分布到各节点。" },
+    { question: "Redis 中 ZSet 的典型应用场景是？", options: ["计数字段", "排行榜", "消息队列", "位图统计"], answer: 1, explanation: "ZSet 带 score 排序，适合排行榜、延时队列等。" },
+    { question: "关于 Redis 过期删除策略，说法正确的是？", options: ["只使用惰性删除", "只使用定期删除", "惰性删除 + 定期删除结合", "永不删除"], answer: 2, explanation: "Redis 结合惰性删除（访问时判断）和定期删除（周期扫描）。" }
+  ],
+  docker: [
+    { question: "Docker 镜像和容器的关系是？", options: ["镜像就是容器", "镜像是只读模板，容器是镜像的运行实例", "容器是压缩包", "没有关系"], answer: 1, explanation: "镜像是只读层叠文件系统，容器在其上加可写层运行。" },
+    { question: "Dockerfile 中 CMD 和 ENTRYPOINT 的区别是？", options: ["完全一样", "ENTRYPOINT 是固定入口，CMD 提供默认参数且可被 docker run 覆盖", "CMD 不能被覆盖", "ENTRYPOINT 只能写一条"], answer: 1, explanation: "docker run 追加参数会覆盖 CMD，但不会覆盖 ENTRYPOINT。" },
+    { question: "Kubernetes 中最小的调度单元是？", options: ["Container", "Pod", "Deployment", "Node"], answer: 1, explanation: "Pod 是 K8s 最小部署和调度单元，包含一个或多个共享网络/存储的容器。" },
+    { question: "Deployment 和 StatefulSet 的主要区别是？", options: ["没有区别", "StatefulSet 保证有序、稳定网络标识和持久存储；Deployment 面向无状态", "Deployment 只能一个副本", "StatefulSet 不支持滚动更新"], answer: 1, explanation: "StatefulSet 为副本提供稳定 hostname、有序启动和 PVC；Deployment 面向无状态服务。" },
+    { question: "K8s Service 的 ClusterIP 类型作用是？", options: ["对外负载均衡", "集群内部虚拟 IP，仅在集群内访问", "NodePort", "无作用"], answer: 1, explanation: "ClusterIP 分配集群内虚拟 IP；NodePort 暴露节点端口；LoadBalancer 借助云负载均衡。" },
+    { question: "K8s 中保存敏感信息的资源是？", options: ["ConfigMap", "Secret", "Volume", "Ingress"], answer: 1, explanation: "Secret 保存密码、Token 等敏感信息；ConfigMap 保存非敏感配置。" },
+    { question: "Ingress 的主要作用是？", options: ["存储", "七层 HTTP 路由与负载均衡，把域名/路径映射到 Service", "网络隔离", "容器运行时"], answer: 1, explanation: "Ingress 提供外部到内部的七层 HTTP 路由，由 Ingress Controller 实现。" },
+    { question: "以下哪个不是 K8s 的卷类型？", options: ["emptyDir", "hostPath", "PVC", "Namespace"], answer: 3, explanation: "Namespace 用于资源隔离，不是卷类型。" }
+  ],
+  algorithm: [
+    { question: "平均和最坏时间复杂度都是 O(n log n) 的排序算法是？", options: ["快速排序", "归并排序", "冒泡排序", "插入排序"], answer: 1, explanation: "归并排序稳定且平均最坏都是 O(n log n)；快排最坏 O(n²)。" },
+    { question: "二分查找的时间复杂度是？", options: ["O(1)", "O(log n)", "O(n)", "O(n log n)"], answer: 1, explanation: "每次折半搜索，O(log n)，要求数据有序。" },
+    { question: "以下哪个算法不是稳定排序？", options: ["归并排序", "冒泡排序", "插入排序", "快速排序"], answer: 3, explanation: "快排不稳定；归并/冒泡/插入实现正确时稳定。" },
+    { question: "哈希表的平均查找时间复杂度是？", options: ["O(1)", "O(log n)", "O(n)", "O(n²)"], answer: 0, explanation: "哈希表平均 O(1)，最坏因冲突退化 O(n)。" },
+    { question: "二叉树的中序遍历顺序是？", options: ["根-左-右", "左-根-右", "左-右-根", "右-左-根"], answer: 1, explanation: "中序：左-根-右；BST 中序遍历递增。" },
+    { question: "以下哪种问题适合用动态规划解决？", options: ["所有排序问题", "存在最优子结构和重叠子问题", "所有图遍历", "只适合小数据量"], answer: 1, explanation: "DP 适用于最优子结构 + 重叠子问题，如背包、LCS、爬楼梯。" },
+    { question: "反转单链表的常见时间复杂度是？", options: ["O(1)", "O(log n)", "O(n)", "O(n²)"], answer: 2, explanation: "遍历一次即可 O(n)，原地迭代空间 O(1)。" },
+    { question: "以下哪种数据结构最适合实现 LRU 缓存？", options: ["数组", "哈希表 + 双向链表", "平衡二叉树", "堆"], answer: 1, explanation: "哈希表 O(1) 查找 + 双向链表 O(1) 移动，实现 O(1) get/put。" }
+  ]
+};
+
+/* =========================================================
+   Base URL 预置服务商
+   ========================================================= */
+const BASE_URL_PRESETS = [
+  { name: 'OpenAI', url: 'https://api.openai.com/v1' },
+  { name: 'DeepSeek', url: 'https://api.deepseek.com/v1' },
+  { name: '智谱 GLM', url: 'https://open.bigmodel.cn/api/paas/v4' },
+  { name: 'Moonshot Kimi', url: 'https://api.moonshot.cn/v1' },
+  { name: '通义千问 DashScope', url: 'https://dashscope.aliyuncs.com/compatible-mode/v1' },
+  { name: '硅基流动 SiliconFlow', url: 'https://api.siliconflow.cn/v1' },
+  { name: '百川智能', url: 'https://api.baichuan-ai.com/v1' },
+  { name: '零一万物', url: 'https://api.lingyiwanwu.com/v1' },
+  { name: 'MiniMax', url: 'https://api.minimax.chat/v1' },
+  { name: '阶跃星辰', url: 'https://api.stepfun.com/v1' },
+  { name: 'Groq', url: 'https://api.groq.com/openai/v1' },
+  { name: 'Together AI', url: 'https://api.together.xyz/v1' },
+  { name: 'OpenRouter', url: 'https://openrouter.ai/api/v1' },
+  { name: 'Fireworks', url: 'https://api.fireworks.ai/inference/v1' },
+  { name: 'Gemini（OpenAI 兼容）', url: 'https://generativelanguage.googleapis.com/v1beta/openai' },
+  { name: 'Ollama 本地', url: 'http://localhost:11434/v1' },
+  { name: 'vLLM 本地', url: 'http://localhost:8000/v1' },
+  { name: 'LM Studio 本地', url: 'http://localhost:1234/v1' }
+];
+
+/* =========================================================
+   全局状态
+   ========================================================= */
+const CONFIG_KEY = 'java_quiz_llm_config_v5';
+const ASKED_KEY = 'java_quiz_asked_questions_v5';
+const HISTORY_KEY = 'java_quiz_history_v2';
+const TYPES_KEY = 'java_quiz_active_types_v1';
+const HISTORY_MAX = 500;
+
+let askedQuestions = [];
+let currentQuestions = [];
+let activeTypes = ['java'];
+let isGenerating = false;
+let modelsFetchedFor = '';
+
+let history = [];
+let historyMap = new Map();
+
+/* =========================================================
+   题型 UI
+   ========================================================= */
+function renderTypeChips() {
+  const wrap = document.getElementById('typeChips');
+  wrap.innerHTML = Object.entries(TYPE_LABELS).map(([k, label]) =>
+    `<label class="chip ${activeTypes.includes(k) ? 'active' : ''}" data-type="${k}">
+      <input type="checkbox" value="${k}" ${activeTypes.includes(k) ? 'checked' : ''} onchange="toggleType('${k}', this.checked)" />
+      ${label}
+    </label>`
+  ).join('');
+}
+function toggleType(type, checked) {
+  if (checked) {
+    if (!activeTypes.includes(type)) activeTypes.push(type);
+  } else {
+    activeTypes = activeTypes.filter(t => t !== type);
+    if (!activeTypes.length) {
+      // 至少保留一个
+      activeTypes = ['java'];
+    }
+  }
+  saveActiveTypes();
+  renderTypeChips();
+}
+function selectAllTypes(all) {
+  activeTypes = all ? Object.keys(TYPE_LABELS) : ['java'];
+  saveActiveTypes();
+  renderTypeChips();
+}
+function resetTypes() {
+  activeTypes = ['java'];
+  saveActiveTypes();
+  renderTypeChips();
+}
+function saveActiveTypes() {
+  try { localStorage.setItem(TYPES_KEY, JSON.stringify(activeTypes)); } catch (e) {}
+}
+function loadActiveTypes() {
+  try {
+    const raw = localStorage.getItem(TYPES_KEY);
+    const arr = raw ? JSON.parse(raw) : null;
+    if (Array.isArray(arr) && arr.length) {
+      activeTypes = arr.filter(t => TYPE_LABELS[t]);
+      if (!activeTypes.length) activeTypes = ['java'];
+    }
+  } catch (e) { activeTypes = ['java']; }
+}
+
+/* =========================================================
+   配置
+   ========================================================= */
+function loadConfig() {
+  try { const raw = localStorage.getItem(CONFIG_KEY); return raw ? JSON.parse(raw) : {}; }
+  catch (e) { return {}; }
+}
+function saveConfig() {
+  const cfg = {
+    baseUrl: document.getElementById('cfgBaseUrl').value.trim().replace(/\/+$/, ''),
+    apiKey: document.getElementById('cfgApiKey').value.trim(),
+    model: document.getElementById('cfgModel').value.trim(),
+    temperature: parseFloat(document.getElementById('cfgTemp').value) || 0.8,
+    maxTokens: parseInt(document.getElementById('cfgMaxTokens').value) || 4096,
+    useLLM: document.getElementById('cfgUseLLM').checked
+  };
+  if (cfg.useLLM && (!cfg.baseUrl || !cfg.apiKey || !cfg.model)) {
+    alert('已勾选启用大模型，请完整填写 Base URL、API Key、模型名'); return;
+  }
+  localStorage.setItem(CONFIG_KEY, JSON.stringify(cfg));
+  setStatus('✅ 配置已保存', 'success');
+}
+function fillConfigToUI() {
+  const cfg = loadConfig();
+  document.getElementById('cfgBaseUrl').value = cfg.baseUrl || '';
+  document.getElementById('cfgApiKey').value = cfg.apiKey || '';
+  document.getElementById('cfgModel').value = cfg.model || '';
+  document.getElementById('cfgTemp').value = cfg.temperature ?? 0.8;
+  document.getElementById('cfgMaxTokens').value = cfg.maxTokens ?? 4096;
+  document.getElementById('cfgUseLLM').checked = !!cfg.useLLM;
+  document.getElementById('configPanel').open = false;
+}
+function readConfigFromForm() {
+  return {
+    baseUrl: document.getElementById('cfgBaseUrl').value.trim().replace(/\/+$/, ''),
+    apiKey: document.getElementById('cfgApiKey').value.trim(),
+    model: document.getElementById('cfgModel').value.trim(),
+    temperature: parseFloat(document.getElementById('cfgTemp').value) || 0.8,
+    maxTokens: parseInt(document.getElementById('cfgMaxTokens').value) || 4096
+  };
+}
+
+/* =========================================================
+   历史
+   ========================================================= */
+function loadHistory() {
+  try {
+    const raw = localStorage.getItem(HISTORY_KEY);
+    history = raw ? JSON.parse(raw) : [];
+    if (!Array.isArray(history)) history = [];
+  } catch (e) { history = []; }
+  historyMap = new Map();
+  for (const rec of history) if (rec && rec.question) historyMap.set(rec.question, rec);
+  updateHistoryBadge();
+}
+function saveHistory() {
+  if (history.length > HISTORY_MAX) history = history.slice(-HISTORY_MAX);
+  historyMap = new Map();
+  for (const rec of history) if (rec && rec.question) historyMap.set(rec.question, rec);
+  try { localStorage.setItem(HISTORY_KEY, JSON.stringify(history)); }
+  catch (e) {
+    history = history.slice(-Math.floor(HISTORY_MAX / 2));
+    historyMap = new Map();
+    for (const rec of history) if (rec && rec.question) historyMap.set(rec.question, rec);
+    try { localStorage.setItem(HISTORY_KEY, JSON.stringify(history)); } catch (e2) {}
+  }
+  updateHistoryBadge();
+}
+function addQuestionsToHistory(questions, source) {
+  const ts = new Date().toISOString();
+  for (const q of questions) {
+    if (historyMap.has(q.question)) continue;
+    const rec = {
+      question: q.question,
+      type: q.type || 'java',
+      options: q.options.slice(),
+      answer: q.answer,
+      explanation: q.explanation,
+      userAnswer: null,
+      timestamp: ts,
+      source: source || 'unknown'
+    };
+    history.push(rec);
+    historyMap.set(rec.question, rec);
+  }
+  saveHistory();
+}
+function updateUserAnswer(question, userAnswer) {
+  const rec = historyMap.get(question);
+  if (!rec) return;
+  rec.userAnswer = userAnswer;
+  rec.answeredAt = new Date().toISOString();
+  saveHistory();
+}
+function updateHistoryBadge() {
+  const el = document.getElementById('historyBadge');
+  if (el) {
+    const answered = history.filter(h => h.userAnswer !== null && h.userAnswer !== undefined).length;
+    el.textContent = `历史 ${history.length} 条 / 已答 ${answered}`;
+  }
+}
+
+/* =========================================================
+   导出
+   ========================================================= */
+function exportHistory(format) {
+  if (!history.length) { alert('暂无历史题目可导出'); return; }
+  const ts = new Date();
+  const stamp = ts.toISOString().replace(/[:.]/g, '-').slice(0, 19);
+  const answered = history.filter(h => h.userAnswer !== null && h.userAnswer !== undefined);
+  const correct = answered.filter(h => h.userAnswer === h.answer);
+
+  if (format === 'json') {
+    const data = {
+      exportedAt: ts.toISOString(),
+      total: history.length, answered: answered.length, correct: correct.length,
+      accuracy: answered.length ? +(correct.length / answered.length * 100).toFixed(2) : 0,
+      questions: history.map(h => ({
+        question: h.question,
+        type: h.type || 'java',
+        typeLabel: TYPE_LABELS[h.type] || h.type,
+        options: h.options,
+        answer: h.answer, correctOption: optionLetter(h.answer),
+        explanation: h.explanation,
+        userAnswer: (h.userAnswer === undefined || h.userAnswer === null) ? null : h.userAnswer,
+        userOption: (h.userAnswer === undefined || h.userAnswer === null) ? null : optionLetter(h.userAnswer),
+        isCorrect: (h.userAnswer === undefined || h.userAnswer === null) ? null : (h.userAnswer === h.answer),
+        timestamp: h.timestamp, source: h.source
+      }))
+    };
+    downloadFile(JSON.stringify(data, null, 2), `quiz-history-${stamp}.json`, 'application/json');
+  } else {
+    const lines = [];
+    lines.push('# 技术面试题历史记录', '');
+    lines.push(`- 导出时间：${formatDate(ts)}`);
+    lines.push(`- 题目总数：${history.length}`);
+    lines.push(`- 已作答：${answered.length}`);
+    lines.push(`- 答对：${correct.length}`);
+    lines.push(`- 正确率：${answered.length ? (correct.length / answered.length * 100).toFixed(1) + '%' : '—'}`, '', '---', '');
+
+    history.forEach((h, i) => {
+      const typeLabel = TYPE_LABELS[h.type] || h.type || 'Java';
+      lines.push(`## ${i + 1}. [${typeLabel}] ${h.question}`, '');
+      h.options.forEach((opt, oi) => {
+        const isAns = oi === h.answer;
+        const isUser = oi === h.userAnswer;
+        const mark = isUser ? '- [x]' : '- [ ]';
+        let suffix = '';
+        if (isAns) suffix += ' ✅ 正确答案';
+        if (isUser && !isAns) suffix += ' ❌ 你的选择';
+        if (isUser && isAns) suffix += ' （你答对了）';
+        lines.push(`${mark} ${optionLetter(oi)}. ${opt}${suffix}`);
+      });
+      lines.push('');
+      if (h.userAnswer === null || h.userAnswer === undefined) {
+        lines.push('**你的选择**：未作答');
+      } else {
+        const ok = h.userAnswer === h.answer;
+        lines.push(`**你的选择**：${optionLetter(h.userAnswer)} ${ok ? '✅ 正确' : '❌ 错误'}（正确答案：${optionLetter(h.answer)}）`);
+      }
+      lines.push('', `**解析**：${h.explanation || '—'}`, '');
+      lines.push(`<sub>类型：${typeLabel} ｜ 来源：${h.source === 'llm' ? '大模型生成' : '本地题库'} ｜ 出现：${formatDate(new Date(h.timestamp))}${h.answeredAt ? ' ｜ 作答：' + formatDate(new Date(h.answeredAt)) : ''}</sub>`, '', '---', '');
+    });
+    downloadFile(lines.join('\n'), `quiz-history-${stamp}.md`, 'text/markdown');
+  }
+  setStatus(`✅ 已导出 ${history.length} 道历史题目（${format.toUpperCase()}）`, 'success');
+}
+function optionLetter(idx) { return String.fromCharCode(65 + idx); }
+function formatDate(d) {
+  const p = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+}
+function downloadFile(content, filename, mime) {
+  const blob = new Blob([content], { type: mime + ';charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+/* =========================================================
+   模型拉取
+   ========================================================= */
+function modelsEndpoint(baseUrl) {
+  let b = baseUrl.trim().replace(/\/+$/, '');
+  if (!b) throw new Error('请先填写 Base URL');
+  if (/\/chat\/completions$/.test(b)) return b.replace(/\/chat\/completions$/, '/models');
+  return b + '/models';
+}
+function isGeminiNative(baseUrl) {
+  return /generativelanguage\.googleapis\.com/.test(baseUrl) && !/\/openai/.test(baseUrl);
+}
+function geminiBase(baseUrl) {
+  return baseUrl.trim().replace(/\/+$/, '').replace(/\/(v1beta|v1)\/.*$/, '').replace(/\/(v1beta|v1)$/, '');
+}
+
+async function fetchModels(silent) {
+  const baseUrl = document.getElementById('cfgBaseUrl').value.trim();
+  const apiKey = document.getElementById('cfgApiKey').value.trim();
+  const btn = document.getElementById('btnFetchModels');
+  const sel = document.getElementById('cfgModelSelect');
+  const modelInput = document.getElementById('cfgModel');
+
+  if (!baseUrl) { if (!silent) setStatus('❌ 请先填写 Base URL', 'error'); return; }
+
+  btn.disabled = true;
+  const orig = btn.textContent;
+  btn.textContent = '拉取中…';
+  if (!silent) setStatus('<span class="spinner"></span> 正在拉取模型列表…');
+
+  try {
+    let ids;
+    if (isGeminiNative(baseUrl)) {
+      const res = await fetch(geminiBase(baseUrl) + '/v1beta/models', {
+        headers: { 'x-goog-api-key': apiKey }
+      });
+      if (!res.ok) { let t=''; try{t=await res.text();}catch(e){} throw new Error('HTTP ' + res.status + ' ' + t.slice(0,200)); }
+      const data = await res.json();
+      ids = (data.models || []).map(m => (m.name || '').replace(/^models\//, '')).filter(Boolean);
+    } else {
+      const res = await fetch(modelsEndpoint(baseUrl), {
+        headers: { 'Authorization': 'Bearer ' + apiKey }
+      });
+      if (!res.ok) { let t=''; try{t=await res.text();}catch(e){} throw new Error('HTTP ' + res.status + ' ' + t.slice(0,200)); }
+      const data = await res.json();
+      const list = Array.isArray(data) ? data : (data.data || data.models || []);
+      ids = list.map(m => typeof m === 'string' ? m : (m.id || m.name || m.model)).filter(Boolean);
+    }
+    ids = [...new Set(ids)].sort();
+    if (!ids.length) throw new Error('返回列表为空');
+
+    sel.innerHTML = '';
+    ids.forEach(id => {
+      const o = document.createElement('option');
+      o.value = id; o.textContent = id; sel.appendChild(o);
+    });
+    sel.style.display = 'block';
+
+    const cur = modelInput.value.trim();
+    if (cur && ids.includes(cur)) { sel.value = cur; }
+    else {
+      const prefer = ids.find(m => /chat|gpt|deepseek|qwen|glm|claude|llama|gemini|mixtral|abab|baichuan|yi/i.test(m)) || ids[0];
+      sel.value = prefer; modelInput.value = prefer;
+    }
+    modelsFetchedFor = baseUrl + '|' + apiKey;
+    setStatus(`✅ 共 ${ids.length} 个模型，当前：${modelInput.value}`, 'success');
+  } catch (e) {
+    if (silent) console.warn('[自动获取模型失败]', e.message);
+    else setStatus('❌ 获取模型失败：' + e.message + '（仍可手动输入模型名）', 'error');
+  } finally {
+    btn.disabled = false; btn.textContent = orig;
+  }
+}
+function maybeAutoFetchModels() {
+  const baseUrl = document.getElementById('cfgBaseUrl').value.trim().replace(/\/+$/, '');
+  const apiKey = document.getElementById('cfgApiKey').value.trim();
+  if (!baseUrl || !apiKey) return;
+  const key = baseUrl + '|' + apiKey;
+  if (key === modelsFetchedFor) return;
+  fetchModels(true);
+}
+
+/* =========================================================
+   抽题：多类型均分
+   ========================================================= */
+function pickFromBank(types, targetCount) {
+  if (!types.length) types = ['java'];
+  const perType = Math.ceil(targetCount / types.length);
+  const picked = [];
+  const seenQ = new Set(currentQuestions.map(q => q.question));
+  for (const t of types) {
+    const pool = BANK[t] || [];
+    if (!pool.length) continue;
+    // 优先取本轮未出现过的
+    let candidates = pool.filter(q => !seenQ.has(q.question));
+    if (candidates.length < perType) candidates = pool.slice();
+    shuffle(candidates);
+    const take = candidates.slice(0, perType);
+    take.forEach(q => picked.push({ ...q, type: t }));
+  }
+  return picked.slice(0, targetCount);
+}
+
+/* =========================================================
+   工具
+   ========================================================= */
+function shuffle(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+function setStatus(text, type) {
+  const el = document.getElementById('statusBar');
+  el.innerHTML = text;
+  el.style.color = type === 'error' ? '#f87171' : type === 'success' ? '#4ade80' : '#64748b';
+}
+function setLoading(loading) {
+  document.getElementById('btnRefreshTop').disabled = loading;
+  document.getElementById('btnRefreshFab').disabled = loading;
+  document.getElementById('btnRefreshTop').textContent = loading ? '⏳ 生成中…' : '⟳ 刷新题目';
+  document.getElementById('btnRefreshFab').textContent = loading ? '⏳' : '⟳';
+}
+
+/* =========================================================
+   渲染
+   ========================================================= */
+function renderQuestions(questions) {
+  const list = document.getElementById('questionList');
+  document.getElementById('qCountBadge').textContent = questions.length + ' 道';
+  if (!questions.length) {
+    list.innerHTML = '<div style="text-align:center; padding:60px 20px; color:#475569;">暂无题目</div>';
+    return;
+  }
+  list.innerHTML = questions.map((q, idx) => {
+    const typeLabel = TYPE_LABELS[q.type] || q.type || 'Java';
+    const optionHtml = q.options.map((opt, oi) => {
+      const letter = optionLetter(oi);
+      return `<label class="option" onclick="selectOption(${idx}, ${oi}, event)">
+          <input type="radio" name="q_${idx}" value="${oi}" />
+          <span class="option-label">${letter}.</span>
+          <span class="option-text">${escapeHtml(opt)}</span>
+        </label>`;
+    }).join('');
+    return `<div class="question-card" id="qcard_${idx}">
+        <div class="q-meta">
+          <span class="q-index">第 ${idx + 1} 题</span>
+          <span class="q-tag">${escapeHtml(typeLabel)}</span>
+        </div>
+        <div class="q-text">${escapeHtml(q.question)}</div>
+        <div class="options">${optionHtml}</div>
+        <div class="explanation" id="exp_${idx}">
+          <div class="exp-title">解析</div>
+          <div class="exp-content">${escapeHtml(q.explanation)}</div>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+/* =========================================================
+   作答
+   ========================================================= */
+function selectOption(qIdx, oIdx, event) {
+  if (event) event.preventDefault();
+  const q = currentQuestions[qIdx];
+  if (!q) return;
+  const card = document.getElementById('qcard_' + qIdx);
+  if (card.classList.contains('answered')) return;
+
+  card.classList.add('answered');
+  card.classList.add(oIdx === q.answer ? 'correct' : 'wrong');
+
+  card.querySelectorAll('.option').forEach((el, i) => {
+    el.style.pointerEvents = 'none';
+    const input = el.querySelector('input');
+    if (input) input.disabled = true;
+    if (i === q.answer) el.classList.add('correct-answer');
+    if (i === oIdx && oIdx !== q.answer) el.classList.add('wrong-answer');
+    if (i === oIdx) {
+      el.classList.add('selected');
+      if (input) input.checked = true;
+    }
+  });
+
+  const exp = document.getElementById('exp_' + qIdx);
+  if (exp) exp.classList.add('show');
+  updateUserAnswer(q.question, oIdx);
+}
+
+/* =========================================================
+   错误友好化
+   ========================================================= */
+function friendlyError(status, bodyText) {
+  let msg = bodyText;
+  try { const j = JSON.parse(bodyText); msg = (j.error && j.error.message) || j.message || bodyText; } catch (e) {}
+  const map = {
+    401: 'API Key 无效或已过期',
+    402: '账户余额不足（Insufficient Balance），请充值或更换 Key',
+    403: '无权限访问该模型',
+    404: '接口路径或模型不存在，请检查 Base URL（是否填到 /v1）和模型名',
+    429: '请求过于频繁或超出配额，请稍后再试',
+    500: '服务端错误', 502: '网关错误', 503: '服务不可用'
+  };
+  return map[status] ? `${map[status]}（HTTP ${status}：${msg}）` : `HTTP ${status}：${msg}`;
+}
+
+/* =========================================================
+   大模型生成
+   ========================================================= */
+function buildPrompt(types, previousQuestions) {
+  const typeLabels = types.map(t => TYPE_LABELS[t] || t).join('、');
+  let avoidBlock = '';
+  if (previousQuestions.length > 0) {
+    const recent = previousQuestions.slice(-60);
+    avoidBlock = `\n\n【重要】以下题目已经出现过，请严格避免生成相同或高度相似的题目：\n` +
+      recent.map((q, i) => `${i + 1}. ${q}`).join('\n');
+  }
+  return `请生成 20 道技术面试单选题，覆盖以下方向（尽量均匀分布）：${typeLabels}。
+
+要求：
+- 每道题必须有 4 个选项，且只有一个正确答案。
+- 解析要简洁清晰地说明原因。
+- 严格以 JSON 数组格式返回，不要输出任何 markdown 代码块标记或额外文字。
+- 数组每个元素结构：
+{
+  "question": "题干",
+  "options": ["A选项", "B选项", "C选项", "D选项"],
+  "answer": 0,
+  "explanation": "解析"
+}
+其中 answer 是正确答案在 options 数组中的索引（0~3）。
+${avoidBlock}`;
+}
+
+async function fetchFromLLM(cfg, types) {
+  const url = cfg.baseUrl + '/chat/completions';
+  const headers = { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + cfg.apiKey };
+  const body = JSON.stringify({
+    model: cfg.model,
+    messages: [
+      { role: 'system', content: '你是严谨的技术面试题生成器，只输出合法 JSON 数组，不输出 markdown 代码块标记或其他文字。' },
+      { role: 'user', content: buildPrompt(types, askedQuestions) }
+    ],
+    temperature: cfg.temperature,
+    max_tokens: cfg.maxTokens
+  });
+
+  const resp = await fetch(url, { method: 'POST', headers, body });
+  if (!resp.ok) {
+    const t = await resp.text();
+    throw new Error(friendlyError(resp.status, t));
+  }
+  const data = await resp.json();
+  let raw = (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) || '';
+  raw = raw.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
+
+  let arr;
+  try { arr = JSON.parse(raw); }
+  catch (e) {
+    const m = raw.match(/\[[\s\S]*\]/);
+    if (!m) throw new Error('无法解析大模型返回的 JSON');
+    arr = JSON.parse(m[0]);
+  }
+  if (!Array.isArray(arr) || !arr.length) throw new Error('大模型返回题目为空');
+
+  const fallbackType = types[0] || 'java';
+  const cleaned = [];
+  for (const q of arr) {
+    if (!q.question || !Array.isArray(q.options) || q.options.length < 4) continue;
+    const ans = typeof q.answer === 'number' ? q.answer : parseInt(q.answer);
+    if (isNaN(ans) || ans < 0 || ans > 3) continue;
+    cleaned.push({
+      question: String(q.question).trim(),
+      options: q.options.slice(0, 4).map(o => String(o).trim()),
+      answer: ans,
+      explanation: String(q.explanation || '暂无解析').trim(),
+      type: fallbackType  // 大模型题目统一归为第一个选中类型，便于统计
+    });
+  }
+  if (!cleaned.length) throw new Error('没有有效题目');
+
+  for (const q of cleaned) if (!askedQuestions.includes(q.question)) askedQuestions.push(q.question);
+  saveAsked();
+  return cleaned;
+}
+
+/* =========================================================
+   刷新
+   ========================================================= */
+async function refresh() {
+  if (isGenerating) return;
+  if (!activeTypes.length) { activeTypes = ['java']; renderTypeChips(); }
+
+  const cfg = loadConfig();
+  const useLLM = document.getElementById('cfgUseLLM').checked;
+
+  if (useLLM) {
+    if (!cfg.baseUrl || !cfg.apiKey || !cfg.model) {
+      document.getElementById('configPanel').open = true;
+      setStatus('⚠️ 已勾选大模型但配置不完整，本次使用本地题库', 'error');
+    } else {
+      isGenerating = true; setLoading(true);
+      setStatus('<span class="spinner"></span> 大模型正在生成题目…');
+      try {
+        const qs = await fetchFromLLM(cfg, activeTypes);
+        currentQuestions = qs;
+        renderQuestions(qs);
+        addQuestionsToHistory(qs, 'llm');
+        setStatus(`✅ 大模型生成 ${qs.length} 道题目（类型：${activeTypes.map(t => TYPE_LABELS[t]).join('、')}）`, 'success');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        return;
+      } catch (e) {
+        setStatus('⚠️ 大模型生成失败：' + e.message + '，已回退到本地题库', 'error');
+      } finally { isGenerating = false; setLoading(false); }
+    }
+  }
+
+  const qs = pickFromBank(activeTypes, 20);
+  currentQuestions = qs;
+  renderQuestions(qs);
+  addQuestionsToHistory(qs, 'local');
+  if (!useLLM) setStatus(`✅ 已从本地题库加载 ${qs.length} 道题目（${activeTypes.map(t => TYPE_LABELS[t]).join('、')}）`, 'success');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+/* =========================================================
+   已出题干
+   ========================================================= */
+function loadAsked() {
+  try { const raw = localStorage.getItem(ASKED_KEY); askedQuestions = raw ? JSON.parse(raw) : []; if (!Array.isArray(askedQuestions)) askedQuestions = []; }
+  catch (e) { askedQuestions = []; }
+}
+function saveAsked() {
+  if (askedQuestions.length > 200) askedQuestions = askedQuestions.slice(-200);
+  localStorage.setItem(ASKED_KEY, JSON.stringify(askedQuestions));
+}
+
+/* =========================================================
+   测试连接
+   ========================================================= */
+async function testConnection() {
+  const cfg = readConfigFromForm();
+  if (!cfg.baseUrl || !cfg.apiKey || !cfg.model) {
+    alert('请先填写 Base URL、API Key、模型名（可先点「获取模型」）'); return;
+  }
+  setStatus('<span class="spinner"></span> 正在测试连接…');
+  try {
+    const resp = await fetch(cfg.baseUrl + '/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + cfg.apiKey },
+      body: JSON.stringify({
+        model: cfg.model,
+        messages: [{ role: 'user', content: '只回复 OK' }],
+        max_tokens: 10, temperature: 0
+      })
+    });
+    if (!resp.ok) { const t = await resp.text(); throw new Error(friendlyError(resp.status, t)); }
+    const data = await resp.json();
+    const reply = (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) || '';
+    setStatus('✅ 连接成功，模型回复：' + reply.slice(0, 40), 'success');
+    if (!document.getElementById('cfgModelSelect').style.display ||
+        document.getElementById('cfgModelSelect').style.display === 'none') fetchModels(true);
+  } catch (e) {
+    setStatus('❌ 连接失败：' + e.message, 'error');
+  }
+}
+
+/* =========================================================
+   初始化
+   ========================================================= */
+(function init() {
+  // 预置服务商下拉
+  const presetSel = document.getElementById('cfgPreset');
+  BASE_URL_PRESETS.forEach(p => {
+    const o = document.createElement('option');
+    o.value = p.url; o.textContent = p.name + ' — ' + p.url;
+    presetSel.appendChild(o);
+  });
+  presetSel.addEventListener('change', () => {
+    if (presetSel.value) {
+      document.getElementById('cfgBaseUrl').value = presetSel.value;
+      document.getElementById('cfgModelSelect').style.display = 'none';
+      document.getElementById('cfgModel').value = '';
+      // 触发一次静默拉取
+      maybeAutoFetchModels();
+    }
+  });
+
+  // 模型选择下拉同步输入框
+  document.getElementById('cfgModelSelect').addEventListener('change', e => {
+    document.getElementById('cfgModel').value = e.target.value;
+  });
+
+  // Base URL / API Key 失焦自动拉取
+  document.getElementById('cfgBaseUrl').addEventListener('blur', maybeAutoFetchModels);
+  document.getElementById('cfgApiKey').addEventListener('blur', maybeAutoFetchModels);
+
+  fillConfigToUI();
+  loadActiveTypes();
+  renderTypeChips();
+  loadAsked();
+  loadHistory();
+
+  // 立即出题
+  const qs = pickFromBank(activeTypes, 20);
+  currentQuestions = qs;
+  renderQuestions(qs);
+  addQuestionsToHistory(qs, 'local');
+  setStatus(`已从本地题库加载 ${qs.length} 道题目（${activeTypes.map(t => TYPE_LABELS[t]).join('、')}），点击「刷新题目」可更换`);
+
+  // 若有保存配置，静默拉一次模型
+  const cfg = loadConfig();
+  if (cfg.baseUrl && cfg.apiKey) fetchModels(true);
+})();
+</script>
+</body>
+</html>
