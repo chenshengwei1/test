@@ -799,9 +799,17 @@ function fillConfigToUI() {
   document.getElementById('configPanel').open = false;
 }
 function getApiKey() {
+  // 1. 优先使用输入框中的值（用户可能刚改了但还没保存）
+  const inputEl = document.getElementById('cfgApiKey');
+  if (inputEl) {
+    const inputVal = inputEl.value.trim();
+    if (inputVal) return inputVal;
+  }
+  // 2. 输入框为空时，回退到已保存的配置
+  //    （sessionKey 模式刷新页面后输入框为空，此时 sessionApiKey 也可能为空，返回空是正确行为）
   const cfg = loadConfig();
   if (cfg.sessionKey) return sessionApiKey || '';
-  return cfg.apiKey || document.getElementById('cfgApiKey').value.trim();
+  return cfg.apiKey || '';
 }
 function readConfigFromForm() {
   return {
@@ -1406,8 +1414,9 @@ function copyText(text) {
   });
 }
 function hasLLM() {
-  const cfg = loadConfig();
-  return !!(cfg.baseUrl && getApiKey() && cfg.model);
+  const baseUrl = document.getElementById('cfgBaseUrl').value.trim();
+  const model = document.getElementById('cfgModel').value.trim();
+  return !!(baseUrl && getApiKey() && model);
 }
 async function askAI(idx) {
   const q = currentQuestions[idx];
@@ -2052,13 +2061,13 @@ async function refresh() {
   }
 
   // 全部模式
-  const cfg = loadConfig();
+  const formCfg = readConfigFromForm();
   const useLLM = document.getElementById('cfgUseLLM').checked;
   const hasLocal = activeTypes.some(t => BANK[t] && BANK[t].length);
-  const rawRequirement = (cfg.requirement || document.getElementById('cfgRequirement').value || '').trim();
+  const rawRequirement = formCfg.requirement || '';
 
   if (useLLM) {
-    if (!cfg.baseUrl || !getApiKey() || !cfg.model) {
+    if (!formCfg.baseUrl || !formCfg.apiKey || !formCfg.model) {
       document.getElementById('configPanel').open = true;
       const msg = '大模型配置不完整（Base URL / API Key / 模型名），本次使用本地题库';
       setStatus('⚠️ ' + msg, 'error');
@@ -2067,7 +2076,7 @@ async function refresh() {
       // ===== 校验出题要求 =====
       let effectiveRequirement = '';
       if (rawRequirement) {
-        const result = await ensureRequirement(readConfigFromForm(), rawRequirement, activeTypes);
+        const result = await ensureRequirement(formCfg, rawRequirement, activeTypes);
         if (result.action === 'abort') {
           isGenerating = false; setLoading(false);
           setStatus('已取消刷新，请修改出题要求后重试', 'warn');
@@ -2083,7 +2092,6 @@ async function refresh() {
       isGenerating = true; setLoading(true);
       setStatus('<span class="spinner"></span> 大模型正在生成题目…');
       try {
-        const formCfg = readConfigFromForm();
         const result = await fetchFromLLM(formCfg, activeTypes, formCfg.difficulty, effectiveRequirement);
         const qs = result.questions;
         currentQuestions = qs;
