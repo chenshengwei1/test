@@ -183,7 +183,41 @@
   .explanation { margin-top:14px; padding:14px 16px; border-radius:8px; background:var(--bg-input); border-left:3px solid var(--primary); font-size:13px; color:var(--text); display:none; }
   .explanation.show { display:block; }
   .explanation .exp-title { font-weight:700; color:var(--accent); margin-bottom:4px; font-size:12px; text-transform:uppercase; letter-spacing:.5px; }
-  .ai-extra { margin-top:10px; padding-top:10px; border-top:1px dashed var(--border); color:var(--text-muted); white-space:pre-wrap; }
+  .ai-extra { margin-top:10px; padding-top:10px; border-top:1px dashed var(--border); color:var(--text-muted); }
+  .ai-extra-title { font-weight:700; color:var(--star); font-size:12px; margin-bottom:6px; }
+  .ai-extra .md-body { color:var(--text); font-size:13px; line-height:1.7; }
+  .ai-extra .md-body p { margin:0 0 8px; }
+  .ai-extra .md-body p:last-child { margin-bottom:0; }
+  .ai-extra .md-body h1, .ai-extra .md-body h2, .ai-extra .md-body h3,
+  .ai-extra .md-body h4, .ai-extra .md-body h5, .ai-extra .md-body h6 {
+    margin:12px 0 6px; color:var(--text-bright); line-height:1.3;
+  }
+  .ai-extra .md-body h1 { font-size:17px; }
+  .ai-extra .md-body h2 { font-size:16px; }
+  .ai-extra .md-body h3 { font-size:15px; }
+  .ai-extra .md-body h4, .ai-extra .md-body h5, .ai-extra .md-body h6 { font-size:14px; }
+  .ai-extra .md-body ul, .ai-extra .md-body ol { padding-left:22px; margin:6px 0 10px; }
+  .ai-extra .md-body li { margin:3px 0; }
+  .ai-extra .md-body code {
+    background:var(--bg); padding:1px 5px; border-radius:4px;
+    font-family:ui-monospace,"SF Mono",Consolas,monospace; font-size:12px;
+    color:var(--accent); word-break:break-word;
+  }
+  .ai-extra .md-body pre {
+    background:var(--bg); padding:10px 12px; border-radius:8px;
+    overflow-x:auto; margin:8px 0; border:1px solid var(--border); line-height:1.5;
+  }
+  .ai-extra .md-body pre code { background:transparent; padding:0; color:var(--text); font-size:12px; }
+  .ai-extra .md-body a { color:var(--accent); text-decoration:underline; word-break:break-all; }
+  .ai-extra .md-body strong { color:var(--text-bright); font-weight:600; }
+  .ai-extra .md-body blockquote {
+    border-left:3px solid var(--primary); padding:2px 0 2px 10px;
+    color:var(--text-dim); margin:8px 0;
+  }
+  .ai-extra .md-body hr { border:none; border-top:1px solid var(--border); margin:10px 0; }
+  .ai-extra .md-body table { border-collapse:collapse; margin:8px 0; font-size:12px; }
+  .ai-extra .md-body th, .ai-extra .md-body td { border:1px solid var(--border); padding:4px 8px; }
+  .ai-extra .md-body th { background:var(--bg); font-weight:600; }
   .ai-extra-title { font-weight:700; color:var(--star); font-size:12px; margin-bottom:4px; }
 
   .card-actions { margin-top:12px; display:flex; gap:8px; flex-wrap:wrap; }
@@ -208,6 +242,7 @@
 </style>
 </head>
 <body>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 <div class="toast-container" id="toastContainer"></div>
 
 <dialog id="addTypeDialog">
@@ -1215,6 +1250,66 @@ function shuffle(arr) {
   }
   return arr;
 }
+function renderMarkdown(md) {
+  if (!md) return '';
+  if (!window.marked) {
+    // CDN 未加载时退化为纯文本，但保留换行，不至于全糊在一起
+    return escapeHtml(md).replace(/\n/g, '<br>');
+  }
+  const raw = window.marked.parse(md, { breaks: true, gfm: true });
+  return sanitizeMdHtml(raw);
+}
+
+const MD_ALLOWED_TAGS = new Set([
+  'P','BR','STRONG','B','EM','I','U','S','DEL','CODE','PRE','UL','OL','LI',
+  'H1','H2','H3','H4','H5','H6','BLOCKQUOTE','A','HR',
+  'TABLE','THEAD','TBODY','TR','TH','TD','SPAN','DIV'
+]);
+const MD_ALLOWED_ATTRS = {
+  A: ['href','title','target','rel'],
+  CODE: ['class'], PRE: ['class'],
+  TH: ['align'], TD: ['align'], SPAN: ['class']
+};
+const MD_DROP_TAGS = new Set(['SCRIPT','STYLE','IFRAME','OBJECT','EMBED','LINK','META','FORM','INPUT','BUTTON']);
+
+function sanitizeMdHtml(html) {
+  try {
+    const doc = new DOMParser().parseFromString('<div id="__md_root__">' + html + '</div>', 'text/html');
+    const root = doc.getElementById('__md_root__');
+    if (!root) return '';
+    walkSanitize(root);
+    return root.innerHTML;
+  } catch (e) {
+    return escapeHtml(html);
+  }
+}
+
+function walkSanitize(node) {
+  for (const child of Array.from(node.childNodes)) {
+    if (child.nodeType !== 1) continue;
+    const tag = child.tagName;
+    if (!MD_ALLOWED_TAGS.has(tag)) {
+      if (MD_DROP_TAGS.has(tag)) child.remove();
+      else { while (child.firstChild) node.insertBefore(child.firstChild, child); child.remove(); }
+      continue;
+    }
+    const allowed = MD_ALLOWED_ATTRS[tag] || [];
+    for (const attr of Array.from(child.attributes)) {
+      const name = attr.name.toLowerCase();
+      if (!allowed.includes(name)) { child.removeAttribute(attr.name); continue; }
+      if (name === 'href') {
+        const v = attr.value.trim().toLowerCase();
+        if (v.startsWith('javascript:') || v.startsWith('data:') || v.startsWith('vbscript:')) {
+          child.removeAttribute(attr.name);
+        }
+      }
+    }
+    if (tag === 'A' && child.getAttribute('target') === '_blank') {
+      child.setAttribute('rel', 'noopener noreferrer');
+    }
+    walkSanitize(child);
+  }
+}
 function escapeHtml(str) {
   const div = document.createElement('div');
   div.textContent = str;
@@ -1350,7 +1445,7 @@ function renderQuestions(questions) {
         <div class="explanation ${answered ? 'show' : ''}" id="exp_${idx}">
           <div class="exp-title">解析</div>
           <div class="exp-content">${escapeHtml(q.explanation)}</div>
-          ${aiExtra ? `<div class="ai-extra"><div class="ai-extra-title">🤖 AI 深入讲解</div>${escapeHtml(aiExtra)}</div>` : ''}
+          ${aiExtra ? `<div class="ai-extra"><div class="ai-extra-title">🤖 AI 深入讲解</div><div class="md-body">${renderMarkdown(aiExtra)}</div></div>` : ''}
         </div>
         ${answered ? `<div class="card-actions">
           <button class="btn-ghost btn-xs" onclick="askAI(${idx})" ${hasLLM() ? '' : 'disabled title="请先配置大模型"'}>🤖 AI 深入讲解</button>
@@ -1428,6 +1523,7 @@ async function askAI(idx) {
 - 说明正确选项为什么对、其他选项错在哪里
 - 如果有实际应用场景或常见陷阱，请补充
 - 300 字以内，条理清晰
+- 使用 Markdown 组织内容（小标题、列表、必要时用 ```代码块```），便于阅读
 
 题目：${q.question}
 选项：${q.options.map((o, i) => `\n${optionLetter(i)}. ${o}`).join('')}
