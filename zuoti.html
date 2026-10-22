@@ -323,7 +323,14 @@
         <input id="cfgTemp" type="number" step="0.1" min="0" max="2" value="0.8" />
       </label>
       <label>max_tokens
-        <input id="cfgMaxTokens" type="number" min="512" max="8000" value="4096" />
+        <input id="cfgMaxTokens" type="number" min="1024" max="16000" value="8192" />
+      </label>
+      <label>单次生成题数
+        <select id="cfgQuestionCount">
+          <option value="10">10 题（推荐，兼容带推理的模型）</option>
+          <option value="15">15 题</option>
+          <option value="20">20 题（对推理模型较吃 token）</option>
+        </select>
       </label>
       <div class="req-row">
         <label>出题要求（可选，下次刷新时生效）
@@ -763,6 +770,7 @@ function saveConfig() {
     strictJson: document.getElementById('cfgStrictJson').checked,
     sessionKey: useSession,
     difficulty: document.getElementById('cfgDifficulty').value,
+    questionCount: parseInt(document.getElementById('cfgQuestionCount').value) || 10,
     requirement: document.getElementById('cfgRequirement').value.trim()
   };
   if (cfg.useLLM && (!cfg.baseUrl || (!cfg.apiKey && !useSession) || !cfg.model)) {
@@ -780,7 +788,8 @@ function fillConfigToUI() {
   document.getElementById('cfgApiKey').value = cfg.sessionKey ? (sessionApiKey || '') : (cfg.apiKey || '');
   document.getElementById('cfgModel').value = cfg.model || '';
   document.getElementById('cfgTemp').value = cfg.temperature ?? 0.8;
-  document.getElementById('cfgMaxTokens').value = cfg.maxTokens ?? 4096;
+  document.getElementById('cfgMaxTokens').value = cfg.maxTokens ?? 8192;
+  document.getElementById('cfgQuestionCount').value = String(cfg.questionCount || 10);
   document.getElementById('cfgUseLLM').checked = !!cfg.useLLM;
   document.getElementById('cfgStrictJson').checked = !!cfg.strictJson;
   document.getElementById('cfgSessionKey').checked = !!cfg.sessionKey;
@@ -803,6 +812,7 @@ function readConfigFromForm() {
     maxTokens: parseInt(document.getElementById('cfgMaxTokens').value) || 4096,
     strictJson: document.getElementById('cfgStrictJson').checked,
     difficulty: document.getElementById('cfgDifficulty').value,
+    questionCount: parseInt(document.getElementById('cfgQuestionCount').value) || 10,
     requirement: document.getElementById('cfgRequirement').value.trim()
   };
 }
@@ -1827,7 +1837,7 @@ async function validateRequirementNow() {
 /* =========================================================
    题目生成（要求 + 去重）
    ========================================================= */
-function buildPrompt(types, knownQuestions, difficulty, requirement) {
+function buildPrompt(types, knownQuestions, difficulty, requirement, count) {
   const typeLabels = types.map(t => getTypeLabel(t)).join('、');
   const diffHint = {
     junior: '难度：初级，面向 0-2 年经验，考察基础概念。',
@@ -1855,7 +1865,7 @@ function buildPrompt(types, knownQuestions, difficulty, requirement) {
     requirementBlock = `\n\n【本次出题的额外要求（必须遵守）】\n${requirement.trim()}\n`;
   }
 
-  return `请生成 20 道技术面试单选题，覆盖以下方向（尽量均匀分布）：${typeLabels}。${diffHint}
+  return `请生成 ${count || 20} 道技术面试单选题，覆盖以下方向（尽量均匀分布）：${typeLabels}。${diffHint}
 ${requirementBlock}
 要求：
 - 每道题必须有 4 个选项，且只有一个正确答案。
@@ -1892,7 +1902,39 @@ function validateQuestion(q, fallbackType, fallbackDiff) {
     difficulty: DIFF_LABELS[q.difficulty] ? q.difficulty : fallbackDiff
   };
 }
+// 标准 JSON 数组解析，容忍 markdown 代码块包裹
+function tryParseJsonArray(raw) {
+  let s = raw.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
+  try {
+    let arr = JSON.parse(s);
+    if (!Array.isArray(arr) && arr && Array.isArray(arr.questions)) arr = arr.questions;
+    return Array.isArray(arr) ? arr : null;
+  } catch (e) {
+    const m = s.match(/\[[\s\S]*\]/);
+    if (!m) return null;
+    try {
+      const arr = JSON.parse(m[0]);
+      return Array.isArray(arr) ? arr : null;
+    } catch (e2) { return null; }
+  }
+}
 
+// 截断抢救：从末尾找最后一个完整的 '}'，截断后补 ']' 再解析
+function rescueTruncatedArray(raw) {
+  const start = raw.indexOf('[');
+  if (start < 0) return null;
+  const body = raw.slice(start);
+  // 从后往前尝试每一个 '}' 作为题目对象的结束
+  for (let i = body.length - 1; i >= 0; i--) {
+    if (body[i] !== '}') continue;
+    const candidate = body.slice(0, i + 1) + ']';
+    try {
+      const arr = JSON.parse(candidate);
+      if (Array.isArray(arr) && arr.length) return arr;
+    } catch (e) { /* 继续往前找 */ }
+  }
+  return null;
+}
 async function fetchFromLLM(cfg, types, difficulty, requirement) {
   const knownQuestions = getAllKnownQuestions(types);
   const totalKnown = knownQuestions.length;
@@ -1900,7 +1942,7 @@ async function fetchFromLLM(cfg, types, difficulty, requirement) {
     model: cfg.model,
     messages: [
       { role: 'system', content: '你是严谨的技术面试题生成器，只输出合法 JSON 数组，不输出 markdown 代码块标记或其他文字。' },
-      { role: 'user', content: buildPrompt(types, knownQuestions, difficulty, requirement) }
+      { role: 'user', content: buildPrompt(types, knownQuestions, difficulty, requirement, cfg.questionCount || 10) }
     ],
     temperature: cfg.temperature,
     max_tokens: cfg.maxTokens
@@ -1912,24 +1954,54 @@ async function fetchFromLLM(cfg, types, difficulty, requirement) {
     headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + cfg.apiKey },
     body: JSON.stringify(body)
   }, 120000, 1);
-
+  
   if (!resp.ok) {
     const t = await resp.text();
     throw new Error(friendlyError(resp.status, t));
   }
+  
   const data = await resp.json();
-  let raw = (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) || '';
-  raw = raw.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
-  let arr;
-  try { arr = JSON.parse(raw); }
-  catch (e) {
-    const m = raw.match(/\[[\s\S]*\]/);
-    if (!m) throw new Error('无法解析大模型返回的 JSON');
-    arr = JSON.parse(m[0]);
+  const choice = data.choices && data.choices[0];
+  const finishReason = choice && choice.finish_reason;
+  const usage = data.usage || {};
+  let raw = (choice && choice.message && choice.message.content) || '';
+  raw = raw.trim();
+  
+  if (!raw) {
+    // 有些推理模型的内容在 reasoning_content 里，content 为空
+    const reasoning = choice && choice.message && choice.message.reasoning_content;
+    if (reasoning) {
+      throw new Error(`模型只返回了推理内容，content 为空（finish_reason=${finishReason || '未知'}）。该模型可能主要输出推理而非结果，建议换用非推理模型或增大 max_tokens。`);
+    }
+    throw new Error('大模型返回内容为空');
   }
-  if (!Array.isArray(arr) && arr && Array.isArray(arr.questions)) arr = arr.questions;
-  if (!Array.isArray(arr) || !arr.length) throw new Error('大模型返回题目为空');
-
+  
+  // 先走标准解析
+  let arr = tryParseJsonArray(raw);
+  let rescued = false;
+  
+  if (!arr) {
+    // 标准解析失败，尝试抢救截断的 JSON
+    arr = rescueTruncatedArray(raw);
+    if (arr && arr.length) rescued = true;
+  }
+  
+  if (!arr || !arr.length) {
+    // 彻底失败，根据 finish_reason 给出明确原因
+    if (finishReason === 'length') {
+      const reasonTokens = usage.completion_tokens_details && usage.completion_tokens_details.reasoning_tokens;
+      const detail = reasonTokens
+        ? `（本次 reasoning_tokens 用了 ${reasonTokens}，占总 completion_tokens 的 ${Math.round(reasonTokens / (usage.completion_tokens || 1) * 100)}%）`
+        : '';
+      throw new Error(
+        `模型输出被截断：finish_reason=length，max_tokens（${cfg.maxTokens}）用尽${detail}。\n` +
+        `建议：① 调大 max_tokens；② 减少单次题数（当前 ${cfg.questionCount || 20}）；③ 换一个不大量消耗推理 token 的模型。`
+      );
+    }
+    const preview = raw.slice(0, 200).replace(/\s+/g, ' ');
+    throw new Error(`无法解析大模型返回的 JSON（finish_reason=${finishReason || '未知'}）。原始内容前 200 字：${preview}`);
+  }
+  
   const fallbackType = types[0] || 'java';
   const fallbackDiff = difficulty === 'mixed' ? 'intermediate' : (difficulty || 'intermediate');
   const cleaned = [];
@@ -1938,9 +2010,20 @@ async function fetchFromLLM(cfg, types, difficulty, requirement) {
     if (v) cleaned.push(v);
   }
   if (!cleaned.length) throw new Error('没有有效题目（校验全部未通过）');
+  
   for (const q of cleaned) if (!askedQuestions.includes(q.question)) askedQuestions.push(q.question);
   saveAsked();
-  return { questions: cleaned, totalKnown };
+  
+  // 如果发生了截断抢救，或者 finish_reason 是 length 但抢救成功，挂一条警告
+  let warning = '';
+  if (rescued || finishReason === 'length') {
+    const reasonTokens = usage.completion_tokens_details && usage.completion_tokens_details.reasoning_tokens;
+    warning = `输出被截断（finish_reason=length），仅抢救到 ${cleaned.length} 道完整题目` +
+      (reasonTokens ? `；reasoning_tokens 消耗了 ${reasonTokens}` : '') +
+      `。建议调大 max_tokens 或减少单次题数。`;
+  }
+  
+  return { questions: cleaned, totalKnown, warning, finishReason };
 }
 
 /* =========================================================
@@ -2013,6 +2096,9 @@ async function refresh() {
         const msg = `大模型生成 ${qs.length} 道题目 ${knownNote}${reqNote}`;
         setStatus('✅ ' + msg, 'success');
         showToast(msg, 'success', 5000);
+        if (result.warning) {
+          showToast(result.warning, 'warn', 8000);
+        }
         window.scrollTo({ top: 0, behavior: 'smooth' });
         return;
       } catch (e) {
@@ -2044,7 +2130,8 @@ async function refresh() {
     showToast(msg, 'error', 8000);
     return;
   }
-  const qs = pickFromBank(activeTypes, 20);
+  const perRefresh = parseInt(document.getElementById('cfgQuestionCount').value) || 10;
+  const qs = pickFromBank(activeTypes, perRefresh);
   if (!qs.length) {
     const msg = '本地题库抽取失败，请稍后重试';
     setStatus('❌ ' + msg, 'error');
