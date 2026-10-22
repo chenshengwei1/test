@@ -1503,7 +1503,7 @@ function friendlyError(status, bodyText) {
 /* =========================================================
    通用 LLM 调用
    ========================================================= */
-async function callLLM(cfg, messages, maxTokens, timeoutMs) {
+async function callLLM_old(cfg, messages, maxTokens, timeoutMs) {
   const body = {
     model: cfg.model,
     messages,
@@ -1511,6 +1511,33 @@ async function callLLM(cfg, messages, maxTokens, timeoutMs) {
     max_tokens: maxTokens || cfg.maxTokens
   };
   if (cfg.strictJson) body.response_format = { type: 'json_object' };
+  const resp = await fetchWithTimeout(cfg.baseUrl + '/chat/completions', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + cfg.apiKey },
+    body: JSON.stringify(body)
+  }, timeoutMs || 90000, 1);
+  if (!resp.ok) {
+    const t = await resp.text();
+    throw new Error(friendlyError(resp.status, t));
+  }
+  const data = await resp.json();
+  const content = (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) || '';
+  if (!content) throw new Error('模型返回内容为空');
+  return content;
+}
+async function callLLM(cfg, messages, maxTokens, timeoutMs, opts) {
+  opts = opts || {};
+  const body = {
+    model: cfg.model,
+    messages,
+    temperature: cfg.temperature,
+    max_tokens: maxTokens || cfg.maxTokens
+  };
+  // 严格 JSON 只对「生成题目」生效：由调用方通过 opts.strictJson 显式启用。
+  // 测试连接、AI 讲解、要求校验、变体题等调用不传该参数，
+  // 因此不会再带 response_format，避免服务商对非 JSON 响应报 400。
+  if (opts.strictJson) body.response_format = { type: 'json_object' };
+
   const resp = await fetchWithTimeout(cfg.baseUrl + '/chat/completions', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + cfg.apiKey },
@@ -1989,8 +2016,14 @@ async function refresh() {
         window.scrollTo({ top: 0, behavior: 'smooth' });
         return;
       } catch (e) {
-        const reason = e.message || '未知错误';
+        let reason = e.message || '未知错误';
+        // 如果开了严格 JSON 模式，且错误看起来是服务商不支持 response_format，给出可操作的提示
+        if (readConfigFromForm().strictJson &&
+            /response_format|json_object|unsupported|invalid_request|unknown.*param/i.test(reason)) {
+          reason += '\n💡 可能原因：该服务商不支持「严格 JSON 模式」，可在「大模型设置」中关闭后重试';
+        }
         if (!hasLocal) {
+          // 原有逻辑：无本地题库无法回退
           const msg = `大模型生成失败：${reason}\n选中类型无本地题库，无法回退。请检查配置或选择内置类型`;
           setStatus('❌ ' + msg.replace(/\n/g, ' '), 'error');
           showToast(msg, 'error', 10000);
@@ -1999,7 +2032,7 @@ async function refresh() {
         }
         const msg = `大模型生成失败：${reason}\n已自动回退到本地题库`;
         setStatus('⚠️ ' + msg.replace(/\n/g, ' '), 'error');
-        showToast(msg, 'warn', 7000);
+        showToast(msg, 'warn', 8000);
       } finally { isGenerating = false; setLoading(false); }
     }
   }
