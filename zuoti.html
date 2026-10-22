@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Markdown 渲染示例</title>
+  <title>技术面试题 · AI 解析 Markdown 渲染</title>
   <style>
     :root {
       --bg: #0f172a;
@@ -15,8 +15,11 @@
       --primary: #60a5fa;
       --primary-soft: rgba(96, 165, 250, 0.15);
       --code-bg: rgba(15, 23, 42, 0.8);
+      --warn: #fbbf24;
     }
+
     * { box-sizing: border-box; }
+
     body {
       margin: 0;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -24,6 +27,7 @@
       color: var(--text);
       padding: 32px 16px;
     }
+
     .demo {
       max-width: 900px;
       margin: 0 auto;
@@ -31,8 +35,9 @@
       border: 1px solid var(--border);
       border-radius: 14px;
       padding: 24px;
-      box-shadow: 0 12px 30px rgba(0,0,0,0.18);
+      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.18);
     }
+
     .ai-extra {
       margin-top: 10px;
       padding-top: 12px;
@@ -41,29 +46,40 @@
       line-height: 1.75;
       word-break: break-word;
     }
+
     .ai-extra-title {
       font-size: 12px;
       font-weight: 700;
-      color: #fbbf24;
+      color: var(--warn);
       letter-spacing: 0.04em;
       margin-bottom: 8px;
       text-transform: uppercase;
     }
+
     .ai-extra > *:first-child { margin-top: 0; }
     .ai-extra > *:last-child { margin-bottom: 0; }
+
     .ai-extra h1, .ai-extra h2, .ai-extra h3,
     .ai-extra h4, .ai-extra h5, .ai-extra h6 {
       margin: 0.8em 0 0.45em;
       line-height: 1.35;
       color: #f8fafc;
     }
-    .ai-extra p, .ai-extra ul, .ai-extra ol,
-    .ai-extra pre, .ai-extra blockquote {
+
+    .ai-extra p,
+    .ai-extra ul,
+    .ai-extra ol,
+    .ai-extra pre,
+    .ai-extra blockquote,
+    .ai-extra hr {
       margin: 0.7em 0;
     }
-    .ai-extra ul, .ai-extra ol {
+
+    .ai-extra ul,
+    .ai-extra ol {
       padding-left: 1.5em;
     }
+
     .ai-extra code {
       font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
       background: var(--code-bg);
@@ -72,6 +88,7 @@
       padding: 0.12em 0.38em;
       font-size: 0.92em;
     }
+
     .ai-extra pre {
       background: var(--code-bg);
       border: 1px solid var(--border);
@@ -79,11 +96,13 @@
       padding: 12px 14px;
       overflow: auto;
     }
+
     .ai-extra pre code {
       background: transparent;
       border: none;
       padding: 0;
     }
+
     .ai-extra blockquote {
       border-left: 3px solid var(--primary);
       padding-left: 12px;
@@ -93,10 +112,12 @@
       padding-top: 8px;
       padding-bottom: 8px;
     }
+
     .ai-extra a {
       color: var(--primary);
       text-decoration: underline;
     }
+
     .ai-extra table {
       width: 100%;
       border-collapse: collapse;
@@ -105,18 +126,29 @@
       border-radius: 10px;
       overflow: hidden;
     }
-    .ai-extra th, .ai-extra td {
+
+    .ai-extra th,
+    .ai-extra td {
       border: 1px solid var(--border);
       padding: 8px 10px;
       text-align: left;
     }
+
     .ai-extra strong { color: #f8fafc; }
+    .ai-extra em { color: #dbeafe; }
+    .ai-extra img { max-width: 100%; border-radius: 8px; }
+    .ai-extra hr {
+      border: none;
+      border-top: 1px dashed var(--border);
+      height: 1px;
+      background: transparent;
+    }
   </style>
 </head>
 <body>
   <div class="demo">
     <div class="ai-extra-title">AI 解析</div>
-    <div class="ai-extra" data-markdown>
+    <div class="ai-extra" data-ai-extra>
       ## 重点提示
 
       - 先看 `HashMap` 的底层结构
@@ -142,36 +174,58 @@
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js"></script>
   <script>
-    function renderMarkdownNode(node) {
-      if (!node) return;
-      const text = node.textContent || '';
-      if (!text.trim()) {
-        node.innerHTML = '';
-        return;
+    (function () {
+      function renderAiExtra(node) {
+        if (!(node instanceof HTMLElement)) return;
+
+        const raw = node.textContent || '';
+        if (!raw.trim()) {
+          node.innerHTML = '';
+          return;
+        }
+
+        try {
+          const html = marked.parse(raw, {
+            gfm: true,
+            breaks: true,
+            headerIds: false,
+            mangle: false
+          });
+
+          node.innerHTML = window.DOMPurify ? DOMPurify.sanitize(html) : html;
+        } catch (err) {
+          node.innerHTML = '<pre>' + String(raw).replace(/[&<>]/g, function (s) {
+            return { '&': '&amp;', '<': '&lt;', '>': '&gt;' }[s] || s;
+          }) + '</pre>';
+        }
       }
 
-      const html = marked.parse(text, { breaks: true, gfm: true });
-      node.innerHTML = DOMPurify.sanitize(html);
-    }
-
-    function initMarkdownRender() {
-      document.querySelectorAll('[data-markdown]').forEach(renderMarkdownNode);
-    }
-
-    const observer = new MutationObserver(function (mutations) {
-      mutations.forEach(function (mutation) {
-        mutation.addedNodes.forEach(function (node) {
-          if (node.nodeType !== 1) return;
-          if (node.matches && node.matches('[data-markdown]')) {
-            renderMarkdownNode(node);
-          }
-          node.querySelectorAll && node.querySelectorAll('[data-markdown]').forEach(renderMarkdownNode);
+      function renderAllAiExtra() {
+        document.querySelectorAll('.ai-extra, [data-ai-extra], [data-markdown]').forEach(function (node) {
+          renderAiExtra(node);
         });
-      });
-    });
+      }
 
-    observer.observe(document.body, { childList: true, subtree: true });
-    initMarkdownRender();
+      if (typeof MutationObserver !== 'undefined') {
+        const observer = new MutationObserver(function (mutations) {
+          mutations.forEach(function (mutation) {
+            mutation.addedNodes.forEach(function (node) {
+              if (!(node instanceof HTMLElement)) return;
+              if (node.matches && (node.matches('.ai-extra, [data-ai-extra], [data-markdown]'))) {
+                renderAiExtra(node);
+              }
+              if (node.querySelectorAll) {
+                node.querySelectorAll('.ai-extra, [data-ai-extra], [data-markdown]').forEach(renderAiExtra);
+              }
+            });
+          });
+        });
+
+        observer.observe(document.body, { childList: true, subtree: true });
+      }
+
+      renderAllAiExtra();
+    })();
   </script>
 </body>
 </html>
