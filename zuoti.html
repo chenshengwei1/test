@@ -777,7 +777,6 @@ function saveConfig() {
     showToast('已勾选启用大模型，请完整填写 Base URL、API Key、模型名', 'error');
     return;
   }
-  if (useSession) sessionApiKey = document.getElementById('cfgApiKey').value.trim();
   localStorage.setItem(CONFIG_KEY, JSON.stringify(cfg));
   setStatus('✅ 配置已保存', 'success');
   showToast('配置已保存', 'success');
@@ -785,31 +784,23 @@ function saveConfig() {
 function fillConfigToUI() {
   const cfg = loadConfig();
   document.getElementById('cfgBaseUrl').value = cfg.baseUrl || '';
-  document.getElementById('cfgApiKey').value = cfg.sessionKey ? (sessionApiKey || '') : (cfg.apiKey || '');
+  // 会话模式下 apiKey 不落 localStorage，输入框初始为空
+  document.getElementById('cfgApiKey').value = cfg.sessionKey ? '' : (cfg.apiKey || '');
   document.getElementById('cfgModel').value = cfg.model || '';
   document.getElementById('cfgTemp').value = cfg.temperature ?? 0.8;
   document.getElementById('cfgMaxTokens').value = cfg.maxTokens ?? 8192;
-  document.getElementById('cfgQuestionCount').value = String(cfg.questionCount || 10);
   document.getElementById('cfgUseLLM').checked = !!cfg.useLLM;
   document.getElementById('cfgStrictJson').checked = !!cfg.strictJson;
   document.getElementById('cfgSessionKey').checked = !!cfg.sessionKey;
   document.getElementById('cfgDifficulty').value = cfg.difficulty || 'mixed';
   document.getElementById('cfgRequirement').value = cfg.requirement || '';
+  document.getElementById('cfgQuestionCount').value = String(cfg.questionCount || 10);
   onRequirementInput();
   document.getElementById('configPanel').open = false;
 }
 function getApiKey() {
-  // 1. 优先使用输入框中的值（用户可能刚改了但还没保存）
-  const inputEl = document.getElementById('cfgApiKey');
-  if (inputEl) {
-    const inputVal = inputEl.value.trim();
-    if (inputVal) return inputVal;
-  }
-  // 2. 输入框为空时，回退到已保存的配置
-  //    （sessionKey 模式刷新页面后输入框为空，此时 sessionApiKey 也可能为空，返回空是正确行为）
-  const cfg = loadConfig();
-  if (cfg.sessionKey) return sessionApiKey || '';
-  return cfg.apiKey || '';
+  const el = document.getElementById('cfgApiKey');
+  return el ? el.value.trim() : '';
 }
 function readConfigFromForm() {
   return {
@@ -817,11 +808,13 @@ function readConfigFromForm() {
     apiKey: getApiKey(),
     model: document.getElementById('cfgModel').value.trim(),
     temperature: parseFloat(document.getElementById('cfgTemp').value) || 0.8,
-    maxTokens: parseInt(document.getElementById('cfgMaxTokens').value) || 4096,
+    maxTokens: parseInt(document.getElementById('cfgMaxTokens').value) || 8192,
+    useLLM: document.getElementById('cfgUseLLM').checked,
     strictJson: document.getElementById('cfgStrictJson').checked,
+    sessionKey: document.getElementById('cfgSessionKey').checked,
     difficulty: document.getElementById('cfgDifficulty').value,
-    questionCount: parseInt(document.getElementById('cfgQuestionCount').value) || 10,
-    requirement: document.getElementById('cfgRequirement').value.trim()
+    requirement: document.getElementById('cfgRequirement').value.trim(),
+    questionCount: parseInt(document.getElementById('cfgQuestionCount').value) || 10
   };
 }
 
@@ -1414,9 +1407,8 @@ function copyText(text) {
   });
 }
 function hasLLM() {
-  const baseUrl = document.getElementById('cfgBaseUrl').value.trim();
-  const model = document.getElementById('cfgModel').value.trim();
-  return !!(baseUrl && getApiKey() && model);
+  const cfg = readConfigFromForm();
+  return !!(cfg.baseUrl && cfg.apiKey && cfg.model);
 }
 async function askAI(idx) {
   const q = currentQuestions[idx];
@@ -2062,10 +2054,10 @@ async function refresh() {
 
   // 全部模式
   const formCfg = readConfigFromForm();
-  const useLLM = document.getElementById('cfgUseLLM').checked;
+  const useLLM = formCfg.useLLM;
   const hasLocal = activeTypes.some(t => BANK[t] && BANK[t].length);
-  const rawRequirement = formCfg.requirement || '';
-
+  const rawRequirement = formCfg.requirement;
+  
   if (useLLM) {
     if (!formCfg.baseUrl || !formCfg.apiKey || !formCfg.model) {
       document.getElementById('configPanel').open = true;
@@ -2284,8 +2276,8 @@ document.addEventListener('keydown', e => {
     showToast('选中类型均无本地题库，请启用大模型或选择内置类型', 'warn');
   }
 
-  const cfg = loadConfig();
-  if (cfg.baseUrl && getApiKey()) fetchModels(true);
+  const initCfg = readConfigFromForm();
+  if (initCfg.baseUrl && initCfg.apiKey) fetchModels(true);
 })();
 </script>
 </body>
