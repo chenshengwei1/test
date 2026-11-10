@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>API 调试器 · 通用请求模拟器</title>
+<title>API 调试器 · cURL 智能导入（带实时预览）</title>
 <style>
   *{box-sizing:border-box;margin:0;padding:0;font-family:system-ui,'Segoe UI',Roboto,sans-serif}
   :root{
@@ -28,7 +28,6 @@
 
   .card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow)}
 
-  /* 请求行 */
   .request-line{display:flex;gap:8px;padding:14px;flex-wrap:wrap}
   .request-line select{flex:0 0 120px;height:46px;border:1px solid var(--border);border-radius:10px;padding:0 10px;font-weight:600;background:#f8fafd;cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%235b6d89' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;padding-right:32px}
   .request-line .url-wrap{flex:1 1 320px;position:relative}
@@ -38,11 +37,9 @@
   .request-line .send:hover{background:var(--primary-h);transform:translateY(-1px)}
   .request-line .send:disabled{background:#a0b4e0;box-shadow:none;transform:none;cursor:not-allowed}
 
-  /* 主布局 */
   .main{display:grid;grid-template-columns:1fr 1fr;gap:16px}
   @media (max-width:920px){.main{grid-template-columns:1fr}.request-line{flex-direction:column}.request-line select{width:100%}}
 
-  /* 标签页 */
   .tabs{display:flex;border-bottom:1px solid var(--border);padding:0 14px;gap:2px;background:#fafcff;border-radius:var(--radius) var(--radius) 0 0;overflow-x:auto}
   .tab{padding:11px 16px;font-size:.83rem;font-weight:600;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;transition:.12s}
   .tab:hover{color:var(--primary)}
@@ -50,7 +47,6 @@
 
   .panel-body{padding:14px;max-height:440px;overflow-y:auto;min-height:280px}
 
-  /* 键值表格 */
   .kv-table{width:100%;border-collapse:collapse;font-size:.84rem}
   .kv-table th{text-align:left;padding:0 0 8px;font-size:.72rem;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);font-weight:600}
   .kv-table td{padding:4px 0}
@@ -64,16 +60,13 @@
   .add-row{margin-top:10px;background:#f0f4fe;border:1px dashed #b8c8e0;color:var(--primary);font-weight:600;font-size:.78rem;padding:7px 12px;border-radius:8px;cursor:pointer}
   .add-row:hover{background:#e4ecfe}
 
-  /* Body */
   .body-types{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:12px;padding-bottom:10px;border-bottom:1px dashed var(--border)}
   .body-types label{display:flex;align-items:center;gap:5px;font-size:.82rem;cursor:pointer;color:var(--text)}
   .body-types input{accent-color:var(--primary)}
   .raw-editor{width:100%;min-height:180px;font-family:ui-monospace,'SF Mono',monospace;font-size:.82rem;padding:12px;border:1px solid var(--border);border-radius:10px;outline:none;resize:vertical;line-height:1.5}
   .raw-editor:focus{border-color:var(--primary);box-shadow:0 0 0 2px rgba(30,93,240,.1)}
   .hint{font-size:.72rem;color:var(--muted);margin-top:8px;display:flex;align-items:center;gap:6px}
-  .hint.warn{color:var(--warning);background:var(--warning-bg);padding:6px 10px;border-radius:8px}
 
-  /* Auth */
   .auth-type{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap}
   .auth-type button{padding:6px 12px;border:1px solid var(--border);background:#fff;border-radius:8px;font-size:.8rem;cursor:pointer;font-weight:500;color:var(--muted)}
   .auth-type button.active{background:var(--primary);color:#fff;border-color:var(--primary)}
@@ -82,12 +75,10 @@
   .form-group input{width:100%;border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-size:.84rem;outline:none}
   .form-group input:focus{border-color:var(--primary);box-shadow:0 0 0 2px rgba(30,93,240,.1)}
 
-  /* 变量表 */
   .var-item{display:grid;grid-template-columns:1fr 1fr auto;gap:6px;margin-bottom:6px}
   .var-item input{width:100%;border:1px solid var(--border);border-radius:8px;padding:6px 9px;font-size:.8rem;outline:none}
   .var-item input:focus{border-color:var(--primary)}
 
-  /* 响应面板 */
   .response-header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--border);background:#fafcff}
   .response-header .title{font-weight:700;font-size:.9rem;color:var(--text)}
   .status-pill{padding:3px 12px;border-radius:20px;font-size:.75rem;font-weight:700;background:#eef3fe;color:var(--primary)}
@@ -101,7 +92,6 @@
   .resp-body.error{color:var(--error);background:var(--error-bg);border-color:#f5c2c2}
   .placeholder{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:220px;color:#93a5c0;gap:8px;font-size:.85rem}
 
-  /* 历史记录 */
   .history-panel{max-height:300px;overflow-y:auto}
   .history-item{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;cursor:pointer;font-size:.8rem;border:1px solid transparent;transition:.12s}
   .history-item:hover{background:#f0f4fe;border-color:#d6e0f5}
@@ -112,16 +102,56 @@
   .history-item .u{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text)}
   .history-item .t{font-size:.72rem;color:#93a5c0}
 
-  /* 弹窗 */
-  .modal-mask{position:fixed;inset:0;background:rgba(11,28,52,.4);display:flex;align-items:center;justify-content:center;z-index:100;padding:20px}
-  .modal{background:#fff;border-radius:16px;max-width:720px;width:100%;max-height:85vh;display:flex;flex-direction:column;box-shadow:0 30px 60px -20px rgba(0,0,0,.4)}
-  .modal header{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
-  .modal header h3{font-size:1rem}
-  .modal .modal-body{padding:16px 20px;overflow-y:auto}
-  .modal textarea{width:100%;min-height:220px;font-family:ui-monospace,monospace;font-size:.8rem;padding:12px;border:1px solid var(--border);border-radius:10px;outline:none;resize:vertical}
-  .modal .modal-footer{padding:12px 20px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px}
+  /* ============ cURL 导入弹窗（双栏：左输入 / 右预览） ============ */
+  .modal-mask{position:fixed;inset:0;background:rgba(11,28,52,.5);display:flex;align-items:center;justify-content:center;z-index:100;padding:20px}
+  .modal{background:#fff;border-radius:16px;max-width:1100px;width:100%;max-height:90vh;display:flex;flex-direction:column;box-shadow:0 30px 60px -20px rgba(0,0,0,.4);overflow:hidden}
+  .modal header{padding:14px 20px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;background:#fafcff}
+  .modal header h3{font-size:1rem;display:flex;align-items:center;gap:8px}
+  .modal header .badge{font-size:.7rem;font-weight:500;background:#eef3fe;color:var(--primary);padding:3px 10px;border-radius:20px}
+
+  .curl-body{display:grid;grid-template-columns:1fr 1fr;gap:0;overflow:hidden;flex:1;min-height:0}
+  @media (max-width:820px){.curl-body{grid-template-columns:1fr}}
+
+  .curl-input-col{display:flex;flex-direction:column;border-right:1px solid var(--border);min-height:0}
+  .curl-input-col .col-header{padding:10px 16px;font-size:.75rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid var(--border);background:#fafcff}
+  .curl-input-col textarea{flex:1;min-height:380px;width:100%;font-family:ui-monospace,'SF Mono',monospace;font-size:.8rem;padding:14px;border:none;outline:none;resize:none;line-height:1.6;background:#fff;color:#0b1c34}
+  .curl-input-col textarea::placeholder{color:#b0bdd0}
+
+  .curl-preview-col{display:flex;flex-direction:column;min-height:0;overflow-y:auto;background:#fafcff}
+  .curl-preview-col .col-header{padding:10px 16px;font-size:.75rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid var(--border);background:#fafcff;display:flex;justify-content:space-between;align-items:center}
+  .curl-preview-col .col-header .summary{display:flex;gap:10px;font-size:.72rem}
+  .summary .ok-count{color:var(--success);font-weight:700}
+  .summary .err-count{color:var(--error);font-weight:700}
+
+  .preview-scroll{flex:1;overflow-y:auto;padding:12px 14px}
+
+  .preview-section{margin-bottom:14px}
+  .preview-section .sec-title{font-size:.75rem;font-weight:700;color:var(--text);margin-bottom:6px;display:flex;align-items:center;gap:6px}
+  .preview-section .sec-title .icon{font-size:.9rem}
+
+  .preview-row{display:flex;gap:8px;padding:5px 8px;border-radius:6px;font-size:.78rem;align-items:flex-start;margin-bottom:3px;transition:.12s}
+  .preview-row.ok{background:var(--success-bg);border-left:3px solid var(--success)}
+  .preview-row.ignored{background:#f0f2f6;border-left:3px solid #b0bdd0;opacity:.7}
+  .preview-row.error{background:var(--error-bg);border-left:3px solid var(--error)}
+  .preview-row .status-icon{flex:0 0 18px;font-size:.85rem;line-height:1.4}
+  .preview-row .content{flex:1;min-width:0;word-break:break-all;line-height:1.45}
+  .preview-row .content .k{font-weight:700;color:var(--text)}
+  .preview-row .content .v{color:#3b4b66;font-family:ui-monospace,'SF Mono',monospace;font-size:.75rem}
+  .preview-row .content .note{font-size:.7rem;color:var(--muted);font-style:italic;margin-top:2px}
+  .preview-row .content .tok{background:#e6ecf5;padding:1px 5px;border-radius:4px;font-family:ui-monospace,monospace;font-size:.72rem}
+
+  .preview-empty{padding:30px 20px;text-align:center;color:#93a5c0;font-size:.82rem}
+  .preview-empty .big{font-size:2rem;margin-bottom:6px}
+
+  .preview-section .more{font-size:.72rem;color:var(--muted);padding:3px 8px;cursor:pointer;text-decoration:underline}
+  .preview-section .more:hover{color:var(--primary)}
+
+  .modal .modal-footer{padding:12px 20px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;background:#fafcff;gap:10px;flex-wrap:wrap}
+  .modal .modal-footer .left{font-size:.75rem;color:var(--muted)}
+  .modal .modal-footer .right{display:flex;gap:8px;margin-left:auto}
+
   .hidden{display:none!important}
-  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#0b1c34;color:#fff;padding:10px 20px;border-radius:10px;font-size:.85rem;z-index:200;animation:slideUp .25s ease}
+  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#0b1c34;color:#fff;padding:10px 20px;border-radius:10px;font-size:.85rem;z-index:200;animation:slideUp .25s ease;max-width:80%}
   @keyframes slideUp{from{opacity:0;transform:translate(-50%,10px)}to{opacity:1;transform:translate(-50%,0)}}
   ::-webkit-scrollbar{width:8px;height:8px}
   ::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:20px}
@@ -134,13 +164,12 @@
     <h1><span class="logo">⚡</span>API 调试器 <span style="font-size:.7rem;font-weight:500;color:var(--muted);background:#eef3fe;padding:3px 10px;border-radius:20px">通用请求模拟</span></h1>
     <div class="actions">
       <button class="btn btn-ghost btn-sm" id="btnHistory">📜 历史 <span id="historyCount" style="color:var(--primary);font-weight:700">0</span></button>
-      <button class="btn btn-primary btn-sm" id="btnImportCurl">📥 导入 cURL</button>
+      <button class="btn btn-primary btn-sm" id="btnImportCurl">📥 导入 cURL（预览）</button>
       <button class="btn btn-ghost btn-sm" id="btnExportCurl">📤 复制为 cURL</button>
       <button class="btn btn-ghost btn-sm" id="btnClear">🗑 清空</button>
     </div>
   </header>
 
-  <!-- 请求行 -->
   <div class="card request-line">
     <select id="method">
       <option>GET</option><option>POST</option><option>PUT</option><option>PATCH</option>
@@ -152,9 +181,7 @@
     <button class="send" id="sendBtn">▶ Send <span style="font-size:.7rem;opacity:.7">(⌘↵)</span></button>
   </div>
 
-  <!-- 主区域 -->
   <div class="main">
-    <!-- 左：请求构建 -->
     <div class="card" style="overflow:hidden">
       <div class="tabs" id="reqTabs">
         <div class="tab active" data-tab="headers">Headers</div>
@@ -164,7 +191,6 @@
         <div class="tab" data-tab="vars">变量</div>
       </div>
 
-      <!-- Headers -->
       <div class="panel-body" id="tab-headers">
         <table class="kv-table">
           <thead><tr><th>Key</th><th>Value</th><th></th></tr></thead>
@@ -173,7 +199,6 @@
         <button class="add-row" data-add="headers">+ 添加 Header</button>
       </div>
 
-      <!-- Params -->
       <div class="panel-body hidden" id="tab-params">
         <table class="kv-table">
           <thead><tr><th>Key</th><th>Value</th><th></th></tr></thead>
@@ -182,17 +207,21 @@
         <button class="add-row" data-add="params">+ 添加 Param</button>
       </div>
 
-      <!-- Body -->
       <div class="panel-body hidden" id="tab-body">
         <div class="body-types">
           <label><input type="radio" name="bodyType" value="none" checked> none</label>
           <label><input type="radio" name="bodyType" value="json"> JSON</label>
+          <label><input type="radio" name="bodyType" value="raw"> XML / Text</label>
           <label><input type="radio" name="bodyType" value="urlencoded"> x-www-form-urlencoded</label>
           <label><input type="radio" name="bodyType" value="form-data"> form-data</label>
         </div>
         <div id="bodyJsonWrap">
-          <textarea class="raw-editor" id="bodyJson" placeholder='{\n  "title": "foo",\n  "body": "bar",\n  "userId": 1\n}'>{}</textarea>
+          <textarea class="raw-editor" id="bodyJson" placeholder='{"title":"foo"}'>{}</textarea>
           <div class="hint">自动设置 <code>Content-Type: application/json</code></div>
+        </div>
+        <div id="bodyRawWrap" class="hidden">
+          <textarea class="raw-editor" id="bodyRaw" placeholder="<soapenv:Envelope>...</soapenv:Envelope>"></textarea>
+          <div class="hint">自动设置 <code>Content-Type: text/xml</code>（若未显式指定）</div>
         </div>
         <div id="bodyUrlencodedWrap" class="hidden">
           <table class="kv-table">
@@ -212,7 +241,6 @@
         </div>
       </div>
 
-      <!-- Auth -->
       <div class="panel-body hidden" id="tab-auth">
         <div class="auth-type" id="authTypes">
           <button data-auth="none" class="active">None</button>
@@ -223,12 +251,10 @@
         <div id="authNone"><div class="hint">不使用认证</div></div>
         <div id="authBearer" class="hidden">
           <div class="form-group"><label>Token</label><input id="authBearerToken" placeholder="eyJhbGciOi..."></div>
-          <div class="hint">将自动添加 <code>Authorization: Bearer &lt;token&gt;</code></div>
         </div>
         <div id="authBasic" class="hidden">
           <div class="form-group"><label>Username</label><input id="authBasicUser" placeholder="user"></div>
           <div class="form-group"><label>Password</label><input id="authBasicPass" type="password" placeholder="password"></div>
-          <div class="hint">将自动添加 <code>Authorization: Basic base64(user:pass)</code></div>
         </div>
         <div id="authApiKey" class="hidden">
           <div class="form-group"><label>Key 名称</label><input id="authApiKeyName" placeholder="X-API-Key"></div>
@@ -241,7 +267,6 @@
         </div>
       </div>
 
-      <!-- 变量 -->
       <div class="panel-body hidden" id="tab-vars">
         <div class="hint" style="margin-bottom:12px">在 URL / Headers / Body 中用 <code>{{name}}</code> 引用变量</div>
         <div id="varsList"></div>
@@ -249,7 +274,6 @@
       </div>
     </div>
 
-    <!-- 右：响应 -->
     <div class="card" style="overflow:hidden;display:flex;flex-direction:column">
       <div class="response-header">
         <span class="title">Response</span>
@@ -279,19 +303,48 @@
   </div>
 </div>
 
-<!-- cURL 弹窗 -->
+<!-- ==================== cURL 导入弹窗（带实时预览） ==================== -->
 <div class="modal-mask hidden" id="curlModal">
   <div class="modal">
     <header>
-      <h3 id="curlTitle">cURL</h3>
+      <h3>📥 导入 cURL <span class="badge">实时预览</span></h3>
       <button class="btn btn-ghost btn-sm" id="curlClose">✕</button>
     </header>
-    <div class="modal-body">
-      <textarea id="curlText" placeholder="粘贴 cURL 命令，例如：&#10;curl -X POST https://api.example.com/users \&#10;  -H &quot;Content-Type: application/json&quot; \&#10;  -H &quot;Authorization: Bearer xxx&quot; \&#10;  -d '{&quot;name&quot;:&quot;张三&quot;}'"></textarea>
+
+    <div class="curl-body">
+      <!-- 左：输入 -->
+      <div class="curl-input-col">
+        <div class="col-header">粘贴 cURL 命令</div>
+        <textarea id="curlText" placeholder="curl -X POST https://api.example.com/users \
+  -H &quot;Content-Type: application/json&quot; \
+  -H &quot;Authorization: Bearer xxx&quot; \
+  -d '{&quot;name&quot;:&quot;张三&quot;}'"></textarea>
+      </div>
+
+      <!-- 右：实时预览 -->
+      <div class="curl-preview-col">
+        <div class="col-header">
+          <span>🔍 解析预览</span>
+          <span class="summary" id="previewSummary"></span>
+        </div>
+        <div class="preview-scroll" id="previewScroll">
+          <div class="preview-empty">
+            <div class="big">👀</div>
+            <div>在左侧粘贴 cURL 命令</div>
+            <div style="font-size:.72rem;margin-top:4px;">这里会实时显示识别结果</div>
+          </div>
+        </div>
+      </div>
     </div>
+
     <div class="modal-footer">
-      <button class="btn btn-ghost" id="curlCancel">取消</button>
-      <button class="btn btn-primary" id="curlConfirm">确认</button>
+      <div class="left" id="curlFooterHint">
+        提示：绿色 ✅ 已识别 · 灰色 ⚪ 已忽略 · 红色 ❌ 无法识别
+      </div>
+      <div class="right">
+        <button class="btn btn-ghost" id="curlCancel">取消</button>
+        <button class="btn btn-primary" id="curlConfirm">✔ 应用配置</button>
+      </div>
     </div>
   </div>
 </div>
@@ -300,19 +353,17 @@
 (function(){
   'use strict';
 
-  // ============ 工具 ============
   const $ = s => document.querySelector(s);
   const $$ = s => document.querySelectorAll(s);
   const esc = v => v==null?'':String(v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
-  const toast = (msg)=>{
+  const toast = (msg, ms=2200)=>{
     const t=document.createElement('div');t.className='toast';t.textContent=msg;document.body.appendChild(t);
-    setTimeout(()=>t.remove(),1800);
+    setTimeout(()=>t.remove(), ms);
   };
 
-  // ============ 状态 ============
-  const state = { bodyType: 'none', authType: 'none', history: [] };
+  const state = { bodyType: 'none', authType: 'none', history: [], curlParsed: null };
 
-  // ============ 键值表格管理 ============
+  // ============ 键值表格 ============
   function makeRow(tbody, key='', val='', keyPh='Key', valPh='Value'){
     const tr=document.createElement('tr');
     tr.innerHTML=`<td><input class="k" placeholder="${keyPh}" value="${esc(key)}"></td>
@@ -340,13 +391,11 @@
     return out;
   }
 
-  // 初始化
   initKv('headersBody','Content-Type','application/json');
   initKv('paramsBody');
   initKv('urlencodedBody','key1','value1');
   initKv('formDataBody','field1','value1');
 
-  // 添加行按钮
   $$('[data-add]').forEach(btn=>{
     btn.onclick=()=>{
       const map={headers:'headersBody',params:'paramsBody',urlencoded:'urlencodedBody',formData:'formDataBody'};
@@ -356,7 +405,7 @@
     };
   });
 
-  // ============ Tab 切换 ============
+  // ============ Tab ============
   $$('#reqTabs .tab').forEach(tab=>{
     tab.onclick=()=>{
       $$('#reqTabs .tab').forEach(t=>t.classList.remove('active'));
@@ -367,20 +416,19 @@
     };
   });
 
-  // ============ Body 类型切换 ============
+  // ============ Body 类型 ============
   function setBodyType(type){
     state.bodyType = type;
     const radio = document.querySelector(`input[name=bodyType][value="${type}"]`);
     if(radio) radio.checked = true;
     $('#bodyJsonWrap').classList.toggle('hidden', type !== 'json');
+    $('#bodyRawWrap').classList.toggle('hidden', type !== 'raw');
     $('#bodyUrlencodedWrap').classList.toggle('hidden', type !== 'urlencoded');
     $('#bodyFormDataWrap').classList.toggle('hidden', type !== 'form-data');
   }
-  $$('input[name=bodyType]').forEach(r=>{
-    r.onchange=()=>setBodyType(r.value);
-  });
+  $$('input[name=bodyType]').forEach(r=>{ r.onchange=()=>setBodyType(r.value); });
 
-  // ============ Auth 切换 ============
+  // ============ Auth ============
   function setAuth(type){
     state.authType = type;
     $$('#authTypes button').forEach(b => b.classList.toggle('active', b.dataset.auth === type));
@@ -389,9 +437,7 @@
       if(el) el.classList.toggle('hidden', t.toLowerCase() !== type);
     });
   }
-  $$('#authTypes button').forEach(b=>{
-    b.onclick=()=>setAuth(b.dataset.auth);
-  });
+  $$('#authTypes button').forEach(b=>{ b.onclick=()=>setAuth(b.dataset.auth); });
 
   // ============ 变量 ============
   function addVarRow(name='',val=''){
@@ -411,22 +457,18 @@
     });
     return o;
   }
-
-  // ============ 变量替换 ============
   function applyVars(str){
     if(!str) return str;
     const vars=readVars();
     return str.replace(/\{\{(\w+)\}\}/g,(_,name)=> vars[name]!==undefined?vars[name]:`{{${name}}}`);
   }
-
-  // ============ 路径参数 /users/:id ============
   function applyPathParams(url){
     const paramMap={};
     readKv('paramsBody').forEach(([k,v])=>paramMap[k]=v);
     return url.replace(/:(\w+)/g,(_,name)=> paramMap[name]!==undefined? encodeURIComponent(paramMap[name]) : `:${name}`);
   }
 
-  // ============ 构建请求（完整版） ============
+  // ============ 构建请求 ============
   async function buildRequest(){
     const method=$('#method').value;
     let rawUrl=$('#url').value.trim();
@@ -438,10 +480,7 @@
     const params=readKv('paramsBody');
     if(params.length){
       const sp=new URLSearchParams();
-      params.forEach(([k,v])=>{
-        if(!k) return;
-        sp.append(applyVars(k), applyVars(v));
-      });
+      params.forEach(([k,v])=>{ if(k) sp.append(applyVars(k), applyVars(v)); });
       rawUrl += (rawUrl.includes('?')?'&':'?') + sp.toString();
     }
 
@@ -476,6 +515,12 @@
           try { JSON.parse(raw); } catch(e){ if(!confirm('JSON 格式不合法，仍要发送？')) throw new Error('用户取消'); }
           body = raw;
           headers['Content-Type']='application/json';
+        }
+      } else if(bt==='raw'){
+        const raw=applyVars($('#bodyRaw').value);
+        if(raw.trim()){
+          body = raw;
+          if(!headers['Content-Type'] && !headers['content-type']) headers['Content-Type']='text/xml';
         }
       } else if(bt==='urlencoded'){
         const sp=new URLSearchParams();
@@ -575,8 +620,8 @@
   $('#btnHistory').onclick=()=>{
     if(!state.history.length) return toast('暂无历史记录');
     const mask=document.createElement('div');mask.className='modal-mask';
-    mask.innerHTML=`<div class="modal"><header><h3>最近请求</h3><button class="btn btn-ghost btn-sm" id="hClose">✕</button></header>
-      <div class="modal-body history-panel" id="hList"></div></div>`;
+    mask.innerHTML=`<div class="modal" style="max-width:720px"><header><h3>最近请求</h3><button class="btn btn-ghost btn-sm" id="hClose">✕</button></header>
+      <div class="modal-body history-panel" id="hList" style="padding:16px 20px"></div></div>`;
     document.body.appendChild(mask);
     const close=()=>mask.remove();
     mask.querySelector('#hClose').onclick=close;
@@ -614,20 +659,13 @@
       const u=applyVars($('#authBasicUser').value.trim());
       const p=applyVars($('#authBasicPass').value.trim());
       if(u||p) headers['Authorization']='Basic '+btoa(u+':'+p);
-    } else if(state.authType==='apikey'){
-      const name=applyVars($('#authApiKeyName').value.trim());
-      const val=applyVars($('#authApiKeyValue').value.trim());
-      const where=$('#authApiKeyIn').value;
-      if(name && val){
-        if(where==='header') headers[name]=val;
-        else url += (url.includes('?')?'&':'?') + encodeURIComponent(name)+'='+encodeURIComponent(val);
-      }
     }
     let body=null;
     const allowsBody = !['GET','HEAD'].includes(method);
     const bt = state.bodyType;
     if(allowsBody && bt!=='none'){
       if(bt==='json'){ const raw=applyVars($('#bodyJson').value); if(raw.trim()){ body=raw; headers['Content-Type']='application/json'; } }
+      else if(bt==='raw'){ const raw=applyVars($('#bodyRaw').value); if(raw.trim()){ body=raw; if(!headers['Content-Type']) headers['Content-Type']='text/xml'; } }
       else if(bt==='urlencoded'){
         const sp=new URLSearchParams();
         readKv('urlencodedBody').forEach(([k,v])=>{ if(k) sp.append(applyVars(k),applyVars(v)); });
@@ -636,124 +674,149 @@
     }
     let cmd = `curl -X ${method} '${url}'`;
     Object.entries(headers).forEach(([k,v])=>{ cmd += ` \\\n  -H '${k}: ${v}'`; });
-    if(body){
-      cmd += ` \\\n  --data '${body.replace(/'/g, "'\\''")}'`;
-    }
+    if(body) cmd += ` \\\n  --data-raw '${body.replace(/'/g, "'\\''")}'`;
     return cmd;
   }
-
   $('#btnExportCurl').onclick=()=>{
     const cmd = buildCurlSync();
     navigator.clipboard.writeText(cmd)
       .then(()=>toast('已复制 cURL 到剪贴板'))
-      .catch(()=>openCurlModal('cURL 命令', cmd, ()=>{}));
+      .catch(()=>toast('复制失败，请手动复制'));
   };
 
-  // ============ cURL 导入（智能解析） ============
-  function openCurlModal(title, value, onConfirm){
-    $('#curlTitle').textContent=title;
-    $('#curlText').value=value;
-    $('#curlModal').classList.remove('hidden');
-    const close=()=>$('#curlModal').classList.add('hidden');
-    $('#curlClose').onclick=close;
-    $('#curlCancel').onclick=close;
-    $('#curlConfirm').onclick=()=>{ onConfirm($('#curlText').value); close(); };
-  }
+  // ================================================================
+  // ============ cURL 导入（带实时预览） ============
+  // ================================================================
 
-  $('#btnImportCurl').onclick=()=>{
-    openCurlModal('导入 cURL', '', (text)=>{
-      if(!text.trim()) return;
-      try { parseCurl(text); }
-      catch(e){ toast('解析失败: '+e.message); console.error(e); }
-    });
-  };
-
-  function tokenizeCurl(input){
+  // ---------- 1. 分词器 ----------
+  function tokenizeCurlRobust(input){
     const tokens = [];
     let i = 0, n = input.length;
     while(i < n){
-      while(i < n && /\s/.test(input[i])) i++;
+      while(i < n && (/[\s\\]/.test(input[i]))) i++;
       if(i >= n) break;
-      let token = '';
-      let quote = null;
+
+      if(input[i] === "'" || input[i] === '"'){
+        const q = input[i]; i++;
+        let tok = '';
+        while(i < n && input[i] !== q){
+          if(input[i] === '\\' && i + 1 < n && q === '"'){
+            const esc = input[i+1];
+            if('"\\$`'.includes(esc)){ tok += esc; i += 2; continue; }
+          }
+          tok += input[i++];
+        }
+        i++;
+        tokens.push(tok);
+        continue;
+      }
 
       if(input[i] === '$' && input[i+1] === "'"){
         i += 2;
+        let tok = '';
         while(i < n && input[i] !== "'"){
           if(input[i] === '\\' && i + 1 < n){
             const esc = input[i+1];
-            switch(esc){
-              case 'n': token += '\n'; break;
-              case 't': token += '\t'; break;
-              case 'r': token += '\r'; break;
-              case '\\': token += '\\'; break;
-              case "'": token += "'"; break;
-              case '"': token += '"'; break;
-              default: token += esc;
-            }
+            const map = {n:'\n', t:'\t', r:'\r', '\\':'\\', "'":"'", '"':'"'};
+            tok += map[esc] !== undefined ? map[esc] : esc;
             i += 2;
-          } else { token += input[i++]; }
+          } else { tok += input[i++]; }
         }
         i++;
-      } else {
-        while(i < n){
-          const ch = input[i];
-          if(quote === null){
-            if(/\s/.test(ch)) break;
-            if(ch === "'" || ch === '"'){ quote = ch; i++; continue; }
-            token += ch; i++;
-          } else if(quote === "'"){
-            if(ch === "'"){ quote = null; i++; }
-            else { token += ch; i++; }
-          } else {
-            if(ch === '"'){ quote = null; i++; }
-            else if(ch === '\\' && i + 1 < n){
-              const esc = input[i+1];
-              if(esc === '"' || esc === '\\' || esc === '$' || esc === '`'){
-                token += esc; i += 2;
-              } else { token += ch; i++; }
-            } else { token += ch; i++; }
-          }
-        }
+        tokens.push(tok);
+        continue;
       }
-      if(token.length > 0) tokens.push(token);
+
+      let tok = '';
+      while(i < n && !/\s/.test(input[i])){
+        tok += input[i++];
+      }
+      tokens.push(tok);
     }
     return tokens;
   }
 
-  function parseCurl(text){
-    if(!text || !text.trim()){ toast('cURL 内容为空'); return; }
+  // ---------- 2. 拆分粘连选项 ----------
+  function splitGluedOptions(input){
+    if(/\s/.test(input)) return input;
+    const placeholders = [];
+    let staged = input.replace(/'([^']*)'|"([^"]*)"/g, (m)=>{
+      const idx = placeholders.length;
+      placeholders.push(m);
+      return `__PH${idx}__`;
+    });
+    staged = staged.replace(/([^-\s])--/g, '$1 --');
+    staged = staged.replace(/([^-\s])-([A-Za-z])/g, '$1 -$2');
+    staged = staged.replace(/__PH(\d+)__/g, (_, idx)=> placeholders[+idx]);
+    return staged;
+  }
 
+  // ---------- 3. 核心解析函数（返回结构化对象，不直接改 UI） ----------
+  function parseCurlToStruct(text){
+    // 结果容器
+    const result = {
+      method: null,
+      url: null,
+      headers: {},           // {name: value}
+      auth: { type: 'none' },// {type:'bearer'|'basic'|'apikey'|'none', ...}
+      body: { type: 'none' },// {type:'none'|'json'|'raw'|'urlencoded'|'form-data', ...}
+      // 用于预览的详细信息
+      recognized: [],        // {key, value, icon, note} 已识别
+      ignored: [],           // {token, note} 已忽略
+      errors: [],            // {token, message} 无法识别
+      // 完整 token 列表（用于对比哪些没被消费）
+      allTokens: [],
+    };
+
+    if(!text || !text.trim()){
+      result.errors.push({ token: '(空)', message: 'cURL 内容为空' });
+      return result;
+    }
+
+    // 预处理
     let raw = text
       .replace(/\\\r?\n/g, ' ')
+      .replace(/\\\\/g, ' ')
       .replace(/\^\r?\n/g, ' ')
-      .trim()
-      .replace(/^["']?curl(?:\.exe)?["']?\s+/i, '');
+      .trim();
 
-    const tokens = tokenizeCurl(raw);
-    if(!tokens.length){ toast('未识别到有效参数'); return; }
+    raw = raw.replace(/^["']?curl(?:\.exe)?["']?/i, '').trim();
+    raw = splitGluedOptions(raw);
 
-    let method = null;
-    let url = null;
+    const tokens = tokenizeCurlRobust(raw);
+    result.allTokens = [...tokens];
+
+    if(!tokens.length){
+      result.errors.push({ token: '(无)', message: '未识别到任何参数' });
+      return result;
+    }
+
+    // 解析状态
     const headers = {};
     const bodyItems = [];
-    let basicUser = null, basicPass = null;
-    let bearerToken = null;
-    let apiKeyHeader = null;
+    let basicUser = null, basicPass = null, bearerToken = null, apiKeyHeader = null;
     let isGetMode = false;
-    let hasJsonContentType = false;
-    let hasFormContentType = false;
-    let hasUrlencodedContentType = false;
+    let hasJsonCT = false, hasFormCT = false, hasUrlencodedCT = false, hasXmlCT = false;
+    let method = null, url = null;
 
     let i = 0;
-    function nextVal() { return i + 1 < tokens.length ? tokens[++i] : ''; }
+    const nextVal = () => i + 1 < tokens.length ? tokens[++i] : '';
+
+    // 记录消耗掉的 token 索引（用于最后对比哪些未使用）
+    const consumed = new Set();
 
     while(i < tokens.length){
       const t = tokens[i];
+      const idxStart = i;
+
       switch(t){
-        case '-X': case '--request':
-          method = nextVal().toUpperCase();
+        case '-X': case '--request': {
+          const v = nextVal();
+          method = v.toUpperCase();
+          result.recognized.push({ icon: '✅', key: 'Method', value: method, note: `来自 ${t} ${v}` });
+          consumed.add(idxStart); consumed.add(i);
           break;
+        }
 
         case '-H': case '--header': {
           const h = nextVal();
@@ -762,16 +825,17 @@
             const k = h.slice(0, idx).trim();
             const v = h.slice(idx + 1).trim();
             headers[k] = v;
-            const lowerK = k.toLowerCase();
-            const lowerV = v.toLowerCase();
-            if(lowerK === 'content-type'){
-              if(lowerV.includes('application/json')) hasJsonContentType = true;
-              if(lowerV.includes('application/x-www-form-urlencoded')) hasUrlencodedContentType = true;
-              if(lowerV.includes('multipart/form-data')) hasFormContentType = true;
+            const lk = k.toLowerCase();
+            const lv = v.toLowerCase();
+            if(lk === 'content-type'){
+              if(lv.includes('json')) hasJsonCT = true;
+              if(lv.includes('application/x-www-form-urlencoded')) hasUrlencodedCT = true;
+              if(lv.includes('multipart/form-data')) hasFormCT = true;
+              if(lv.includes('xml') || lv.includes('text/')) hasXmlCT = true;
             }
-            if(lowerK === 'authorization'){
-              if(lowerV.startsWith('bearer ')) bearerToken = v.slice(7).trim();
-              if(lowerV.startsWith('basic ')){
+            if(lk === 'authorization'){
+              if(lv.startsWith('bearer ')) bearerToken = v.slice(7).trim();
+              if(lv.startsWith('basic ')){
                 try {
                   const decoded = atob(v.slice(6).trim());
                   const parts = decoded.split(':');
@@ -783,45 +847,70 @@
             if(/^x-api-key$/i.test(k) || /^api-key$/i.test(k) || /^x-auth-token$/i.test(k)){
               apiKeyHeader = { name: k, value: v };
             }
+            result.recognized.push({ icon: '✅', key: 'Header', value: `${k}: ${v}`, note: '来自 -H' });
+            consumed.add(idxStart); consumed.add(i);
+          } else {
+            result.errors.push({ token: `-H "${h}"`, message: 'Header 格式应为 "Name: Value"' });
+            consumed.add(idxStart); consumed.add(i);
           }
           break;
         }
 
-        case '-A': case '--user-agent':
-          headers['User-Agent'] = nextVal();
+        case '-A': case '--user-agent': {
+          const v = nextVal();
+          headers['User-Agent'] = v;
+          result.recognized.push({ icon: '✅', key: 'User-Agent', value: v });
+          consumed.add(idxStart); consumed.add(i);
           break;
+        }
 
-        case '-b': case '--cookie':
-          headers['Cookie'] = nextVal();
+        case '-b': case '--cookie': {
+          const v = nextVal();
+          headers['Cookie'] = v;
+          result.recognized.push({ icon: '✅', key: 'Cookie', value: v });
+          consumed.add(idxStart); consumed.add(i);
           break;
+        }
 
         case '-u': case '--user': {
           const cred = nextVal();
           const parts = cred.split(':');
           basicUser = parts[0];
           basicPass = parts.slice(1).join(':');
+          result.recognized.push({ icon: '✅', key: 'Basic Auth', value: cred, note: '来自 -u' });
+          consumed.add(idxStart); consumed.add(i);
           break;
         }
 
         case '-d': case '--data': case '--data-raw': case '--data-binary': {
           const payload = nextVal();
           const trimmed = payload.trim();
-          if(trimmed.startsWith('{') || trimmed.startsWith('[')){
+          if(trimmed.startsWith('<') || trimmed.startsWith('<?xml')){
+            bodyItems.push({ type:'raw', value: payload });
+            hasXmlCT = true;
+            result.recognized.push({ icon: '✅', key: 'Body (XML/Text)', value: truncate(payload, 80), note: '来自 -d' });
+          } else if(trimmed.startsWith('{') || trimmed.startsWith('[')){
             bodyItems.push({ type:'json', value: payload });
-            hasJsonContentType = true;
+            hasJsonCT = true;
+            result.recognized.push({ icon: '✅', key: 'Body (JSON)', value: truncate(payload, 80), note: '来自 -d' });
           } else if(/^[\w\-.~%]+=/.test(trimmed) && trimmed.includes('=')){
             bodyItems.push({ type:'urlencoded-raw', value: payload });
-            hasUrlencodedContentType = true;
+            hasUrlencodedCT = true;
+            result.recognized.push({ icon: '✅', key: 'Body (urlencoded)', value: truncate(payload, 80), note: '来自 -d' });
           } else {
             bodyItems.push({ type:'raw', value: payload });
+            result.recognized.push({ icon: '✅', key: 'Body (Raw)', value: truncate(payload, 80), note: '来自 -d' });
           }
+          consumed.add(idxStart); consumed.add(i);
           break;
         }
 
         case '--data-urlencode': {
           const v = nextVal();
           bodyItems.push({ type:'urlencoded-raw', value: v });
-          hasUrlencodedContentType = true;
+          hasUrlencodedCT = true;
+          result.recognized.push({ icon: '✅', key: 'Body (urlencoded)', value: truncate(v, 80), note: '来自 --data-urlencode' });
+          consumed.add(idxStart); consumed.add(i);
           break;
         }
 
@@ -834,19 +923,31 @@
             let file = null;
             if(val.startsWith('@') || val.startsWith('<')){ file = val.slice(1); val = ''; }
             bodyItems.push({ type:'form', key, value: val, file });
-            hasFormContentType = true;
+            hasFormCT = true;
+            result.recognized.push({ icon: '✅', key: 'Form Field', value: `${key}=${file ? '[文件]'+file : val}`, note: '来自 -F' });
+          } else {
+            result.errors.push({ token: `-F "${v}"`, message: 'Form 格式应为 "key=value" 或 "key=@file"' });
           }
+          consumed.add(idxStart); consumed.add(i);
           break;
         }
 
-        case '-G': case '--get':
+        case '-G': case '--get': {
           isGetMode = true;
+          result.recognized.push({ icon: '✅', key: 'GET 模式', value: '-G', note: 'data 转 query' });
+          consumed.add(idxStart);
           break;
+        }
 
-        case '--url':
-          url = nextVal();
+        case '--url': {
+          const v = nextVal();
+          url = v;
+          result.recognized.push({ icon: '✅', key: 'URL', value: v });
+          consumed.add(idxStart); consumed.add(i);
           break;
+        }
 
+        // 无参忽略选项
         case '-k': case '--insecure':
         case '-L': case '--location':
         case '-s': case '--silent':
@@ -854,54 +955,93 @@
         case '-v': case '--verbose':
         case '-i': case '--include':
         case '--compressed':
-        case '-N': case '--no-buffer':
+        case '-N': case '--no-buffer': {
+          result.ignored.push({ token: t, note: '无参选项，已忽略' });
+          consumed.add(idxStart);
           break;
+        }
 
+        // 有参忽略选项
         case '--connect-timeout': case '--max-time': case '-m':
         case '--retry': case '--proxy': case '-x':
         case '-e': case '--referer': case '--cacert': case '--cert':
-        case '-o': case '--output':
-          nextVal();
+        case '-o': case '--output': {
+          const v = nextVal();
+          result.ignored.push({ token: `${t} ${v}`, note: '已忽略（不影响请求）' });
+          consumed.add(idxStart); consumed.add(i);
           break;
+        }
 
-        default:
+        default: {
           if(!url && (t.startsWith('http://') || t.startsWith('https://') || t.startsWith('{{'))){
             url = t;
+            result.recognized.push({ icon: '✅', key: 'URL', value: t });
+            consumed.add(idxStart);
           }
+          // 其他 token 暂不标错，最后统一处理
           break;
+        }
       }
       i++;
     }
 
+    // 兜底 URL 提取
+    if(!url){
+      for(let k=0; k<tokens.length; k++){
+        const tok = tokens[k];
+        if((tok.startsWith('http://') || tok.startsWith('https://')) && !consumed.has(k)){
+          url = tok;
+          result.recognized.push({ icon: '✅', key: 'URL', value: tok, note: '兜底识别' });
+          consumed.add(k);
+          break;
+        }
+      }
+    }
+
+    // 剩余未消费的 token 视为“未识别”
+    for(let k=0; k<tokens.length; k++){
+      if(!consumed.has(k)){
+        result.errors.push({ token: tokens[k], message: '未识别的 token' });
+      }
+    }
+
+    // 如果 URL 还是没找到，报错
+    if(!url){
+      result.errors.push({ token: '(整体)', message: '未识别到 URL（需以 http:// 或 https:// 开头）' });
+    }
+
+    // 最终 method 判定
     if(!method){
       if(bodyItems.length > 0 || basicUser || bearerToken) method = 'POST';
       else method = 'GET';
     }
     if(isGetMode) method = 'GET';
 
-    // 写入 UI
-    if(url) $('#url').value = url;
-    $('#method').value = method;
-
-    // Headers
-    initKv('headersBody');
-    const hb = $('#headersBody');
-    const finalHeaders = { ...headers };
-    if(!finalHeaders['Content-Type'] && !finalHeaders['content-type']){
-      if(hasJsonContentType) finalHeaders['Content-Type'] = 'application/json';
-      else if(hasUrlencodedContentType) finalHeaders['Content-Type'] = 'application/x-www-form-urlencoded';
+    // 组装 headers 最终结果（含自动补的 Content-Type）
+    if(!headers['Content-Type'] && !headers['content-type']){
+      if(hasJsonCT) headers['Content-Type'] = 'application/json';
+      else if(hasUrlencodedCT) headers['Content-Type'] = 'application/x-www-form-urlencoded';
+      else if(hasXmlCT) headers['Content-Type'] = 'text/xml';
     }
-    if(bearerToken && !finalHeaders['Authorization']) finalHeaders['Authorization'] = 'Bearer ' + bearerToken;
-    if(basicUser !== null && !finalHeaders['Authorization']){
-      try { finalHeaders['Authorization'] = 'Basic ' + btoa(basicUser + ':' + (basicPass||'')); } catch(e){}
+    // Authorization 兜底
+    if(bearerToken && !headers['Authorization']) headers['Authorization'] = 'Bearer ' + bearerToken;
+    if(basicUser !== null && !headers['Authorization']){
+      try { headers['Authorization'] = 'Basic ' + btoa(basicUser + ':' + (basicPass||'')); } catch(e){}
     }
 
-    const headerEntries = Object.entries(finalHeaders);
-    if(headerEntries.length === 0){
-      initKv('headersBody', 'Content-Type', 'application/json');
+    result.method = method;
+    result.url = url;
+    result.headers = headers;
+
+    // Auth
+    if(bearerToken){
+      result.auth = { type: 'bearer', token: bearerToken };
+    } else if(basicUser !== null){
+      result.auth = { type: 'basic', user: basicUser, pass: basicPass || '' };
+    } else if(apiKeyHeader){
+      result.auth = { type: 'apikey', name: apiKeyHeader.name, value: apiKeyHeader.value, in: 'header' };
     } else {
-      initKv('headersBody');
-      headerEntries.forEach(([k,v]) => makeRow(hb, k, v));
+      result.auth = { type: 'none' };
     }
 
     // Body
@@ -911,75 +1051,309 @@
     const rawItems = bodyItems.filter(x => x.type === 'raw');
 
     if(jsonItems.length > 0){
-      setBodyType('json');
-      let jsonStr = jsonItems[jsonItems.length - 1].value;
-      try { jsonStr = JSON.stringify(JSON.parse(jsonStr), null, 2); } catch(e){}
-      $('#bodyJson').value = jsonStr;
-    } else if(urlencodedItems.length > 0 || (hasUrlencodedContentType && rawItems.length > 0)){
-      setBodyType('urlencoded');
-      initKv('urlencodedBody');
-      const ub = $('#urlencodedBody');
-      let added = false;
-      urlencodedItems.forEach(item => {
-        const rawv = item.value;
-        try {
-          const sp = new URLSearchParams(rawv);
-          let hasPair = false;
-          sp.forEach((v, k) => { makeRow(ub, k, v); hasPair = true; });
-          if(!hasPair && rawv.includes('=')){
-            const eq = rawv.indexOf('=');
-            makeRow(ub, rawv.slice(0, eq), rawv.slice(eq+1));
-            added = true;
-          } else if(hasPair) added = true;
-        } catch(e){
-          if(rawv.includes('=')){
-            const eq = rawv.indexOf('=');
-            makeRow(ub, rawv.slice(0, eq), rawv.slice(eq+1));
-            added = true;
-          }
-        }
-      });
-      rawItems.forEach(item => {
-        if(item.value.includes('=')){
-          const eq = item.value.indexOf('=');
-          makeRow(ub, item.value.slice(0, eq), item.value.slice(eq+1));
-          added = true;
-        }
-      });
-      if(!added) initKv('urlencodedBody', 'key', 'value');
-    } else if(formItems.length > 0){
-      setBodyType('form-data');
-      initKv('formDataBody');
-      const fb = $('#formDataBody');
-      formItems.forEach(item => {
-        makeRow(fb, item.key || '', item.file ? `[文件: ${item.file}]` : (item.value || ''));
-      });
+      result.body = { type: 'json', value: jsonItems[jsonItems.length - 1].value };
     } else if(rawItems.length > 0){
-      setBodyType('json');
-      $('#bodyJson').value = rawItems[rawItems.length - 1].value;
+      result.body = { type: 'raw', value: rawItems[rawItems.length - 1].value };
+    } else if(urlencodedItems.length > 0){
+      result.body = { type: 'urlencoded', items: urlencodedItems };
+    } else if(formItems.length > 0){
+      result.body = { type: 'form-data', items: formItems };
     } else {
-      setBodyType('none');
+      result.body = { type: 'none' };
+    }
+
+    return result;
+  }
+
+  function truncate(s, n){
+    if(!s) return '';
+    s = String(s);
+    return s.length > n ? s.slice(0, n) + '…' : s;
+  }
+
+  // ---------- 4. 渲染预览 ----------
+  function renderPreview(result){
+    const scroll = $('#previewScroll');
+    const summary = $('#previewSummary');
+
+    if(!result || (!result.recognized.length && !result.ignored.length && !result.errors.length)){
+      scroll.innerHTML = `<div class="preview-empty">
+        <div class="big">👀</div>
+        <div>在左侧粘贴 cURL 命令</div>
+        <div style="font-size:.72rem;margin-top:4px;">这里会实时显示识别结果</div>
+      </div>`;
+      summary.innerHTML = '';
+      return;
+    }
+
+    const okCount = result.recognized.length;
+    const ignoredCount = result.ignored.length;
+    const errCount = result.errors.length;
+    summary.innerHTML = `
+      <span class="ok-count">✅ ${okCount} 已识别</span>
+      <span class="err-count">❌ ${errCount} 未识别</span>
+    `;
+
+    let html = '';
+
+    // ===== 方法 & URL =====
+    if(result.method || result.url){
+      html += `<div class="preview-section">
+        <div class="sec-title"><span class="icon">🎯</span>请求行</div>`;
+      if(result.method){
+        html += `<div class="preview-row ok">
+          <span class="status-icon">✅</span>
+          <div class="content"><span class="k">Method:</span> <span class="tok">${esc(result.method)}</span></div>
+        </div>`;
+      }
+      if(result.url){
+        html += `<div class="preview-row ok">
+          <span class="status-icon">✅</span>
+          <div class="content"><span class="k">URL:</span> <span class="v">${esc(result.url)}</span></div>
+        </div>`;
+      }
+      html += `</div>`;
+    }
+
+    // ===== Headers =====
+    const headerEntries = Object.entries(result.headers);
+    if(headerEntries.length > 0){
+      html += `<div class="preview-section">
+        <div class="sec-title"><span class="icon">📋</span>Headers (${headerEntries.length})</div>`;
+      headerEntries.forEach(([k,v])=>{
+        html += `<div class="preview-row ok">
+          <span class="status-icon">✅</span>
+          <div class="content"><span class="k">${esc(k)}:</span> <span class="v">${esc(v)}</span></div>
+        </div>`;
+      });
+      html += `</div>`;
+    }
+
+    // ===== Auth =====
+    if(result.auth.type !== 'none'){
+      html += `<div class="preview-section">
+        <div class="sec-title"><span class="icon">🔐</span>Auth</div>`;
+      if(result.auth.type === 'bearer'){
+        html += `<div class="preview-row ok">
+          <span class="status-icon">✅</span>
+          <div class="content"><span class="k">Bearer Token:</span> <span class="v">${esc(result.auth.token)}</span></div>
+        </div>`;
+      } else if(result.auth.type === 'basic'){
+        html += `<div class="preview-row ok">
+          <span class="status-icon">✅</span>
+          <div class="content"><span class="k">Basic Auth:</span> <span class="v">${esc(result.auth.user)} : ${esc(result.auth.pass)}</span></div>
+        </div>`;
+      } else if(result.auth.type === 'apikey'){
+        html += `<div class="preview-row ok">
+          <span class="status-icon">✅</span>
+          <div class="content"><span class="k">API Key (${esc(result.auth.in)}):</span> <span class="v">${esc(result.auth.name)} = ${esc(result.auth.value)}</span></div>
+        </div>`;
+      }
+      html += `</div>`;
+    }
+
+    // ===== Body =====
+    if(result.body.type !== 'none'){
+      html += `<div class="preview-section">
+        <div class="sec-title"><span class="icon">📦</span>Body</div>`;
+      if(result.body.type === 'json'){
+        html += `<div class="preview-row ok">
+          <span class="status-icon">✅</span>
+          <div class="content"><span class="k">JSON:</span><div class="v" style="margin-top:3px;white-space:pre-wrap">${esc(truncate(result.body.value, 200))}</div></div>
+        </div>`;
+      } else if(result.body.type === 'raw'){
+        html += `<div class="preview-row ok">
+          <span class="status-icon">✅</span>
+          <div class="content"><span class="k">XML/Text:</span><div class="v" style="margin-top:3px;white-space:pre-wrap">${esc(truncate(result.body.value, 200))}</div></div>
+        </div>`;
+      } else if(result.body.type === 'urlencoded'){
+        result.body.items.forEach(item=>{
+          try {
+            const sp = new URLSearchParams(item.value);
+            sp.forEach((v, k)=>{
+              html += `<div class="preview-row ok">
+                <span class="status-icon">✅</span>
+                <div class="content"><span class="k">${esc(k)}:</span> <span class="v">${esc(v)}</span> <span class="note">(urlencoded)</span></div>
+              </div>`;
+            });
+          } catch(e){}
+        });
+      } else if(result.body.type === 'form-data'){
+        result.body.items.forEach(item=>{
+          html += `<div class="preview-row ok">
+            <span class="status-icon">✅</span>
+            <div class="content"><span class="k">${esc(item.key)}:</span> <span class="v">${esc(item.file ? '[文件: '+item.file+']' : item.value)}</span> <span class="note">(form-data)</span></div>
+          </div>`;
+        });
+      }
+      html += `</div>`;
+    }
+
+    // ===== 已忽略 =====
+    if(result.ignored.length > 0){
+      html += `<div class="preview-section">
+        <div class="sec-title"><span class="icon">⚪</span>已忽略 (${result.ignored.length})</div>`;
+      result.ignored.forEach(it=>{
+        html += `<div class="preview-row ignored">
+          <span class="status-icon">⚪</span>
+          <div class="content"><span class="tok">${esc(it.token)}</span> <span class="note">— ${esc(it.note)}</span></div>
+        </div>`;
+      });
+      html += `</div>`;
+    }
+
+    // ===== 错误 =====
+    if(result.errors.length > 0){
+      html += `<div class="preview-section">
+        <div class="sec-title"><span class="icon">❌</span>未识别 (${result.errors.length})</div>`;
+      result.errors.forEach(it=>{
+        html += `<div class="preview-row error">
+          <span class="status-icon">❌</span>
+          <div class="content"><span class="tok">${esc(truncate(it.token, 120))}</span><div class="note">${esc(it.message)}</div></div>
+        </div>`;
+      });
+      html += `</div>`;
+    }
+
+    scroll.innerHTML = html;
+  }
+
+  // ---------- 5. 打开弹窗 + 实时预览 ----------
+  function openCurlModal(){
+    $('#curlText').value = '';
+    $('#previewScroll').innerHTML = `<div class="preview-empty">
+      <div class="big">👀</div>
+      <div>在左侧粘贴 cURL 命令</div>
+      <div style="font-size:.72rem;margin-top:4px;">这里会实时显示识别结果</div>
+    </div>`;
+    $('#previewSummary').innerHTML = '';
+    state.curlParsed = null;
+    $('#curlModal').classList.remove('hidden');
+    setTimeout(()=>$('#curlText').focus(), 50);
+  }
+
+  function closeCurlModal(){
+    $('#curlModal').classList.add('hidden');
+    state.curlParsed = null;
+  }
+
+  // 输入时实时解析
+  let previewTimer = null;
+  $('#curlText').addEventListener('input', ()=>{
+    clearTimeout(previewTimer);
+    previewTimer = setTimeout(()=>{
+      const text = $('#curlText').value;
+      if(!text.trim()){
+        renderPreview(null);
+        state.curlParsed = null;
+        return;
+      }
+      try {
+        const result = parseCurlToStruct(text);
+        state.curlParsed = result;
+        renderPreview(result);
+      } catch(e){
+        console.error(e);
+        $('#previewScroll').innerHTML = `<div class="preview-row error"><span class="status-icon">❌</span><div class="content">解析异常: ${esc(e.message)}</div></div>`;
+      }
+    }, 250);
+  });
+
+  // 应用配置
+  function applyParsed(result){
+    if(!result){
+      toast('没有可应用的配置');
+      return;
+    }
+    if(!result.url){
+      toast('❌ 未识别到 URL，无法应用', 3000);
+      return;
+    }
+
+    // Method
+    $('#method').value = result.method || 'GET';
+
+    // URL
+    $('#url').value = result.url;
+
+    // Headers
+    initKv('headersBody');
+    const hb = $('#headersBody');
+    const he = Object.entries(result.headers);
+    if(he.length === 0){
+      initKv('headersBody', 'Content-Type', 'application/json');
+    } else {
+      he.forEach(([k,v]) => makeRow(hb, k, v));
     }
 
     // Auth
-    if(bearerToken){
-      setAuth('bearer');
-      $('#authBearerToken').value = bearerToken;
-    } else if(basicUser !== null){
-      setAuth('basic');
-      $('#authBasicUser').value = basicUser;
-      $('#authBasicPass').value = basicPass || '';
-    } else if(apiKeyHeader){
-      setAuth('apikey');
-      $('#authApiKeyName').value = apiKeyHeader.name;
-      $('#authApiKeyValue').value = apiKeyHeader.value;
-      $('#authApiKeyIn').value = 'header';
-    } else {
-      setAuth('none');
+    setAuth(result.auth.type);
+    if(result.auth.type === 'bearer'){
+      $('#authBearerToken').value = result.auth.token || '';
+    } else if(result.auth.type === 'basic'){
+      $('#authBasicUser').value = result.auth.user || '';
+      $('#authBasicPass').value = result.auth.pass || '';
+    } else if(result.auth.type === 'apikey'){
+      $('#authApiKeyName').value = result.auth.name || '';
+      $('#authApiKeyValue').value = result.auth.value || '';
+      $('#authApiKeyIn').value = result.auth.in || 'header';
     }
 
-    toast('✅ cURL 已识别并自动配置');
+    // Body
+    setBodyType(result.body.type);
+    if(result.body.type === 'json'){
+      let s = result.body.value;
+      try { s = JSON.stringify(JSON.parse(s), null, 2); } catch(e){}
+      $('#bodyJson').value = s;
+    } else if(result.body.type === 'raw'){
+      $('#bodyRaw').value = result.body.value || '';
+    } else if(result.body.type === 'urlencoded'){
+      initKv('urlencodedBody');
+      const ub = $('#urlencodedBody');
+      let added = false;
+      result.body.items.forEach(item=>{
+        try {
+          const sp = new URLSearchParams(item.value);
+          let hasPair = false;
+          sp.forEach((v, k)=>{ makeRow(ub, k, v); hasPair = true; });
+          if(!hasPair && item.value.includes('=')){
+            const eq = item.value.indexOf('=');
+            makeRow(ub, item.value.slice(0, eq), item.value.slice(eq+1));
+            added = true;
+          } else if(hasPair) added = true;
+        } catch(e){}
+      });
+      if(!added) initKv('urlencodedBody', 'key', 'value');
+    } else if(result.body.type === 'form-data'){
+      initKv('formDataBody');
+      const fb = $('#formDataBody');
+      result.body.items.forEach(item=>{
+        makeRow(fb, item.key || '', item.file ? `[文件: ${item.file}]` : (item.value || ''));
+      });
+    }
+
+    // 切换到 Body 标签页方便查看
+    $$('#reqTabs .tab').forEach(t=>t.classList.remove('active'));
+    const bodyTab = [...$$('#reqTabs .tab')].find(t => t.dataset.tab === 'body');
+    if(bodyTab) bodyTab.classList.add('active');
+    ['headers','params','body','auth','vars'].forEach(t=>{
+      $('#tab-'+t).classList.toggle('hidden', t!=='body');
+    });
+
+    toast('✅ 已应用配置', 1800);
   }
+
+  // 绑定按钮
+  $('#btnImportCurl').onclick = openCurlModal;
+  $('#curlClose').onclick = closeCurlModal;
+  $('#curlCancel').onclick = closeCurlModal;
+  $('#curlConfirm').onclick = ()=>{
+    applyParsed(state.curlParsed);
+    closeCurlModal();
+  };
+  $('#curlModal').addEventListener('click', e=>{
+    if(e.target === $('#curlModal')) closeCurlModal();
+  });
 
   // ============ 清空 ============
   $('#btnClear').onclick=()=>{
@@ -991,6 +1365,7 @@
     initKv('urlencodedBody');
     initKv('formDataBody');
     $('#bodyJson').value='{}';
+    $('#bodyRaw').value='';
     setBodyType('none');
     setAuth('none');
     $('#varsList').innerHTML='';
@@ -1004,7 +1379,7 @@
     toast('已清空');
   };
 
-  console.log('API 调试器已就绪 — 支持变量、Auth、Body、历史、cURL 导入导出');
+  console.log('API 调试器已就绪 — cURL 导入支持实时预览');
 })();
 </script>
 </body>
