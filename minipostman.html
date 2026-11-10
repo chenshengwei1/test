@@ -1,0 +1,1011 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>API 调试器 · 通用请求模拟器</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;font-family:system-ui,'Segoe UI',Roboto,sans-serif}
+  :root{
+    --bg:#f4f6fb; --card:#fff; --border:#e4e9f2; --text:#0b1c34; --muted:#5b6d89;
+    --primary:#1e5df0; --primary-h:#124ad0; --success:#1e7b4c; --success-bg:#e2f3e9;
+    --error:#b02a2a; --error-bg:#fde7e7; --warning:#9a6b00; --warning-bg:#fff4d6;
+    --radius:14px; --shadow:0 12px 30px -12px rgba(0,20,40,.18);
+  }
+  body{background:var(--bg);min-height:100vh;padding:20px;display:flex;justify-content:center}
+  .app{width:100%;max-width:1280px;display:flex;flex-direction:column;gap:16px}
+  header{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}
+  header h1{font-size:1.4rem;font-weight:700;color:var(--text);display:flex;align-items:center;gap:10px}
+  header h1 .logo{width:32px;height:32px;background:var(--primary);border-radius:10px;display:grid;place-items:center;color:#fff;font-size:18px}
+  header .actions{display:flex;gap:8px;flex-wrap:wrap}
+
+  .btn{border:none;border-radius:10px;padding:8px 14px;font-size:.85rem;font-weight:600;cursor:pointer;transition:.15s;display:inline-flex;align-items:center;gap:6px}
+  .btn-primary{background:var(--primary);color:#fff}
+  .btn-primary:hover{background:var(--primary-h)}
+  .btn-ghost{background:#fff;border:1px solid var(--border);color:var(--text)}
+  .btn-ghost:hover{background:#f0f4fe;border-color:#b8c8e0}
+  .btn-sm{padding:6px 10px;font-size:.78rem}
+
+  .card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow)}
+
+  /* 请求行 */
+  .request-line{display:flex;gap:8px;padding:14px;flex-wrap:wrap}
+  .request-line select{flex:0 0 120px;height:46px;border:1px solid var(--border);border-radius:10px;padding:0 10px;font-weight:600;background:#f8fafd;cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%235b6d89' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;padding-right:32px}
+  .request-line .url-wrap{flex:1 1 320px;position:relative}
+  .request-line .url-wrap input{width:100%;height:46px;border:1px solid var(--border);border-radius:10px;padding:0 14px;font-size:.92rem;outline:none;transition:.15s}
+  .request-line .url-wrap input:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(30,93,240,.12)}
+  .request-line .send{flex:0 0 auto;height:46px;padding:0 26px;background:var(--primary);color:#fff;font-weight:700;border:none;border-radius:10px;cursor:pointer;font-size:.92rem;box-shadow:0 6px 14px -6px var(--primary);transition:.15s}
+  .request-line .send:hover{background:var(--primary-h);transform:translateY(-1px)}
+  .request-line .send:disabled{background:#a0b4e0;box-shadow:none;transform:none;cursor:not-allowed}
+
+  /* 主布局 */
+  .main{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  @media (max-width:920px){.main{grid-template-columns:1fr}.request-line{flex-direction:column}.request-line select{width:100%}}
+
+  /* 标签页 */
+  .tabs{display:flex;border-bottom:1px solid var(--border);padding:0 14px;gap:2px;background:#fafcff;border-radius:var(--radius) var(--radius) 0 0;overflow-x:auto}
+  .tab{padding:11px 16px;font-size:.83rem;font-weight:600;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;transition:.12s}
+  .tab:hover{color:var(--primary)}
+  .tab.active{color:var(--primary);border-bottom-color:var(--primary);background:#fff}
+
+  .panel-body{padding:14px;max-height:440px;overflow-y:auto;min-height:280px}
+
+  /* 键值表格 */
+  .kv-table{width:100%;border-collapse:collapse;font-size:.84rem}
+  .kv-table th{text-align:left;padding:0 0 8px;font-size:.72rem;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);font-weight:600}
+  .kv-table td{padding:4px 0}
+  .kv-table td:nth-child(1){width:38%}
+  .kv-table td:nth-child(2){width:52%}
+  .kv-table td:nth-child(3){width:10%;text-align:center}
+  .kv-table input{width:100%;border:1px solid var(--border);border-radius:8px;padding:7px 10px;font-size:.82rem;outline:none;transition:.12s}
+  .kv-table input:focus{border-color:var(--primary);box-shadow:0 0 0 2px rgba(30,93,240,.1)}
+  .row-del{background:transparent;border:none;color:#a9b8d0;cursor:pointer;font-size:14px;padding:4px 8px;border-radius:6px}
+  .row-del:hover{background:var(--error-bg);color:var(--error)}
+  .add-row{margin-top:10px;background:#f0f4fe;border:1px dashed #b8c8e0;color:var(--primary);font-weight:600;font-size:.78rem;padding:7px 12px;border-radius:8px;cursor:pointer}
+  .add-row:hover{background:#e4ecfe}
+
+  /* Body */
+  .body-types{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:12px;padding-bottom:10px;border-bottom:1px dashed var(--border)}
+  .body-types label{display:flex;align-items:center;gap:5px;font-size:.82rem;cursor:pointer;color:var(--text)}
+  .body-types input{accent-color:var(--primary)}
+  .raw-editor{width:100%;min-height:180px;font-family:ui-monospace,'SF Mono',monospace;font-size:.82rem;padding:12px;border:1px solid var(--border);border-radius:10px;outline:none;resize:vertical;line-height:1.5}
+  .raw-editor:focus{border-color:var(--primary);box-shadow:0 0 0 2px rgba(30,93,240,.1)}
+  .hint{font-size:.72rem;color:var(--muted);margin-top:8px;display:flex;align-items:center;gap:6px}
+  .hint.warn{color:var(--warning);background:var(--warning-bg);padding:6px 10px;border-radius:8px}
+
+  /* Auth */
+  .auth-type{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap}
+  .auth-type button{padding:6px 12px;border:1px solid var(--border);background:#fff;border-radius:8px;font-size:.8rem;cursor:pointer;font-weight:500;color:var(--muted)}
+  .auth-type button.active{background:var(--primary);color:#fff;border-color:var(--primary)}
+  .form-group{margin-bottom:12px}
+  .form-group label{display:block;font-size:.78rem;font-weight:600;color:var(--muted);margin-bottom:5px}
+  .form-group input{width:100%;border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-size:.84rem;outline:none}
+  .form-group input:focus{border-color:var(--primary);box-shadow:0 0 0 2px rgba(30,93,240,.1)}
+
+  /* 变量表 */
+  .var-item{display:grid;grid-template-columns:1fr 1fr auto;gap:6px;margin-bottom:6px}
+  .var-item input{width:100%;border:1px solid var(--border);border-radius:8px;padding:6px 9px;font-size:.8rem;outline:none}
+  .var-item input:focus{border-color:var(--primary)}
+
+  /* 响应面板 */
+  .response-header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--border);background:#fafcff}
+  .response-header .title{font-weight:700;font-size:.9rem;color:var(--text)}
+  .status-pill{padding:3px 12px;border-radius:20px;font-size:.75rem;font-weight:700;background:#eef3fe;color:var(--primary)}
+  .status-pill.ok{background:var(--success-bg);color:var(--success)}
+  .status-pill.err{background:var(--error-bg);color:var(--error)}
+  .resp-meta{display:flex;gap:16px;flex-wrap:wrap;padding:10px 16px;font-size:.78rem;color:var(--muted);border-bottom:1px solid var(--border);background:#fff}
+  .resp-meta b{color:var(--text)}
+  .resp-section{padding:12px 16px}
+  .resp-section h4{font-size:.75rem;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-bottom:8px}
+  .resp-body{background:#f7f9fd;border:1px solid var(--border);border-radius:10px;padding:12px;font-family:ui-monospace,'SF Mono',monospace;font-size:.8rem;line-height:1.55;white-space:pre-wrap;word-break:break-word;max-height:340px;overflow:auto;color:#1a2b44}
+  .resp-body.error{color:var(--error);background:var(--error-bg);border-color:#f5c2c2}
+  .placeholder{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:220px;color:#93a5c0;gap:8px;font-size:.85rem}
+
+  /* 历史记录 */
+  .history-panel{max-height:300px;overflow-y:auto}
+  .history-item{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;cursor:pointer;font-size:.8rem;border:1px solid transparent;transition:.12s}
+  .history-item:hover{background:#f0f4fe;border-color:#d6e0f5}
+  .history-item .m{font-weight:700;font-size:.72rem;padding:2px 7px;border-radius:5px;background:#eef3fe;color:var(--primary);min-width:52px;text-align:center}
+  .history-item .m.POST{background:#e2f3e9;color:var(--success)}
+  .history-item .m.DELETE{background:var(--error-bg);color:var(--error)}
+  .history-item .m.PUT,.history-item .m.PATCH{background:var(--warning-bg);color:var(--warning)}
+  .history-item .u{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text)}
+  .history-item .t{font-size:.72rem;color:#93a5c0}
+
+  /* 弹窗 */
+  .modal-mask{position:fixed;inset:0;background:rgba(11,28,52,.4);display:flex;align-items:center;justify-content:center;z-index:100;padding:20px}
+  .modal{background:#fff;border-radius:16px;max-width:720px;width:100%;max-height:85vh;display:flex;flex-direction:column;box-shadow:0 30px 60px -20px rgba(0,0,0,.4)}
+  .modal header{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
+  .modal header h3{font-size:1rem}
+  .modal .modal-body{padding:16px 20px;overflow-y:auto}
+  .modal textarea{width:100%;min-height:220px;font-family:ui-monospace,monospace;font-size:.8rem;padding:12px;border:1px solid var(--border);border-radius:10px;outline:none;resize:vertical}
+  .modal .modal-footer{padding:12px 20px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px}
+  .hidden{display:none!important}
+  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#0b1c34;color:#fff;padding:10px 20px;border-radius:10px;font-size:.85rem;z-index:200;animation:slideUp .25s ease}
+  @keyframes slideUp{from{opacity:0;transform:translate(-50%,10px)}to{opacity:1;transform:translate(-50%,0)}}
+  ::-webkit-scrollbar{width:8px;height:8px}
+  ::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:20px}
+  ::-webkit-scrollbar-track{background:transparent}
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1><span class="logo">⚡</span>API 调试器 <span style="font-size:.7rem;font-weight:500;color:var(--muted);background:#eef3fe;padding:3px 10px;border-radius:20px">通用请求模拟</span></h1>
+    <div class="actions">
+      <button class="btn btn-ghost btn-sm" id="btnHistory">📜 历史 <span id="historyCount" style="color:var(--primary);font-weight:700">0</span></button>
+      <button class="btn btn-primary btn-sm" id="btnImportCurl">📥 导入 cURL</button>
+      <button class="btn btn-ghost btn-sm" id="btnExportCurl">📤 复制为 cURL</button>
+      <button class="btn btn-ghost btn-sm" id="btnClear">🗑 清空</button>
+    </div>
+  </header>
+
+  <!-- 请求行 -->
+  <div class="card request-line">
+    <select id="method">
+      <option>GET</option><option>POST</option><option>PUT</option><option>PATCH</option>
+      <option>DELETE</option><option>HEAD</option><option>OPTIONS</option>
+    </select>
+    <div class="url-wrap">
+      <input id="url" type="text" placeholder="https://api.example.com/users/:id 或 {{baseUrl}}/posts" value="https://jsonplaceholder.typicode.com/posts/1">
+    </div>
+    <button class="send" id="sendBtn">▶ Send <span style="font-size:.7rem;opacity:.7">(⌘↵)</span></button>
+  </div>
+
+  <!-- 主区域 -->
+  <div class="main">
+    <!-- 左：请求构建 -->
+    <div class="card" style="overflow:hidden">
+      <div class="tabs" id="reqTabs">
+        <div class="tab active" data-tab="headers">Headers</div>
+        <div class="tab" data-tab="params">Params</div>
+        <div class="tab" data-tab="body">Body</div>
+        <div class="tab" data-tab="auth">Auth</div>
+        <div class="tab" data-tab="vars">变量</div>
+      </div>
+
+      <!-- Headers -->
+      <div class="panel-body" id="tab-headers">
+        <table class="kv-table">
+          <thead><tr><th>Key</th><th>Value</th><th></th></tr></thead>
+          <tbody id="headersBody"></tbody>
+        </table>
+        <button class="add-row" data-add="headers">+ 添加 Header</button>
+      </div>
+
+      <!-- Params -->
+      <div class="panel-body hidden" id="tab-params">
+        <table class="kv-table">
+          <thead><tr><th>Key</th><th>Value</th><th></th></tr></thead>
+          <tbody id="paramsBody"></tbody>
+        </table>
+        <button class="add-row" data-add="params">+ 添加 Param</button>
+      </div>
+
+      <!-- Body -->
+      <div class="panel-body hidden" id="tab-body">
+        <div class="body-types">
+          <label><input type="radio" name="bodyType" value="none" checked> none</label>
+          <label><input type="radio" name="bodyType" value="json"> JSON</label>
+          <label><input type="radio" name="bodyType" value="urlencoded"> x-www-form-urlencoded</label>
+          <label><input type="radio" name="bodyType" value="form-data"> form-data</label>
+        </div>
+        <div id="bodyJsonWrap">
+          <textarea class="raw-editor" id="bodyJson" placeholder='{\n  "title": "foo",\n  "body": "bar",\n  "userId": 1\n}'>{}</textarea>
+          <div class="hint">自动设置 <code>Content-Type: application/json</code></div>
+        </div>
+        <div id="bodyUrlencodedWrap" class="hidden">
+          <table class="kv-table">
+            <thead><tr><th>Key</th><th>Value</th><th></th></tr></thead>
+            <tbody id="urlencodedBody"></tbody>
+          </table>
+          <button class="add-row" data-add="urlencoded">+ 添加字段</button>
+          <div class="hint">自动设置 <code>Content-Type: application/x-www-form-urlencoded</code></div>
+        </div>
+        <div id="bodyFormDataWrap" class="hidden">
+          <table class="kv-table">
+            <thead><tr><th>Key</th><th>Value</th><th></th></tr></thead>
+            <tbody id="formDataBody"></tbody>
+          </table>
+          <button class="add-row" data-add="formData">+ 添加字段</button>
+          <div class="hint">浏览器自动设置 <code>multipart/form-data; boundary=...</code></div>
+        </div>
+      </div>
+
+      <!-- Auth -->
+      <div class="panel-body hidden" id="tab-auth">
+        <div class="auth-type" id="authTypes">
+          <button data-auth="none" class="active">None</button>
+          <button data-auth="bearer">Bearer Token</button>
+          <button data-auth="basic">Basic Auth</button>
+          <button data-auth="apikey">API Key</button>
+        </div>
+        <div id="authNone"><div class="hint">不使用认证</div></div>
+        <div id="authBearer" class="hidden">
+          <div class="form-group"><label>Token</label><input id="authBearerToken" placeholder="eyJhbGciOi..."></div>
+          <div class="hint">将自动添加 <code>Authorization: Bearer &lt;token&gt;</code></div>
+        </div>
+        <div id="authBasic" class="hidden">
+          <div class="form-group"><label>Username</label><input id="authBasicUser" placeholder="user"></div>
+          <div class="form-group"><label>Password</label><input id="authBasicPass" type="password" placeholder="password"></div>
+          <div class="hint">将自动添加 <code>Authorization: Basic base64(user:pass)</code></div>
+        </div>
+        <div id="authApiKey" class="hidden">
+          <div class="form-group"><label>Key 名称</label><input id="authApiKeyName" placeholder="X-API-Key"></div>
+          <div class="form-group"><label>Key 值</label><input id="authApiKeyValue" placeholder="abc123"></div>
+          <div class="form-group"><label>添加到</label>
+            <select id="authApiKeyIn" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:8px">
+              <option value="header">Header</option><option value="query">Query Param</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- 变量 -->
+      <div class="panel-body hidden" id="tab-vars">
+        <div class="hint" style="margin-bottom:12px">在 URL / Headers / Body 中用 <code>{{name}}</code> 引用变量</div>
+        <div id="varsList"></div>
+        <button class="add-row" data-add="vars">+ 添加变量</button>
+      </div>
+    </div>
+
+    <!-- 右：响应 -->
+    <div class="card" style="overflow:hidden;display:flex;flex-direction:column">
+      <div class="response-header">
+        <span class="title">Response</span>
+        <span class="status-pill" id="statusPill">等待请求</span>
+      </div>
+      <div class="resp-meta" id="respMeta" style="display:none">
+        <span><b>时间:</b> <span id="metaTime">-</span></span>
+        <span><b>大小:</b> <span id="metaSize">-</span></span>
+        <span><b>类型:</b> <span id="metaType">-</span></span>
+      </div>
+      <div class="resp-section hidden" id="respHeadersSection">
+        <h4>响应头</h4>
+        <div class="resp-body" id="respHeaders" style="max-height:120px"></div>
+      </div>
+      <div class="resp-section" id="respBodySection" style="flex:1">
+        <div class="placeholder" id="respPlaceholder">
+          <div style="font-size:2rem">📭</div>
+          <div>还没有响应</div>
+          <div style="font-size:.75rem">发送请求以查看结果</div>
+        </div>
+        <div id="respContent" class="hidden">
+          <h4>响应体</h4>
+          <div class="resp-body" id="respBody"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- cURL 弹窗 -->
+<div class="modal-mask hidden" id="curlModal">
+  <div class="modal">
+    <header>
+      <h3 id="curlTitle">cURL</h3>
+      <button class="btn btn-ghost btn-sm" id="curlClose">✕</button>
+    </header>
+    <div class="modal-body">
+      <textarea id="curlText" placeholder="粘贴 cURL 命令，例如：&#10;curl -X POST https://api.example.com/users \&#10;  -H &quot;Content-Type: application/json&quot; \&#10;  -H &quot;Authorization: Bearer xxx&quot; \&#10;  -d '{&quot;name&quot;:&quot;张三&quot;}'"></textarea>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" id="curlCancel">取消</button>
+      <button class="btn btn-primary" id="curlConfirm">确认</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  'use strict';
+
+  // ============ 工具 ============
+  const $ = s => document.querySelector(s);
+  const $$ = s => document.querySelectorAll(s);
+  const esc = v => v==null?'':String(v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
+  const toast = (msg)=>{
+    const t=document.createElement('div');t.className='toast';t.textContent=msg;document.body.appendChild(t);
+    setTimeout(()=>t.remove(),1800);
+  };
+
+  // ============ 状态 ============
+  const state = { bodyType: 'none', authType: 'none', history: [] };
+
+  // ============ 键值表格管理 ============
+  function makeRow(tbody, key='', val='', keyPh='Key', valPh='Value'){
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td><input class="k" placeholder="${keyPh}" value="${esc(key)}"></td>
+                  <td><input class="v" placeholder="${valPh}" value="${esc(val)}"></td>
+                  <td><button class="row-del" title="删除">✕</button></td>`;
+    tr.querySelector('.row-del').onclick=()=>{
+      tr.remove();
+      if(!tbody.querySelector('tr')) makeRow(tbody);
+    };
+    tbody.appendChild(tr);
+    return tr;
+  }
+  function initKv(tbodyId, key, val){
+    const tb=$('#'+tbodyId);tb.innerHTML='';
+    if(key!==undefined) makeRow(tb,key,val);
+    else makeRow(tb);
+  }
+  function readKv(tbodyId){
+    const out=[];
+    $$('#'+tbodyId+' tr').forEach(tr=>{
+      const k=tr.querySelector('.k').value.trim();
+      const v=tr.querySelector('.v').value.trim();
+      if(k) out.push([k,v]);
+    });
+    return out;
+  }
+
+  // 初始化
+  initKv('headersBody','Content-Type','application/json');
+  initKv('paramsBody');
+  initKv('urlencodedBody','key1','value1');
+  initKv('formDataBody','field1','value1');
+
+  // 添加行按钮
+  $$('[data-add]').forEach(btn=>{
+    btn.onclick=()=>{
+      const map={headers:'headersBody',params:'paramsBody',urlencoded:'urlencodedBody',formData:'formDataBody'};
+      const target=map[btn.dataset.add];
+      if(target) makeRow($('#'+target));
+      else if(btn.dataset.add==='vars') addVarRow();
+    };
+  });
+
+  // ============ Tab 切换 ============
+  $$('#reqTabs .tab').forEach(tab=>{
+    tab.onclick=()=>{
+      $$('#reqTabs .tab').forEach(t=>t.classList.remove('active'));
+      tab.classList.add('active');
+      ['headers','params','body','auth','vars'].forEach(t=>{
+        $('#tab-'+t).classList.toggle('hidden', t!==tab.dataset.tab);
+      });
+    };
+  });
+
+  // ============ Body 类型切换 ============
+  function setBodyType(type){
+    state.bodyType = type;
+    const radio = document.querySelector(`input[name=bodyType][value="${type}"]`);
+    if(radio) radio.checked = true;
+    $('#bodyJsonWrap').classList.toggle('hidden', type !== 'json');
+    $('#bodyUrlencodedWrap').classList.toggle('hidden', type !== 'urlencoded');
+    $('#bodyFormDataWrap').classList.toggle('hidden', type !== 'form-data');
+  }
+  $$('input[name=bodyType]').forEach(r=>{
+    r.onchange=()=>setBodyType(r.value);
+  });
+
+  // ============ Auth 切换 ============
+  function setAuth(type){
+    state.authType = type;
+    $$('#authTypes button').forEach(b => b.classList.toggle('active', b.dataset.auth === type));
+    ['None','Bearer','Basic','ApiKey'].forEach(t => {
+      const el = $('#auth' + t);
+      if(el) el.classList.toggle('hidden', t.toLowerCase() !== type);
+    });
+  }
+  $$('#authTypes button').forEach(b=>{
+    b.onclick=()=>setAuth(b.dataset.auth);
+  });
+
+  // ============ 变量 ============
+  function addVarRow(name='',val=''){
+    const div=document.createElement('div');div.className='var-item';
+    div.innerHTML=`<input class="vk" placeholder="变量名" value="${esc(name)}">
+                   <input class="vv" placeholder="值" value="${esc(val)}">
+                   <button class="row-del">✕</button>`;
+    div.querySelector('.row-del').onclick=()=>div.remove();
+    $('#varsList').appendChild(div);
+  }
+  function readVars(){
+    const o={};
+    $$('#varsList .var-item').forEach(it=>{
+      const k=it.querySelector('.vk').value.trim();
+      const v=it.querySelector('.vv').value.trim();
+      if(k) o[k]=v;
+    });
+    return o;
+  }
+
+  // ============ 变量替换 ============
+  function applyVars(str){
+    if(!str) return str;
+    const vars=readVars();
+    return str.replace(/\{\{(\w+)\}\}/g,(_,name)=> vars[name]!==undefined?vars[name]:`{{${name}}}`);
+  }
+
+  // ============ 路径参数 /users/:id ============
+  function applyPathParams(url){
+    const paramMap={};
+    readKv('paramsBody').forEach(([k,v])=>paramMap[k]=v);
+    return url.replace(/:(\w+)/g,(_,name)=> paramMap[name]!==undefined? encodeURIComponent(paramMap[name]) : `:${name}`);
+  }
+
+  // ============ 构建请求（完整版） ============
+  async function buildRequest(){
+    const method=$('#method').value;
+    let rawUrl=$('#url').value.trim();
+    if(!rawUrl) throw new Error('请输入请求 URL');
+
+    rawUrl=applyVars(rawUrl);
+    rawUrl=applyPathParams(rawUrl);
+
+    const params=readKv('paramsBody');
+    if(params.length){
+      const sp=new URLSearchParams();
+      params.forEach(([k,v])=>{
+        if(!k) return;
+        sp.append(applyVars(k), applyVars(v));
+      });
+      rawUrl += (rawUrl.includes('?')?'&':'?') + sp.toString();
+    }
+
+    const headers={};
+    readKv('headersBody').forEach(([k,v])=>{ if(k) headers[applyVars(k)]=applyVars(v); });
+
+    if(state.authType==='bearer'){
+      const t=applyVars($('#authBearerToken').value.trim());
+      if(t) headers['Authorization']='Bearer '+t;
+    } else if(state.authType==='basic'){
+      const u=applyVars($('#authBasicUser').value.trim());
+      const p=applyVars($('#authBasicPass').value.trim());
+      if(u||p) headers['Authorization']='Basic '+btoa(u+':'+p);
+    } else if(state.authType==='apikey'){
+      const name=applyVars($('#authApiKeyName').value.trim());
+      const val=applyVars($('#authApiKeyValue').value.trim());
+      const where=$('#authApiKeyIn').value;
+      if(name && val){
+        if(where==='header') headers[name]=val;
+        else rawUrl += (rawUrl.includes('?')?'&':'?') + encodeURIComponent(name)+'='+encodeURIComponent(val);
+      }
+    }
+
+    const methodAllowsBody = !['GET','HEAD'].includes(method);
+    let body = null;
+    const bt = state.bodyType;
+
+    if(methodAllowsBody && bt!=='none'){
+      if(bt==='json'){
+        const raw=applyVars($('#bodyJson').value);
+        if(raw.trim()){
+          try { JSON.parse(raw); } catch(e){ if(!confirm('JSON 格式不合法，仍要发送？')) throw new Error('用户取消'); }
+          body = raw;
+          headers['Content-Type']='application/json';
+        }
+      } else if(bt==='urlencoded'){
+        const sp=new URLSearchParams();
+        readKv('urlencodedBody').forEach(([k,v])=>{ if(k) sp.append(applyVars(k),applyVars(v)); });
+        body = sp.toString();
+        headers['Content-Type']='application/x-www-form-urlencoded';
+      } else if(bt==='form-data'){
+        const fd=new FormData();
+        readKv('formDataBody').forEach(([k,v])=>{ if(k) fd.append(applyVars(k),applyVars(v)); });
+        body = fd;
+        delete headers['Content-Type'];
+      }
+    }
+
+    let finalUrl;
+    try { finalUrl=new URL(rawUrl).toString(); } catch { finalUrl=rawUrl; }
+
+    return { method, url:finalUrl, headers, body, originalUrl:rawUrl };
+  }
+
+  // ============ 发送 ============
+  let sending=false;
+  async function send(){
+    if(sending) return;
+    sending=true;
+    $('#sendBtn').disabled=true;
+
+    const placeholder=$('#respPlaceholder');
+    const content=$('#respContent');
+    placeholder.classList.remove('hidden');
+    placeholder.innerHTML='<div style="font-size:2rem">⏳</div><div>请求中...</div>';
+    content.classList.add('hidden');
+    $('#statusPill').textContent='请求中';
+    $('#statusPill').className='status-pill';
+
+    try{
+      const req = await buildRequest();
+      const start = performance.now();
+      const res = await fetch(req.url, { method:req.method, headers:req.headers, body:req.body });
+      const elapsed = Math.round(performance.now()-start);
+
+      const ct = res.headers.get('content-type')||'';
+      let bodyText;
+      if(ct.includes('application/json')){
+        try { const j = await res.json(); bodyText = JSON.stringify(j, null, 2); }
+        catch { bodyText = await res.text(); }
+      } else bodyText = await res.text();
+
+      $('#respMeta').style.display='flex';
+      $('#metaTime').textContent=elapsed+' ms';
+      $('#metaSize').textContent=bodyText.length+' B';
+      $('#metaType').textContent=ct||'—';
+
+      const rh=[]; res.headers.forEach((v,k)=>rh.push(`${k}: ${v}`));
+      $('#respHeaders').textContent=rh.join('\n')||'(无)';
+      $('#respHeadersSection').classList.remove('hidden');
+
+      const ok = res.status>=200 && res.status<300;
+      $('#statusPill').textContent = `${res.status} ${res.statusText||''}`;
+      $('#statusPill').className = 'status-pill ' + (ok?'ok':'err');
+
+      $('#respBody').textContent = bodyText || '(空)';
+      $('#respBody').className = 'resp-body' + (ok?'':' error');
+      placeholder.classList.add('hidden');
+      content.classList.remove('hidden');
+
+      pushHistory(req, res.status);
+    } catch(err){
+      $('#statusPill').textContent='失败';
+      $('#statusPill').className='status-pill err';
+      $('#respMeta').style.display='none';
+      $('#respHeadersSection').classList.add('hidden');
+      placeholder.classList.remove('hidden');
+      placeholder.innerHTML=`<div style="font-size:2rem">❌</div><div>${esc(err.message)}</div><div style="font-size:.72rem">检查 URL / CORS / 网络</div>`;
+      content.classList.add('hidden');
+    } finally {
+      sending=false;
+      $('#sendBtn').disabled=false;
+    }
+  }
+
+  $('#sendBtn').onclick = send;
+  $('#url').addEventListener('keydown', e => { if(e.key==='Enter'){ e.preventDefault(); send(); } });
+  document.addEventListener('keydown', e => {
+    if((e.ctrlKey||e.metaKey) && e.key==='Enter'){ e.preventDefault(); send(); }
+  });
+
+  // ============ 历史 ============
+  function pushHistory(req, status){
+    state.history.unshift({
+      method: req.method, url: req.originalUrl, time: new Date().toLocaleTimeString(), status,
+      snapshot: { url: $('#url').value, method: $('#method').value }
+    });
+    if(state.history.length>20) state.history.pop();
+    $('#historyCount').textContent = state.history.length;
+  }
+  $('#btnHistory').onclick=()=>{
+    if(!state.history.length) return toast('暂无历史记录');
+    const mask=document.createElement('div');mask.className='modal-mask';
+    mask.innerHTML=`<div class="modal"><header><h3>最近请求</h3><button class="btn btn-ghost btn-sm" id="hClose">✕</button></header>
+      <div class="modal-body history-panel" id="hList"></div></div>`;
+    document.body.appendChild(mask);
+    const close=()=>mask.remove();
+    mask.querySelector('#hClose').onclick=close;
+    mask.addEventListener('click',e=>{if(e.target===mask)close();});
+    const list=mask.querySelector('#hList');
+    state.history.forEach(h=>{
+      const it=document.createElement('div');it.className='history-item';
+      it.innerHTML=`<span class="m ${h.method}">${h.method}</span><span class="u">${esc(h.url)}</span><span class="t">${h.time}</span>`;
+      it.onclick=()=>{
+        $('#url').value=h.snapshot.url;
+        $('#method').value=h.snapshot.method;
+        close();
+      };
+      list.appendChild(it);
+    });
+  };
+
+  // ============ cURL 导出 ============
+  function buildCurlSync(){
+    const method=$('#method').value;
+    let url=applyVars($('#url').value.trim());
+    url=applyPathParams(url);
+    const params=readKv('paramsBody');
+    if(params.length){
+      const sp=new URLSearchParams();
+      params.forEach(([k,v])=>sp.append(applyVars(k),applyVars(v)));
+      url += (url.includes('?')?'&':'?') + sp.toString();
+    }
+    const headers={};
+    readKv('headersBody').forEach(([k,v])=>{ if(k) headers[applyVars(k)]=applyVars(v); });
+    if(state.authType==='bearer'){
+      const t=applyVars($('#authBearerToken').value.trim());
+      if(t) headers['Authorization']='Bearer '+t;
+    } else if(state.authType==='basic'){
+      const u=applyVars($('#authBasicUser').value.trim());
+      const p=applyVars($('#authBasicPass').value.trim());
+      if(u||p) headers['Authorization']='Basic '+btoa(u+':'+p);
+    } else if(state.authType==='apikey'){
+      const name=applyVars($('#authApiKeyName').value.trim());
+      const val=applyVars($('#authApiKeyValue').value.trim());
+      const where=$('#authApiKeyIn').value;
+      if(name && val){
+        if(where==='header') headers[name]=val;
+        else url += (url.includes('?')?'&':'?') + encodeURIComponent(name)+'='+encodeURIComponent(val);
+      }
+    }
+    let body=null;
+    const allowsBody = !['GET','HEAD'].includes(method);
+    const bt = state.bodyType;
+    if(allowsBody && bt!=='none'){
+      if(bt==='json'){ const raw=applyVars($('#bodyJson').value); if(raw.trim()){ body=raw; headers['Content-Type']='application/json'; } }
+      else if(bt==='urlencoded'){
+        const sp=new URLSearchParams();
+        readKv('urlencodedBody').forEach(([k,v])=>{ if(k) sp.append(applyVars(k),applyVars(v)); });
+        body=sp.toString(); headers['Content-Type']='application/x-www-form-urlencoded';
+      }
+    }
+    let cmd = `curl -X ${method} '${url}'`;
+    Object.entries(headers).forEach(([k,v])=>{ cmd += ` \\\n  -H '${k}: ${v}'`; });
+    if(body){
+      cmd += ` \\\n  --data '${body.replace(/'/g, "'\\''")}'`;
+    }
+    return cmd;
+  }
+
+  $('#btnExportCurl').onclick=()=>{
+    const cmd = buildCurlSync();
+    navigator.clipboard.writeText(cmd)
+      .then(()=>toast('已复制 cURL 到剪贴板'))
+      .catch(()=>openCurlModal('cURL 命令', cmd, ()=>{}));
+  };
+
+  // ============ cURL 导入（智能解析） ============
+  function openCurlModal(title, value, onConfirm){
+    $('#curlTitle').textContent=title;
+    $('#curlText').value=value;
+    $('#curlModal').classList.remove('hidden');
+    const close=()=>$('#curlModal').classList.add('hidden');
+    $('#curlClose').onclick=close;
+    $('#curlCancel').onclick=close;
+    $('#curlConfirm').onclick=()=>{ onConfirm($('#curlText').value); close(); };
+  }
+
+  $('#btnImportCurl').onclick=()=>{
+    openCurlModal('导入 cURL', '', (text)=>{
+      if(!text.trim()) return;
+      try { parseCurl(text); }
+      catch(e){ toast('解析失败: '+e.message); console.error(e); }
+    });
+  };
+
+  function tokenizeCurl(input){
+    const tokens = [];
+    let i = 0, n = input.length;
+    while(i < n){
+      while(i < n && /\s/.test(input[i])) i++;
+      if(i >= n) break;
+      let token = '';
+      let quote = null;
+
+      if(input[i] === '$' && input[i+1] === "'"){
+        i += 2;
+        while(i < n && input[i] !== "'"){
+          if(input[i] === '\\' && i + 1 < n){
+            const esc = input[i+1];
+            switch(esc){
+              case 'n': token += '\n'; break;
+              case 't': token += '\t'; break;
+              case 'r': token += '\r'; break;
+              case '\\': token += '\\'; break;
+              case "'": token += "'"; break;
+              case '"': token += '"'; break;
+              default: token += esc;
+            }
+            i += 2;
+          } else { token += input[i++]; }
+        }
+        i++;
+      } else {
+        while(i < n){
+          const ch = input[i];
+          if(quote === null){
+            if(/\s/.test(ch)) break;
+            if(ch === "'" || ch === '"'){ quote = ch; i++; continue; }
+            token += ch; i++;
+          } else if(quote === "'"){
+            if(ch === "'"){ quote = null; i++; }
+            else { token += ch; i++; }
+          } else {
+            if(ch === '"'){ quote = null; i++; }
+            else if(ch === '\\' && i + 1 < n){
+              const esc = input[i+1];
+              if(esc === '"' || esc === '\\' || esc === '$' || esc === '`'){
+                token += esc; i += 2;
+              } else { token += ch; i++; }
+            } else { token += ch; i++; }
+          }
+        }
+      }
+      if(token.length > 0) tokens.push(token);
+    }
+    return tokens;
+  }
+
+  function parseCurl(text){
+    if(!text || !text.trim()){ toast('cURL 内容为空'); return; }
+
+    let raw = text
+      .replace(/\\\r?\n/g, ' ')
+      .replace(/\^\r?\n/g, ' ')
+      .trim()
+      .replace(/^["']?curl(?:\.exe)?["']?\s+/i, '');
+
+    const tokens = tokenizeCurl(raw);
+    if(!tokens.length){ toast('未识别到有效参数'); return; }
+
+    let method = null;
+    let url = null;
+    const headers = {};
+    const bodyItems = [];
+    let basicUser = null, basicPass = null;
+    let bearerToken = null;
+    let apiKeyHeader = null;
+    let isGetMode = false;
+    let hasJsonContentType = false;
+    let hasFormContentType = false;
+    let hasUrlencodedContentType = false;
+
+    let i = 0;
+    function nextVal() { return i + 1 < tokens.length ? tokens[++i] : ''; }
+
+    while(i < tokens.length){
+      const t = tokens[i];
+      switch(t){
+        case '-X': case '--request':
+          method = nextVal().toUpperCase();
+          break;
+
+        case '-H': case '--header': {
+          const h = nextVal();
+          const idx = h.indexOf(':');
+          if(idx > 0){
+            const k = h.slice(0, idx).trim();
+            const v = h.slice(idx + 1).trim();
+            headers[k] = v;
+            const lowerK = k.toLowerCase();
+            const lowerV = v.toLowerCase();
+            if(lowerK === 'content-type'){
+              if(lowerV.includes('application/json')) hasJsonContentType = true;
+              if(lowerV.includes('application/x-www-form-urlencoded')) hasUrlencodedContentType = true;
+              if(lowerV.includes('multipart/form-data')) hasFormContentType = true;
+            }
+            if(lowerK === 'authorization'){
+              if(lowerV.startsWith('bearer ')) bearerToken = v.slice(7).trim();
+              if(lowerV.startsWith('basic ')){
+                try {
+                  const decoded = atob(v.slice(6).trim());
+                  const parts = decoded.split(':');
+                  basicUser = parts[0];
+                  basicPass = parts.slice(1).join(':');
+                } catch(e){}
+              }
+            }
+            if(/^x-api-key$/i.test(k) || /^api-key$/i.test(k) || /^x-auth-token$/i.test(k)){
+              apiKeyHeader = { name: k, value: v };
+            }
+          }
+          break;
+        }
+
+        case '-A': case '--user-agent':
+          headers['User-Agent'] = nextVal();
+          break;
+
+        case '-b': case '--cookie':
+          headers['Cookie'] = nextVal();
+          break;
+
+        case '-u': case '--user': {
+          const cred = nextVal();
+          const parts = cred.split(':');
+          basicUser = parts[0];
+          basicPass = parts.slice(1).join(':');
+          break;
+        }
+
+        case '-d': case '--data': case '--data-raw': case '--data-binary': {
+          const payload = nextVal();
+          const trimmed = payload.trim();
+          if(trimmed.startsWith('{') || trimmed.startsWith('[')){
+            bodyItems.push({ type:'json', value: payload });
+            hasJsonContentType = true;
+          } else if(/^[\w\-.~%]+=/.test(trimmed) && trimmed.includes('=')){
+            bodyItems.push({ type:'urlencoded-raw', value: payload });
+            hasUrlencodedContentType = true;
+          } else {
+            bodyItems.push({ type:'raw', value: payload });
+          }
+          break;
+        }
+
+        case '--data-urlencode': {
+          const v = nextVal();
+          bodyItems.push({ type:'urlencoded-raw', value: v });
+          hasUrlencodedContentType = true;
+          break;
+        }
+
+        case '-F': case '--form': {
+          const v = nextVal();
+          const eq = v.indexOf('=');
+          if(eq > 0){
+            const key = v.slice(0, eq);
+            let val = v.slice(eq + 1);
+            let file = null;
+            if(val.startsWith('@') || val.startsWith('<')){ file = val.slice(1); val = ''; }
+            bodyItems.push({ type:'form', key, value: val, file });
+            hasFormContentType = true;
+          }
+          break;
+        }
+
+        case '-G': case '--get':
+          isGetMode = true;
+          break;
+
+        case '--url':
+          url = nextVal();
+          break;
+
+        case '-k': case '--insecure':
+        case '-L': case '--location':
+        case '-s': case '--silent':
+        case '-S': case '--show-error':
+        case '-v': case '--verbose':
+        case '-i': case '--include':
+        case '--compressed':
+        case '-N': case '--no-buffer':
+          break;
+
+        case '--connect-timeout': case '--max-time': case '-m':
+        case '--retry': case '--proxy': case '-x':
+        case '-e': case '--referer': case '--cacert': case '--cert':
+        case '-o': case '--output':
+          nextVal();
+          break;
+
+        default:
+          if(!url && (t.startsWith('http://') || t.startsWith('https://') || t.startsWith('{{'))){
+            url = t;
+          }
+          break;
+      }
+      i++;
+    }
+
+    if(!method){
+      if(bodyItems.length > 0 || basicUser || bearerToken) method = 'POST';
+      else method = 'GET';
+    }
+    if(isGetMode) method = 'GET';
+
+    // 写入 UI
+    if(url) $('#url').value = url;
+    $('#method').value = method;
+
+    // Headers
+    initKv('headersBody');
+    const hb = $('#headersBody');
+    const finalHeaders = { ...headers };
+    if(!finalHeaders['Content-Type'] && !finalHeaders['content-type']){
+      if(hasJsonContentType) finalHeaders['Content-Type'] = 'application/json';
+      else if(hasUrlencodedContentType) finalHeaders['Content-Type'] = 'application/x-www-form-urlencoded';
+    }
+    if(bearerToken && !finalHeaders['Authorization']) finalHeaders['Authorization'] = 'Bearer ' + bearerToken;
+    if(basicUser !== null && !finalHeaders['Authorization']){
+      try { finalHeaders['Authorization'] = 'Basic ' + btoa(basicUser + ':' + (basicPass||'')); } catch(e){}
+    }
+
+    const headerEntries = Object.entries(finalHeaders);
+    if(headerEntries.length === 0){
+      initKv('headersBody', 'Content-Type', 'application/json');
+    } else {
+      initKv('headersBody');
+      headerEntries.forEach(([k,v]) => makeRow(hb, k, v));
+    }
+
+    // Body
+    const jsonItems = bodyItems.filter(x => x.type === 'json');
+    const urlencodedItems = bodyItems.filter(x => x.type === 'urlencoded-raw');
+    const formItems = bodyItems.filter(x => x.type === 'form');
+    const rawItems = bodyItems.filter(x => x.type === 'raw');
+
+    if(jsonItems.length > 0){
+      setBodyType('json');
+      let jsonStr = jsonItems[jsonItems.length - 1].value;
+      try { jsonStr = JSON.stringify(JSON.parse(jsonStr), null, 2); } catch(e){}
+      $('#bodyJson').value = jsonStr;
+    } else if(urlencodedItems.length > 0 || (hasUrlencodedContentType && rawItems.length > 0)){
+      setBodyType('urlencoded');
+      initKv('urlencodedBody');
+      const ub = $('#urlencodedBody');
+      let added = false;
+      urlencodedItems.forEach(item => {
+        const rawv = item.value;
+        try {
+          const sp = new URLSearchParams(rawv);
+          let hasPair = false;
+          sp.forEach((v, k) => { makeRow(ub, k, v); hasPair = true; });
+          if(!hasPair && rawv.includes('=')){
+            const eq = rawv.indexOf('=');
+            makeRow(ub, rawv.slice(0, eq), rawv.slice(eq+1));
+            added = true;
+          } else if(hasPair) added = true;
+        } catch(e){
+          if(rawv.includes('=')){
+            const eq = rawv.indexOf('=');
+            makeRow(ub, rawv.slice(0, eq), rawv.slice(eq+1));
+            added = true;
+          }
+        }
+      });
+      rawItems.forEach(item => {
+        if(item.value.includes('=')){
+          const eq = item.value.indexOf('=');
+          makeRow(ub, item.value.slice(0, eq), item.value.slice(eq+1));
+          added = true;
+        }
+      });
+      if(!added) initKv('urlencodedBody', 'key', 'value');
+    } else if(formItems.length > 0){
+      setBodyType('form-data');
+      initKv('formDataBody');
+      const fb = $('#formDataBody');
+      formItems.forEach(item => {
+        makeRow(fb, item.key || '', item.file ? `[文件: ${item.file}]` : (item.value || ''));
+      });
+    } else if(rawItems.length > 0){
+      setBodyType('json');
+      $('#bodyJson').value = rawItems[rawItems.length - 1].value;
+    } else {
+      setBodyType('none');
+    }
+
+    // Auth
+    if(bearerToken){
+      setAuth('bearer');
+      $('#authBearerToken').value = bearerToken;
+    } else if(basicUser !== null){
+      setAuth('basic');
+      $('#authBasicUser').value = basicUser;
+      $('#authBasicPass').value = basicPass || '';
+    } else if(apiKeyHeader){
+      setAuth('apikey');
+      $('#authApiKeyName').value = apiKeyHeader.name;
+      $('#authApiKeyValue').value = apiKeyHeader.value;
+      $('#authApiKeyIn').value = 'header';
+    } else {
+      setAuth('none');
+    }
+
+    toast('✅ cURL 已识别并自动配置');
+  }
+
+  // ============ 清空 ============
+  $('#btnClear').onclick=()=>{
+    if(!confirm('清空当前请求配置？')) return;
+    $('#url').value='';
+    $('#method').value='GET';
+    initKv('headersBody','Content-Type','application/json');
+    initKv('paramsBody');
+    initKv('urlencodedBody');
+    initKv('formDataBody');
+    $('#bodyJson').value='{}';
+    setBodyType('none');
+    setAuth('none');
+    $('#varsList').innerHTML='';
+    $('#respContent').classList.add('hidden');
+    $('#respPlaceholder').classList.remove('hidden');
+    $('#respPlaceholder').innerHTML='<div style="font-size:2rem">📭</div><div>还没有响应</div><div style="font-size:.75rem">发送请求以查看结果</div>';
+    $('#statusPill').textContent='等待请求';
+    $('#statusPill').className='status-pill';
+    $('#respMeta').style.display='none';
+    $('#respHeadersSection').classList.add('hidden');
+    toast('已清空');
+  };
+
+  console.log('API 调试器已就绪 — 支持变量、Auth、Body、历史、cURL 导入导出');
+})();
+</script>
+</body>
+</html>
